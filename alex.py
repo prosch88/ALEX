@@ -499,6 +499,8 @@ def get_client(host=default_host, port=default_port, check=False):
             global used
             global free
             data_df = device.shell("df -h /data")
+            if "invalid option" in data_df.lower():
+                data_df = device.shell("df /data")
             data_lines = data_df.strip().splitlines()
             if len(data_lines) >= 2:
                 data_line = data_lines[1]
