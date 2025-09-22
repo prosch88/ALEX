@@ -1,0 +1,4 @@
+adbutils
+customtkinter
+crossfiledialog
+pdfme
