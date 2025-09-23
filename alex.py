@@ -458,7 +458,7 @@ def get_client(host=default_host, port=default_port, check=False):
                     "   49 4E 45 53 53 2E")
         else:
             paired = True
-            dev_state = "autorized ✔"
+            dev_state = "authorized ✔"
 
             brand = getprop(device, "ro.product.brand").capitalize()
             model = getprop(device, "ro.product.model").capitalize()
