@@ -294,7 +294,7 @@ class MyApp(ctk.CTk):
             self.show_main_menu()
 
     # Filebrowser for working direcory
-    def browse_cwd(self):
+    def browse_cwd(self, outputbox):
         global dir
         olddir = dir
         self.okbutton.configure(state="disabled")
@@ -480,7 +480,18 @@ def get_client(host=default_host, port=default_port, check=False):
             if imei == "-":
                 imei = getprop(device, 'ril.imei').replace("'","")
             if imei == "-":
-                imei = device.shell("service call iphonesubinfo 1 s16 com.android.shell | cut -c 52-66 | tr -d '.[:space:]'").replace("'","")
+                dump_imei = device.shell("dumpsys iphonesubinfo")
+                match = re.search(r"Device ID\s*=\s*(\d+)", dump_imei)
+                if match:
+                    imei = match.group(1)
+                else:
+                    imei = "-"
+            if imei == "-":
+                major_ver = int(software.split(".")[0])
+                if major_ver < 5:
+                    pass
+                else:
+                    imei = device.shell("service call iphonesubinfo 1 s16 com.android.shell | cut -c 52-66 | tr -d '.[:space:]'").replace("'","")
             if "not found" in imei:
                 imei = "-"
             global b_mac
@@ -531,11 +542,12 @@ def get_client(host=default_host, port=default_port, check=False):
                     try: graph_progress = "" + "▓" * int(26/100*int(use_percent.rstrip("%"))) + "░" * int(26/100*(100-int(use_percent.rstrip("%")))) + ""
                     except: graph_progress = "-"
                 else:
-                    used_g = to_mb(used)
-                    free_g = to_mb(avail)
-                    use_percent = int(used_g * 100 / (used_g + free_g))
-                    graph_progress = "" + "▓" * int(26/100*use_percent) + "░" * int(26/100*(100-use_percent)) + ""
-                    
+                    try:
+                        used_g = to_mb(used)
+                        free_g = to_mb(avail)
+                        use_percent = int(used_g * 100 / (used_g + free_g))
+                        graph_progress = "" + "▓" * int(26/100*use_percent) + "░" * int(26/100*(100-use_percent)) + ""
+                    except: graph_progress = "-"
             else:
                 data_s, used, free, use_percent = "-"
                 graph_progress = "-"
@@ -543,6 +555,13 @@ def get_client(host=default_host, port=default_port, check=False):
             ad_id = device.shell("settings get secure android_id")
             if ad_id == "":
                 ad_id = "-"
+            global crypt_on
+            crypt_on = getprop(device, "ro.crypto.state")
+            crypt_type = getprop(device, "ro.crypto.type")
+            if crypt_type not in ["", "-"]:
+                crypt_type = f"({crypt_type})"
+            else:
+                crypt_type = ""
 
             global apps
             app_query = name = device.shell("pm list packages -3 -i")
@@ -568,7 +587,8 @@ def get_client(host=default_host, port=default_port, check=False):
                     "\n" + '{:13}'.format("Data: ") + "\t" + data_s +
                     "\n" + '{:13}'.format("Used: ") + "\t" + used_s +
                     "\n" + '{:13}'.format("Free: ") + "\t" + free +
-                    "\n" + '{:13}'.format("Ad-ID: ") + "\t" + ad_id)             
+                    "\n" + '{:13}'.format("Ad-ID: ") + "\t" + ad_id +
+                    "\n" + '{:13}'.format("State: ") + "\t" + crypt_on + " " + crypt_type)             
 
     else:
         device = None
