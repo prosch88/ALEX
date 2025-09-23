@@ -447,10 +447,10 @@ def get_client(host=default_host, port=default_port, check=False):
                     "   64 20 49 20 6d 75 73 74 20 66 6f \n" +
                     "   6c 6c 6f 77 2c 20 69 66 20 49 20 \n" +
                     "   63 61 6e 2e")
-        elif state == "unauthorized ✗":
-            dev_state = state
+        elif state == "unauthorized":
+            dev_state = "unauthorized ✗":
             device_info = ("Device is " + dev_state + "\n\n" +
-                    '{:13}'.format("Serialnr: ") + "\t" + snr + "")
+                    '{:13}'.format("Serialnr: ") + "\t" + snr + "" +)
         else:
             paired = True
             dev_state = "autorized ✔"
