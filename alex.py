@@ -392,6 +392,19 @@ def getprop(device, key):
     value = device.shell(f"getprop {key}").strip()
     return value if value else "-"
 
+def to_mb(text: str) -> float:
+    num_match = re.compile(r"\d+(\.\d+)?")
+    m = num_match.search(text)
+    if not m:
+        return 0.0
+    val = float(m.group())
+    if "G" in text:
+        return val * 1024
+    elif "K" in text:
+        return val / 1024
+    else:
+        return val
+
 def get_client(host=default_host, port=default_port, check=False):
     global adb
     global snr
@@ -500,8 +513,10 @@ def get_client(host=default_host, port=default_port, check=False):
             global data_s
             global used
             global free
+            old_dev = False
             data_df = device.shell("df -h /data")
             if "-h" in data_df.lower():
+                old_dev = True
                 data_df = device.shell("df /data")
             data_lines = data_df.strip().splitlines()
             if len(data_lines) >= 2:
@@ -509,10 +524,18 @@ def get_client(host=default_host, port=default_port, check=False):
                 parts = re.split(r"\s+", data_line)
                 size, used, avail, use_percent = parts[1:5]
                 data_s = f"{add_space(size)}B"
-                used = f"{add_space(used)}B"
+                used_s = f"{add_space(used)}B"
                 free = f"{add_space(avail)}B"
-                try: graph_progress = "" + "▓" * int(26/100*int(use_percent.rstrip("%"))) + "░" * int(26/100*(100-int(use_percent.rstrip("%")))) + ""
-                except: graph_progress = "-"
+                print(use_percent)
+                if old_dev == False:
+                    try: graph_progress = "" + "▓" * int(26/100*int(use_percent.rstrip("%"))) + "░" * int(26/100*(100-int(use_percent.rstrip("%")))) + ""
+                    except: graph_progress = "-"
+                else:
+                    used_g = to_mb(used)
+                    free_g = to_mb(avail)
+                    use_percent = int(used_g * 100 / (used_g + free_g))
+                    graph_progress = "" + "▓" * int(26/100*use_percent) + "░" * int(26/100*(100-use_percent)) + ""
+                    
             else:
                 data_s, used, free, use_percent = "-"
                 graph_progress = "-"
@@ -543,7 +566,7 @@ def get_client(host=default_host, port=default_port, check=False):
                     "\n" + '{:13}'.format("BT MAC: ") + "\t" + b_mac +
                     "\n" + '{:13}'.format("Disk Use: ") + "\t" + graph_progress +
                     "\n" + '{:13}'.format("Data: ") + "\t" + data_s +
-                    "\n" + '{:13}'.format("Used: ") + "\t" + used +
+                    "\n" + '{:13}'.format("Used: ") + "\t" + used_s +
                     "\n" + '{:13}'.format("Free: ") + "\t" + free +
                     "\n" + '{:13}'.format("Ad-ID: ") + "\t" + ad_id)             
 
