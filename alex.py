@@ -468,6 +468,8 @@ def get_client(host=default_host, port=default_port, check=False):
                 imei = getprop(device, 'ril.imei').replace("'","")
             if imei == "-":
                 imei = device.shell("service call iphonesubinfo 1 s16 com.android.shell | cut -c 52-66 | tr -d '.[:space:]'").replace("'","")
+            if "not found" in imei:
+                imei = "-"
             global b_mac
             b_mac = device.shell("settings get secure bluetooth_address")
             global w_mac
