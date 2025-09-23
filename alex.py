@@ -334,7 +334,7 @@ class MyApp(ctk.CTk):
             ctk.CTkButton(self.dynamic_frame, text="Save device info", command=lambda: self.switch_menu("DevInfo"), width=200, height=70, font=self.stfont),
             ctk.CTkButton(self.dynamic_frame, text="Create PDF Report", command=lambda: self.switch_menu("DevInfo"), width=200, height=70, font=self.stfont),
         ]
-        self.menu_text = ["Save informations about the device, installed apps,\nSIM and companion devices. (as .txt)",
+        self.menu_text = ["Save informations about the device and\ninstalled apps. (as .txt)",
                           "Create a printable PDF device report"]
         self.menu_textbox = []
         for btn in self.menu_buttons:
@@ -450,7 +450,12 @@ def get_client(host=default_host, port=default_port, check=False):
         elif state == "unauthorized":
             dev_state = "unauthorized ✗"
             device_info = ("Device is " + dev_state + "\n\n" +
-                    '{:13}'.format("Serialnr: ") + "\t" + snr + "")
+                    '{:13}'.format("Serialnr: ") + "\t" + snr + "" +
+                    "\n\n" + 
+                    "   4E 4F 20 41 44 4D 49 54 54 41 4E \n" +
+                    "   43 45 20 45 58 43 45 50 54 20 4F \n" +
+                    "   4E 20 50 41 52 54 59 20 42 55 53 \n" +
+                    "   49 4E 45 53 53 2E")
         else:
             paired = True
             dev_state = "autorized ✔"
@@ -537,7 +542,6 @@ def get_client(host=default_host, port=default_port, check=False):
                 data_s = f"{add_space(size)}B"
                 used_s = f"{add_space(used)}B"
                 free = f"{add_space(avail)}B"
-                print(use_percent)
                 if old_dev == False:
                     try: graph_progress = "" + "▓" * int(26/100*int(use_percent.rstrip("%"))) + "░" * int(26/100*(100-int(use_percent.rstrip("%")))) + ""
                     except: graph_progress = "-"
