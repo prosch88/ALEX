@@ -11,14 +11,20 @@ if sys.stderr is None:
 import customtkinter as ctk
 from PIL import ImageTk, Image, ExifTags, ImageDraw, ImageFont
 import tkinter.ttk as ttk
+from datetime import datetime, timedelta, timezone, date
 from tkinter import StringVar
 from importlib.metadata import version
+from adbutils._utils import append_path
+import threading
 import adbutils
 import subprocess
 import platform
 import shutil
 import socket
+import stat
 import time
+import typing
+import pathlib
 import re
 
 
@@ -142,7 +148,7 @@ class MyApp(ctk.CTk):
         self.skip.grid(row=0, column=0, columnspan=2, sticky="w")
         self.menu_buttons = [
             ctk.CTkButton(self.dynamic_frame, text="Reporting Options", command=lambda: self.switch_menu("ReportMenu"), width=200, height=70, font=self.stfont),
-            ctk.CTkButton(self.dynamic_frame, text="Acquisition Options", command=lambda: self.show_main_menu(), width=200, height=70, font=self.stfont),
+            ctk.CTkButton(self.dynamic_frame, text="Acquisition Options", command=lambda: self.switch_menu("AcqMenu"), width=200, height=70, font=self.stfont),
             ctk.CTkButton(self.dynamic_frame, text="Logging Options", command=lambda: self.show_main_menu(), width=200, height=70, font=self.stfont),
             ctk.CTkButton(self.dynamic_frame, text="Advanced Options", command=lambda: self.show_main_menu(), width=200, height=70, font=self.stfont),
         ]
@@ -172,8 +178,8 @@ class MyApp(ctk.CTk):
         self.current_menu = menu_name
         if menu_name == "ReportMenu":
             self.show_report_menu()
-        #elif menu_name == "AcqMenu":
-        #    self.show_acq_menu()
+        elif menu_name == "AcqMenu":
+            self.show_acquisition_menu()
         #elif menu_name == "LogMenu":
         #    self.show_log_menu()
         #elif menu_name == "AdvMenu":
@@ -182,6 +188,8 @@ class MyApp(ctk.CTk):
         #    self.show_pdf_report()
         elif menu_name == "DevInfo":
             self.show_save_device_info()
+        elif menu_name == "PullData":
+            self.show_pull_data()
         #elif menu_name == "Report":
         #    self.show_report()
 
@@ -350,7 +358,58 @@ class MyApp(ctk.CTk):
 
         ctk.CTkButton(self.dynamic_frame, text="Back", command=self.show_main_menu).grid(row=r, column=1, padx=10, pady=10, sticky="e" )
 
+    #Acquisition Menu
+    def show_acquisition_menu(self):
+        self.skip = ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont)
+        self.skip.grid(row=0, column=0, columnspan=2, sticky="w")
+        self.menu_buttons = [
+            ctk.CTkButton(self.dynamic_frame, text="Extract internal Data", command=lambda: self.switch_menu("PullData"), width=200, height=70, font=self.stfont),
+        ]
+        self.menu_text = ["Extract the content of \"/sdcard/\" as a folder."]
+        self.menu_textbox = []
+        for btn in self.menu_buttons:
+            self.menu_textbox.append(ctk.CTkLabel(self.dynamic_frame, width=right_content, height=70, font=self.stfont, anchor="w", justify="left"))
+        r=1
+        i=0
+        for btn in self.menu_buttons:
+            btn.grid(row=r,column=0, padx=30, pady=10)
+            self.menu_textbox[i].grid(row=r,column=1, padx=10, pady=10)
+            self.menu_textbox[i].configure(text=self.menu_text[i])
+            r+=1
+            i+=1
 
+        ctk.CTkButton(self.dynamic_frame, text="Back", command=self.show_main_menu).grid(row=r, column=1, padx=10, pady=10, sticky="e" )
+
+    def show_pull_data(self):
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
+        ctk.CTkLabel(self.dynamic_frame, text="Extract internal Data", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
+        self.text = ctk.CTkLabel(self.dynamic_frame, text="Preparing Data Extraction ...", width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        self.text.pack(anchor="center", pady=25)
+        global data_size
+        total_size = 1
+        data_size = 0
+        data_path = "/sdcard/"
+        self.change = ctk.IntVar(self, 0)
+        self.get_dsize = threading.Thread(target=lambda: get_data_size(data_path, self.change))
+        self.get_dsize.start()
+        self.wait_variable(self.change)
+        folder = f'Data_{snr}_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}'
+        try: os.mkdir(folder)
+        except: pass
+        self.change.set(0)
+        self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="0%", width=585, height=20, font=self.stfont, anchor="w", justify="left")
+        self.prog_text.pack()
+        self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0)
+        self.progress.set(0)
+        self.prog_text.configure(text="0%")
+        self.progress.pack()
+        self.pull_data = threading.Thread(target=lambda: pull_dir_mod(device.sync, data_path, folder, text=self.text, prog_text=self.prog_text, progress=self.progress, change=self.change))
+        self.pull_data.start()
+        self.wait_variable(self.change)
+        self.text.configure(text="Data Extraction complete.")
+        self.prog_text.pack_forget()
+        self.progress.pack_forget()
+        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40)) 
 
 a_version = 0.01
 default_host = "127.0.0.1"
@@ -636,6 +695,68 @@ def save_info():
             
     file.close()
 
+def get_data_size(data_path, change):
+    global total_size
+    size_cmd = device.shell(f"du -ks {data_path}")
+    total_size = int(size_cmd.split()[0])*1024
+    change.set(1)
+
+def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, prog_text, progress, change, exist_ok: bool = True) -> int:
+    """Pull directory from device:src into local:dst
+
+    Returns:
+        total files size pulled
+
+    Modified function from adbutils for percentage output
+    """
+
+    text.configure(text="Performing Data-Extraction")
+
+    def rec_pull_contents(src: str, dst: typing.Union[str, pathlib.Path], prog_text, progress, exist_ok: bool = True) -> int:
+        s = 0
+        global data_size
+        global total_size
+        items = list(self.iter_directory(src))
+
+        items = list(filter(
+            lambda i: i.path != '.' and i.path != '..',
+            items
+        ))
+
+        dirs = [f for f in items if (f.mode & stat.S_IFMT(f.mode)) == stat.S_IFDIR]
+        files = [f for f in items if (f.mode & stat.S_IFMT(f.mode)) == stat.S_IFREG]
+
+        
+        for dir in dirs:
+            new_src:str = append_path(src, dir.path) 
+            new_dst:pathlib.Path = pathlib.Path(append_path(dst, dir.path)) 
+            os.makedirs(new_dst, exist_ok=exist_ok)
+            s += rec_pull_contents(new_src, new_dst, prog_text, progress, exist_ok=exist_ok)
+
+        for file in files:
+            new_src:str = append_path(src, file.path) 
+            new_dst:str = append_path(dst, file.path) 
+            size = self.pull_file(new_src, new_dst)
+            s += size
+            data_size += size   
+            if data_size > total_size:
+                data_size = total_size      
+            perc = (100 / total_size) * data_size
+            prog_text.configure(text=f"{round(perc)}%")  
+            progress.set(perc/100)
+            prog_text.update()
+            progress.update()
+
+        return s
+
+
+    if isinstance(dst, str):
+        dst = pathlib.Path(dst)
+        
+    os.makedirs(dst, exist_ok=exist_ok)
+    func_size = rec_pull_contents(src, dst, prog_text, progress, exist_ok=exist_ok)
+    change.set(1)
+    return func_size
 
 device = None
 paired = False
