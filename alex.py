@@ -15,6 +15,9 @@ from datetime import datetime, timedelta, timezone, date
 from tkinter import StringVar
 from importlib.metadata import version
 from adbutils._utils import append_path
+from io import BytesIO
+from pdfme import build_pdf
+import tempfile
 import threading
 import adbutils
 import subprocess
@@ -69,7 +72,7 @@ class MyApp(ctk.CTk):
         
         if platform.uname().system == 'Windows':
             self.stfont = ctk.CTkFont("Noto Sans Medium")
-            self.monofont = ctk.CTkFont("Noto Sans Mono UFADE")
+            self.monofont = ctk.CTkFont("Noto Sans Mono ALEX")
             self.monofont.configure(size=fsize)
         else:
             self.stfont = ctk.CTkFont("default")
@@ -184,8 +187,8 @@ class MyApp(ctk.CTk):
         #    self.show_log_menu()
         #elif menu_name == "AdvMenu":
         #    self.show_adv_menu()
-        #elif menu_name == "PDF":
-        #    self.show_pdf_report()
+        elif menu_name == "PDF":
+            self.show_pdf_report()
         elif menu_name == "DevInfo":
             self.show_save_device_info()
         elif menu_name == "PullData":
@@ -268,7 +271,7 @@ class MyApp(ctk.CTk):
             widget.destroy()
         global dir
         if getattr(sys, 'frozen', False):
-            dir = os.path.join(os.path.expanduser('~'), "ufade_out")
+            dir = os.path.join(os.path.expanduser('~'), "ALEX_out")
         else:
             dir = os.getcwd()
         ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="center")
@@ -342,7 +345,7 @@ class MyApp(ctk.CTk):
         self.skip.grid(row=0, column=0, columnspan=2, sticky="w")
         self.menu_buttons = [
             ctk.CTkButton(self.dynamic_frame, text="Save device info", command=lambda: self.switch_menu("DevInfo"), width=200, height=70, font=self.stfont),
-            ctk.CTkButton(self.dynamic_frame, text="Create PDF Report", command=lambda: self.switch_menu("DevInfo"), width=200, height=70, font=self.stfont),
+            ctk.CTkButton(self.dynamic_frame, text="Create PDF Report", command=lambda: self.switch_menu("PDF"), width=200, height=70, font=self.stfont),
         ]
         self.menu_text = ["Save informations about the device and\ninstalled apps. (as .txt)",
                           "Create a printable PDF device report"]
@@ -489,6 +492,259 @@ class MyApp(ctk.CTk):
                 total += len(chunk)
                 self.prog_text.configure(text=f"{total/1024/1024:.1f} MB written")
         bu_change.set(1)      
+
+    def show_pdf_report(self):
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
+        ctk.CTkLabel(self.dynamic_frame, text="Generate PDF Report", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
+        self.text = ctk.CTkLabel(self.dynamic_frame, text="Provide the case information:", width=585, height=30, font=self.stfont, anchor="w", justify="left")
+        self.change = ctk.IntVar(self, 0)
+        self.text.pack(anchor="center", pady=25)
+        
+        self.casebox = ctk.CTkEntry(self.dynamic_frame, width=360, height=20, corner_radius=0, placeholder_text="case number")
+        self.casebox.pack(pady=5, padx=30)
+        self.namebox = ctk.CTkEntry(self.dynamic_frame, width=360, height=20, corner_radius=0, placeholder_text="case name")
+        self.namebox.pack(pady=5, padx=30)
+        self.evidbox = ctk.CTkEntry(self.dynamic_frame, width=360, height=20, corner_radius=0, placeholder_text="evidence number")
+        self.evidbox.pack(pady=5, padx=30)  
+        self.exambox = ctk.CTkEntry(self.dynamic_frame, width=360, height=20, corner_radius=0, placeholder_text="examiner")
+        self.exambox.pack(pady=5, padx=30) 
+        self.okbutton = ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.change.set(1))
+        self.okbutton.pack(pady=30, padx=100)
+        global case_number
+        global case_name
+        global evidence_number
+        global examiner
+        if case_number != "":
+                self.casebox.insert(0, string=case_number)
+        else:
+            pass
+        if case_name != "":
+                self.namebox.insert(0, string=case_name)
+        else:
+            pass
+        if evidence_number != "":
+                self.evidbox.insert(0, string=evidence_number)
+        else:
+            pass
+        if examiner != "":
+                self.exambox.insert(0, string=examiner)
+        else:
+            pass
+        self.wait_variable(self.change)
+        self.casebox.pack_forget()
+        self.namebox.pack_forget()
+        self.evidbox.pack_forget()
+        self.exambox.pack_forget()
+        self.okbutton.pack_forget()
+        self.change.set(0)
+        case_number = self.casebox.get()
+        case_name = self.namebox.get()
+        evidence_number = self.evidbox.get()
+        examiner = self.exambox.get()
+        start_pdf = threading.Thread(target=lambda: self.pdf_report(case_number, case_name, evidence_number, examiner, change=self.change))
+        start_pdf.start()
+        self.wait_variable(self.change)
+        self.text.configure(text="PDF creation complete!", height=60)
+        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("ReportMenu")).pack(pady=40))
+
+    #PDF Device Report with pdfme
+    def pdf_report(self, case_number="", case_name="", evidence_number="", examiner="", pdf_type="default", shot="none", sha256="none", shot_png="none", app_name=None, chat_name=None, w=None, h=None, change=None,):
+        if change != None:
+            self.text.configure(text="Creating PDF-Report. Please wait.")
+        
+        u_grey = [0.970, 0.970, 0.970]
+        #background_color = tuple(int(c * 255) for c in u_grey)
+        font_size = 64
+        font_path = os.path.join(os.path.dirname(__file__),"assets", "report", "texgyreheros-regular.otf")
+        font = ImageFont.truetype(font_path, font_size)
+        dummy_image = Image.new("RGB", (1, 1))
+        draw = ImageDraw.Draw(dummy_image)
+        text_width = 2400
+        image = Image.new("RGB", (int(text_width), font_size+8), 'white')
+        draw = ImageDraw.Draw(image)
+        draw.text((0,-16),text=d_name, font=font, fill="black")
+        image_stream = BytesIO()
+        image.save(image_stream, format="JPEG", quality=95)
+        image_stream.seek(0)
+        if h == 426:
+            lr_width = (1.4 * (185/w))    
+        else:
+            lr_width = 0.5
+        if app_name != None:
+            app_name = f'{app_name} (Named by examiner)'
+        if chat_name != None:
+            chat_name = f'{chat_name} (Named by examiner)'
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as temp_file:
+            temp_file.write(image_stream.getvalue())
+            temp_image_name = temp_file.name
+
+        d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "generic.jpg")
+ 
+        if pdf_type == "screenshot":
+            document = {
+                "style": {"margin_bottom": 15, "text_align": "j", "page_size": "a4", "margin": [52, 70]},
+                "formats": {
+                    "url": {"c": "blue", "u": 1}, "title": {"b": 1, "s": 13}},
+                "running_sections": {
+                    "header": {
+                        "x": "left", "y": 20, "height": "top", "style": {"text_align": "r"}, "content": [{".b": "Device Report - Generated by ALEX"}]},
+                    "footer": {
+                        "x": "left", "y": 800, "height": "bottom", "style": {"text_align": "c"}, "content": [{".": ["Page ", {"var": "$page"}]}]}
+                },
+                "sections": [
+                    {
+                        "style": {"page_numbering_style": "arabic"},
+                        "running_sections": ["footer"],
+                        "content": [
+                            {
+                                "widths": [0.8, 0.1, 8.5],
+                                "style": {"s": 10, "border_color": "white",},
+                                "table": [
+
+                                    [
+                                        {"image": os.path.join(os.path.dirname(__file__), "assets" , "report", "report_a.jpg")}, None,
+                                        {".": [{".b;s:18": "ALEX Screenshot Report" + "\n"}, f"Created with ALEX {a_version}"]}
+                                    ]
+                                ]
+                            },
+                            {".": "Device:", "style": "title", "label": "title2", "outline": {}},
+                            {
+                                "widths": [1.2, 2.5, 1.8, 2.5],
+                                "style": {"s": 10, "border_color": "lightgrey"},
+                                "table": [
+                                    [{".": [{".b": "Dev-Name:"}]}, {"colspan": 3, "image": temp_image_name}, None, None],
+                                    [{"style": {"border_color": "white", "cell_fill": u_grey}, ".": [{".b": "Model-Nr:"}]}, {"colspan": 3, "style": {"cell_fill": u_grey}, ".": [{".": dev_name}]}, None, None],
+                                    [{".": [{".b": "SerialNr:"}]}, {"colspan": 3, ".": [{".": snr}]}, None, None],
+                                ]
+                            },
+                            {".": "Screenshot:", "style": "title", "label": "title2", "outline": {}},
+                            {
+                                "widths": [1.2, 2.5, 1.8, 2.5],
+                                "style": {"s": 10, "border_color": "lightgrey"},
+                                "table": [
+                                    [{".": [{".b": "Name:"}]}, {"colspan": 3, ".": [{".": shot}]}, None, None],
+                                    [{"style": {"border_color": "white", "cell_fill": u_grey}, ".": [{".b": "SHA256:"}]}, {"colspan": 3, "style": {"cell_fill": u_grey}, ".": [{".": sha256}]}, None, None],
+                                ]
+                            },
+                            {
+                                "widths": [1.2, 2.5, 1.8, 2.5],
+                                "style": {"s": 10, "border_color": "lightgrey"},
+                                "table": [
+                                    [{".": [{".b": "App:"}]}, {"colspan": 3, ".": [{".": app_name}]}, None, None],
+                                    [{"style": {"border_color": "white", "cell_fill": u_grey}, ".": [{".b": "Chat:"}]}, {"colspan": 3, "style": {"cell_fill": u_grey}, ".": [{".": chat_name}]}, None, None],
+                                ]
+                            } if app_name is not None else "",
+                            {
+                                "widths": [lr_width, 2, lr_width],
+                                "style": {"s": 10, "border_color": "white"},
+                                "table": [
+                                    [None, {"image": shot_png, "min_height":300}, None],
+                                ]
+
+                            },
+                            ]
+                            },
+                            #{".": "", "style": "title", "label": "title0", "outline": {}},
+            ]
+        }
+        else:
+            document = {
+                "style": {"margin_bottom": 15, "text_align": "j", "page_size": "a4", "margin": [52, 70]},
+                "formats": {
+                    "url": {"c": "blue", "u": 1}, "title": {"b": 1, "s": 13}},
+                "running_sections": {
+                    "header": {
+                        "x": "left", "y": 20, "height": "top", "style": {"text_align": "r"}, "content": [{".b": "Device Report - Generated by ALEX"}]},
+                    "footer": {
+                        "x": "left", "y": 800, "height": "bottom", "style": {"text_align": "c"}, "content": [{".": ["Page ", {"var": "$page"}]}]}
+                },
+                "sections": [
+                    {
+                        "style": {"page_numbering_style": "arabic"},
+                        "running_sections": ["footer"],
+                        "content": [
+
+                            {
+                                "widths": [0.8, 0.1, 8.5],
+                                "style": {"s": 10, "border_color": "white",},
+                                "table": [
+                                    [
+                                        {"image": os.path.join(os.path.dirname(__file__), "assets" , "report", "report_a.jpg")}, None,
+                                        {".": [{".b;s:18": "ALEX Device Report" + "\n"}, f"Created with ALEX {a_version}"]}
+                                    ]
+                                ]
+                            },
+                            {".": ""},{".": ""},
+                            {".": "Case Information:", "style": "title", "label": "title1", "outline": {}},
+                            {
+                                "widths": [1.8, 0.5, 2.5, 5],
+                                "style": {"s": 10, "border_color": "white",},
+                                "table": [
+                                    [{"rowspan": 4, "image": d_image}, None, {".": [{".b": "Case Number:"}]}, {".": [{".": case_number}]}],
+                                    [None, None, {".": [{".b": "Case Name:"}]}, {".": [{".": case_name}]}],
+                                    [None, None, {".": [{".b": "Evidence Number:"}]}, {".": [{".": evidence_number}]}],
+                                    [None, None, {".": [{".b": "Examiner:"}]}, {".": [{".": examiner}]}]
+                                ]
+                            },
+                            {".": "",},
+                            {".": "Device Information:", "style": "title", "label": "title2", "outline": {}},
+                            {
+                                "widths": [1.2, 2.5, 1.2, 3.1],
+                                "style": {"s": 10, "border_color": "lightgrey"},
+                                "table": [
+                                    [{".": [{".b": "Dev-Name:"}]}, {"colspan": 3, "image": temp_image_name}, None, None],
+                                    [{"style": {"border_color": "white", "cell_fill": u_grey}, ".": [{".b": "Model-Nr:"}]}, {"colspan": 3, "style": {"cell_fill": u_grey}, ".": [{".": full_name}]}, None, None],
+                                    [{".": [{".b": "Product:"}]}, {"colspan": 3, ".": [{".": product}]}, None, None],
+                                    [{"style": {"cell_fill": u_grey}, ".": [{".b": "Platform:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": d_platform}]}, { "style": {"cell_fill": u_grey}, ".": [{".b": "WiFi MAC:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": w_mac}]}],
+                                    [{".": [{".b": "Software:"}]}, {".": [{".": software}]}, {".": [{".b": "BT MAC:"}]}, {".": [{".": b_mac}]}],
+                                    [{"style": {"cell_fill": u_grey}, ".": [{".b": "Build Nr:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": build}]}, {"style": {"cell_fill": u_grey}, ".": [{".b": "Data:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": data_s}]}],
+                                    [{".": [{".b": "SPL:"}]}, {".": [{".": spl}]}, {".": [{".b": "Free Space:"}]}, {".": [{".": free}]}],
+                                    [{"style": {"cell_fill": u_grey}, ".": [{".b": "Language:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": locale}]}, {"style": {"cell_fill": u_grey}, ".": [{".b": "Used:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": used_s}]}],
+                                    [{".": [{".b": "AD-ID:"}]}, {".": [{".": ad_id}]}, {".": [{".b": "Used %:"}]}, {".": [{".": use_percent}]}],
+                                    [{"style": {"cell_fill": u_grey}, ".": [{".b": "Encryption:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": f"{crypt_on} {crypt_type}"}]}, {"style": {"cell_fill": u_grey}, ".": [{".b": "IMEI:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": imei}]}]
+                                ]
+
+                            },
+                            {".": "",},
+                
+                            {
+                                ".": "Applications:", "style": "title", "label": "title1", "outline": {}
+                            },
+                            
+                            {
+                                "widths": [3.9, 2.8, 2.5],
+                                "style": {"s": 9, "border_color": "white", "margin_bottom": 2},
+                                "table": [
+                                    [{".": [{".b":"App"}]},{".": [{".b":"Version"}]},{".":[{".b":"Source"}]}]
+                                ]
+                            },
+
+                            *[
+                                {
+                                "widths": [3.9, 2.8, 2.5],
+                                "style": {"s": 9, "border_color": "lightgrey"},
+                                "table": [
+                                    [{"style": {"cell_fill": u_grey if (apps.index(d_app) % 2) != 0 else "white"},".": d_app[0]}, {"style": {"cell_fill": u_grey if (apps.index(d_app) % 2) != 0 else "white"},".": device.app_info(d_app[0]).version_name[:30]}, 
+                                    {"style": {"cell_fill": u_grey if (apps.index(d_app) % 2) != 0 else "white"},".": "packageinstaller" if "packageinstaller" in d_app[1] else d_app[1][:25]}] for d_app in apps]
+                                } if len(apps) > 0 else " "],              
+
+                            {".": "", "style": "title", "label": "title0", "outline": {}},
+                        ] 
+
+                    },
+                ]
+            }
+        if pdf_type == "screenshot":
+            screen_pdf_path = os.path.splitext(shot_png)[0]+'.pdf'
+            with open(screen_pdf_path, 'wb') as f:
+                build_pdf(document, f)
+        else:
+            with open(f'Report_{snr}.pdf', 'wb') as f:
+                build_pdf(document, f)
+        
+        if change != None:
+            change.set(1)
 
 
 a_version = 0.01
@@ -667,7 +923,9 @@ def get_client(host=default_host, port=default_port, check=False):
                     name_s = d_name
             global data_s
             global used
+            global used_s
             global free
+            global use_percent
             old_dev = False
             data_df = device.shell("df -h /data")
             if "-h" in data_df.lower():
@@ -699,6 +957,7 @@ def get_client(host=default_host, port=default_port, check=False):
             if ad_id == "":
                 ad_id = "-"
             global crypt_on
+            global crypt_type
             crypt_on = getprop(device, "ro.crypto.state")
             crypt_type = getprop(device, "ro.crypto.type")
             if crypt_type not in ["", "-"]:
@@ -707,7 +966,7 @@ def get_client(host=default_host, port=default_port, check=False):
                 crypt_type = ""
 
             global apps
-            app_query = name = device.shell("pm list packages -3 -i")
+            app_query = device.shell("pm list packages -3 -i")
             pattern = re.compile(r"package:([^\s]+)\s+installer=([^\s]+)")
             apps = [[pkg, installer] for pkg, installer in pattern.findall(app_query)]
 
@@ -844,6 +1103,10 @@ paired = False
 apps = []
 adb = None
 state = None
+case_number = ""
+case_name = ""
+evidence_number = ""
+examiner = ""
 device_info = ""
 
 
