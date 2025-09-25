@@ -37,9 +37,9 @@
   "CTkCheckBox": {
     "corner_radius": 6,
     "border_width": 3,
-    "fg_color": ["#3a7ebf", "#1f538d"],
+    "fg_color": ["#195727", "#195727"],
     "border_color": ["#3E454A", "#949A9F"],
-    "hover_color": ["#325882", "#14375e"],
+    "hover_color": ["#084b1c", "#084b1c"],
     "checkmark_color": ["#DCE4EE", "gray90"],
     "text_color": ["gray14", "gray84"],
     "text_color_disabled": ["gray60", "gray45"]

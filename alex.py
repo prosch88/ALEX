@@ -190,6 +190,8 @@ class MyApp(ctk.CTk):
             self.show_save_device_info()
         elif menu_name == "PullData":
             self.show_pull_data()
+        elif menu_name == "ADBBU":
+            self.show_adb_bu()
         #elif menu_name == "Report":
         #    self.show_report()
 
@@ -363,9 +365,11 @@ class MyApp(ctk.CTk):
         self.skip = ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont)
         self.skip.grid(row=0, column=0, columnspan=2, sticky="w")
         self.menu_buttons = [
-            ctk.CTkButton(self.dynamic_frame, text="Extract internal Data", command=lambda: self.switch_menu("PullData"), width=200, height=70, font=self.stfont),
+            ctk.CTkButton(self.dynamic_frame, text="Pull \"sdcard\"", command=lambda: self.switch_menu("PullData"), width=200, height=70, font=self.stfont),
+            ctk.CTkButton(self.dynamic_frame, text="ADB Backup", command=lambda: self.switch_menu("ADBBU"), width=200, height=70, font=self.stfont),
         ]
-        self.menu_text = ["Extract the content of \"/sdcard/\" as a folder."]
+        self.menu_text = ["Extract the content of \"/sdcard/\" as a folder.",
+                          "Perform an ADB-Backup."]
         self.menu_textbox = []
         for btn in self.menu_buttons:
             self.menu_textbox.append(ctk.CTkLabel(self.dynamic_frame, width=right_content, height=70, font=self.stfont, anchor="w", justify="left"))
@@ -380,6 +384,7 @@ class MyApp(ctk.CTk):
 
         ctk.CTkButton(self.dynamic_frame, text="Back", command=self.show_main_menu).grid(row=r, column=1, padx=10, pady=10, sticky="e" )
 
+    #Show the "Pull sdcard" screen
     def show_pull_data(self):
         ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
         ctk.CTkLabel(self.dynamic_frame, text="Extract internal Data", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
@@ -409,7 +414,82 @@ class MyApp(ctk.CTk):
         self.text.configure(text="Data Extraction complete.")
         self.prog_text.pack_forget()
         self.progress.pack_forget()
-        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40)) 
+        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
+
+    #Show the ADB Backup screen
+    def show_adb_bu(self):
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
+        ctk.CTkLabel(self.dynamic_frame, text="ADB Backup", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
+        self.text = ctk.CTkLabel(self.dynamic_frame, text="Please choose what Data to include:", width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        self.text.pack(pady=15)
+        self.incl_shared = ctk.StringVar(value="off")
+        self.incl_shared_box = ctk.CTkCheckBox(self.dynamic_frame, text="Include the shared Memory.", variable=self.incl_shared, onvalue="on", offvalue="off")
+        self.incl_shared_box.pack(anchor="w", padx= 80, pady=5)
+        self.incl_apps = ctk.StringVar(value="on")
+        self.incl_apps_box = ctk.CTkCheckBox(self.dynamic_frame, text="Include all available Apps.", variable=self.incl_apps, onvalue="on", offvalue="off")
+        self.incl_apps_box.pack(anchor="w", padx= 80, pady=5)
+        self.incl_system = ctk.StringVar(value="on")
+        self.incl_system_box = ctk.CTkCheckBox(self.dynamic_frame, text="Include System-Apps.", variable=self.incl_system, onvalue="on", offvalue="off")
+        self.incl_system_box.pack(anchor="w", padx= 80, pady=5)
+        self.change = ctk.IntVar(self, 0)
+        self.startb = ctk.CTkButton(self.dynamic_frame, text="Start", font=self.stfont, command=lambda: self.adb_bu(self. change, incl_shared=self.incl_shared.get(), incl_apps=self.incl_apps.get(), incl_system=self.incl_system.get()))
+        self.startb.pack(pady=20) 
+        self.backb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=lambda: self.switch_menu("AcqMenu"))
+        self.backb.pack(pady=5)
+        self.wait_variable(self.change)
+        self.text.configure(text="ADB-Backup complete.")
+        self.prog_text.pack_forget()
+        self.progress.pack_forget()
+        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))  
+
+    def adb_bu(self, change, incl_shared, incl_apps, incl_system):
+        self.startb.pack_forget()
+        self.backb.pack_forget()
+        self.incl_apps_box.pack_forget()
+        self.incl_shared_box.pack_forget()
+        self.incl_system_box.pack_forget()
+        self.text.pack_forget()
+        self.text = ctk.CTkLabel(self.dynamic_frame, text="Please unlock the device and confirm \"Backup my Data\".", width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        self.text.pack(pady=25)
+        bu_options = " -apk -obb"
+        if incl_shared == "on":
+            bu_options = bu_options + " -shared"
+        else:
+            bu_options = bu_options + " -noshared"
+        if incl_apps == "on":
+            bu_options = bu_options + " -all"
+            if incl_system == "on":
+                bu_options = bu_options + " -system"
+            else:
+                bu_options = bu_options + " -nosystem"
+        bu_options = bu_options + " -widgets -keyvalue"
+        bu_file = f'{snr}_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}_backup.ab'
+        self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="", width=585, height=20, font=self.stfont, anchor="w", justify="left")
+        self.prog_text.pack()
+        self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
+        self.progress.pack()
+        self.progress.start()
+        self.bu_change = ctk.IntVar(self, 0)
+        self.call_bu = threading.Thread(target=lambda: self.call_backup(bu_file=bu_file, bu_change=self.bu_change, bu_options=bu_options))
+        self.call_bu.start()
+        self.wait_variable(self.bu_change)
+        change.set(1)
+
+    def call_backup(self, bu_file, bu_change, bu_options,):
+        total = 0
+        print(bu_options)
+        with open(bu_file, "wb") as f:
+            stream = device.shell(f"bu backup{bu_options}", stream=True)
+            while True:
+                chunk = stream.read(65536)
+                self.text.configure(text="ADB-Backup is running.\nThis may take some time.")
+                if not chunk:
+                    break
+                f.write(chunk)
+                total += len(chunk)
+                self.prog_text.configure(text=f"{total/1024/1024:.1f} MB written")
+        bu_change.set(1)      
+
 
 a_version = 0.01
 default_host = "127.0.0.1"
@@ -694,6 +774,7 @@ def save_info():
         file.write("\n" + '{:{l}}'.format(app[0], l=al) + "\t" + app[1])
             
     file.close()
+
 
 def get_data_size(data_path, change):
     global total_size
