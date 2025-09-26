@@ -892,7 +892,7 @@ def get_client(host=default_host, port=default_port, check=False):
                     pass
                 else:
                     imei = device.shell("service call iphonesubinfo 1 s16 com.android.shell | cut -c 52-66 | tr -d '.[:space:]'").replace("'","")
-            if "not found" in imei or if "service" in imei:
+            if "not found" in imei or "service" in imei:
                 imei = "-"
             global b_mac
             b_mac = device.shell("settings get secure bluetooth_address")
