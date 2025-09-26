@@ -802,6 +802,7 @@ def to_mb(text: str) -> float:
 
 def get_client(host=default_host, port=default_port, check=False):
     global adb
+    global snr_id
     global snr
     global device
     global device_info
@@ -816,9 +817,9 @@ def get_client(host=default_host, port=default_port, check=False):
 
     if adb != None:
         try:
-            snr = adb.list(extended=True)[0].serial
+            snr_id = adb.list(extended=True)[0].serial
             state = adb.list(extended=True)[0].state
-            device = adb.device(snr)
+            device = adb.device(snr_id)
         except IndexError:
             snr = None
             state = None
@@ -854,7 +855,7 @@ def get_client(host=default_host, port=default_port, check=False):
         else:
             paired = True
             dev_state = "authorized ✔"
-
+            snr = getprop(device, "ro.serialno")
             brand = getprop(device, "ro.product.brand").capitalize()
             model = getprop(device, "ro.product.model").capitalize()
             global full_name   
