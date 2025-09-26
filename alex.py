@@ -551,7 +551,24 @@ class MyApp(ctk.CTk):
     def pdf_report(self, case_number="", case_name="", evidence_number="", examiner="", pdf_type="default", shot="none", sha256="none", shot_png="none", app_name=None, chat_name=None, w=None, h=None, change=None,):
         if change != None:
             self.text.configure(text="Creating PDF-Report. Please wait.")
-        
+            self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="0%", width=585, height=20, font=self.stfont, anchor="w", justify="left")
+            self.prog_text.pack()
+            self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0)
+            self.progress.set(0)
+            self.prog_text.configure(text="0%")
+            self.progress.pack()
+            apps_info = []
+            i = 0
+            for d_app in apps:
+                i+=1
+                progr = 100/len(apps)*i
+                app_name = d_app[0]
+                app_version = device.app_info(d_app[0]).version_name[:30]
+                app_installer = "packageinstaller" if "packageinstaller" in d_app[1] else d_app[1][:25]
+                apps_info.append([app_name, app_version, app_installer])
+                self.prog_text.configure(text=f"{int(100/len(apps)*i)}%")
+                self.progress.set(progr/100)        
+
         u_grey = [0.970, 0.970, 0.970]
         #background_color = tuple(int(c * 255) for c in u_grey)
         font_size = 64
@@ -725,9 +742,9 @@ class MyApp(ctk.CTk):
                                 "widths": [3.9, 2.8, 2.5],
                                 "style": {"s": 9, "border_color": "lightgrey"},
                                 "table": [
-                                    [{"style": {"cell_fill": u_grey if (apps.index(d_app) % 2) != 0 else "white"},".": d_app[0]}, {"style": {"cell_fill": u_grey if (apps.index(d_app) % 2) != 0 else "white"},".": device.app_info(d_app[0]).version_name[:30]}, 
-                                    {"style": {"cell_fill": u_grey if (apps.index(d_app) % 2) != 0 else "white"},".": "packageinstaller" if "packageinstaller" in d_app[1] else d_app[1][:25]}] for d_app in apps]
-                                } if len(apps) > 0 else " "],              
+                                    [{"style": {"cell_fill": u_grey if (apps_info.index(d_app) % 2) != 0 else "white"},".": d_app[0]}, {"style": {"cell_fill": u_grey if (apps_info.index(d_app) % 2) != 0 else "white"},".": d_app[1]}, 
+                                    {"style": {"cell_fill": u_grey if (apps_info.index(d_app) % 2) != 0 else "white"},".": d_app[2]}] for d_app in apps_info]
+                                } if len(apps_info) > 0 else " "],              
 
                             {".": "", "style": "title", "label": "title0", "outline": {}},
                         ] 
@@ -742,6 +759,9 @@ class MyApp(ctk.CTk):
         else:
             with open(f'Report_{snr}.pdf', 'wb') as f:
                 build_pdf(document, f)
+
+        self.progress.pack_forget()
+        self.prog_text.pack_forget()
         
         if change != None:
             change.set(1)
