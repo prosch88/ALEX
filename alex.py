@@ -889,7 +889,7 @@ def get_client(host=default_host, port=default_port, check=False):
             global sdk
             sdk = getprop(device, "ro.build.version.sdk")
             global build
-            build = getprop(device, "ro.build.display.id")
+            build = getprop(device, "ro.build.display.id").split(" ")[0]
             global spl
             spl = getprop(device, "ro.build.version.security_patch")
             global locale
