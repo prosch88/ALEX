@@ -866,7 +866,7 @@ def get_client(host=default_host, port=default_port, check=False):
         elif state == "unauthorized":
             dev_state = "unauthorized ✗"
             device_info = ("Device is " + dev_state + "\n\n" +
-                    '{:13}'.format("Serialnr: ") + "\t" + snr + "" +
+                    '{:13}'.format("Serialnr: ") + "\t" + snr_id + "" +
                     "\n\n" + 
                     "   4E 4F 20 41 44 4D 49 54 54 41 4E \n" +
                     "   43 45 20 45 58 43 45 50 54 20 4F \n" +
