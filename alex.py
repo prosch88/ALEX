@@ -913,10 +913,14 @@ def get_client(host=default_host, port=default_port, check=False):
                     pass
                 else:
                     imei = device.shell("service call iphonesubinfo 1 s16 com.android.shell | cut -c 52-66 | tr -d '.[:space:]'").replace("'","")
-            if "not found" in imei or "service" in imei:
+            if "not found" in imei or "service" in imei or "000000" in imei:
                 imei = "-"
             global b_mac
             b_mac = device.shell("settings get secure bluetooth_address")
+            if b_mac == "":
+                b_mac = "-"
+            if "not found" in b_mac:
+                b_mac = "-"
             global w_mac
             w_mac = getprop(device, "ro.boot.wifimacaddr")
             if w_mac == "-":
@@ -933,15 +937,26 @@ def get_client(host=default_host, port=default_port, check=False):
             d_name = device.shell("settings get global device_name")
             if d_name == "":
                 d_name = "-"
-            else:
-                if len(d_name) > 26:
-                    wordnames = d_name.split()
-                    if len(' '.join(wordnames[:-1])) < 27:
-                        name_s = ' '.join(wordnames[:-1]) + "\n" + '{:13}'.format(" ") + "\t" + wordnames[-1]
-                    else:
-                        name_s = ' '.join(wordnames[:-2]) + "\n" + '{:13}'.format(" ") + "\t" + ' '.join(wordnames[-2:])
+                name_s = d_name
+            if "not found" in d_name:
+                d_name = "-"
+                name_s = d_name
+            if len(d_name) > 26:
+                wordnames = d_name.split()
+                if len(' '.join(wordnames[:-1])) < 27:
+                    name_s = ' '.join(wordnames[:-1]) + "\n" + '{:13}'.format(" ") + "\t" + wordnames[-1]
                 else:
-                    name_s = d_name
+                    name_s = ' '.join(wordnames[:-2]) + "\n" + '{:13}'.format(" ") + "\t" + ' '.join(wordnames[-2:])
+            else:
+                name_s = d_name
+            if len(full_name) > 26:
+                wordnames = full_name.split()
+                if len(' '.join(wordnames[:-1])) < 27:
+                    fname_s = ' '.join(wordnames[:-1]) + "\n" + '{:13}'.format(" ") + "\t" + wordnames[-1]
+                else:
+                    fname_s = ' '.join(wordnames[:-2]) + "\n" + '{:13}'.format(" ") + "\t" + ' '.join(wordnames[-2:])
+            else:
+                fname_s = d_name
             global data_s
             global used
             global used_s
@@ -975,6 +990,8 @@ def get_client(host=default_host, port=default_port, check=False):
                 graph_progress = "-"
             global ad_id
             ad_id = device.shell("settings get secure android_id")
+            if "not found" in ad_id:
+                ad_id = "-"
             if ad_id == "":
                 ad_id = "-"
             global crypt_on
@@ -994,12 +1011,12 @@ def get_client(host=default_host, port=default_port, check=False):
 
 
             device_info = ("Device is " + dev_state + "\n\n" +
-                    '{:13}'.format("Model: ") + "\t" + full_name +
+                    '{:13}'.format("Model: ") + "\t" + fname_s +
                     "\n" + '{:13}'.format("Name: ") + "\t" + name_s +
                     "\n" + '{:13}'.format("Product: ") + "\t" + product +
                     "\n" + '{:13}'.format("Platform: ") + "\t" + d_platform +
                     "\n" + '{:13}'.format("Software: ") + "\t" + software +
-                    "\n" + '{:13}'.format("Build-Nr: ") + "\t" + build +
+                    "\n" + '{:13}'.format("Build-Nr: ") + "\t" + build[:25] +
                     "\n" + '{:13}'.format("SPL: ") + "\t" + spl +
                     "\n" + '{:13}'.format("Language: ") + "\t" + locale +
                     "\n" + '{:13}'.format("Serialnr: ") + "\t" + snr +
