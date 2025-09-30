@@ -152,7 +152,7 @@ class MyApp(ctk.CTk):
         self.menu_buttons = [
             ctk.CTkButton(self.dynamic_frame, text="Reporting Options", command=lambda: self.switch_menu("ReportMenu"), width=200, height=70, font=self.stfont),
             ctk.CTkButton(self.dynamic_frame, text="Acquisition Options", command=lambda: self.switch_menu("AcqMenu"), width=200, height=70, font=self.stfont),
-            ctk.CTkButton(self.dynamic_frame, text="Logging Options", command=lambda: self.show_main_menu(), width=200, height=70, font=self.stfont),
+            ctk.CTkButton(self.dynamic_frame, text="Logging Options", command=lambda: self.switch_menu("LogMenu"), width=200, height=70, font=self.stfont),
             ctk.CTkButton(self.dynamic_frame, text="Advanced Options", command=lambda: self.show_main_menu(), width=200, height=70, font=self.stfont),
         ]
         self.menu_text = ["Save informations about the device and installed apps.", 
@@ -183,8 +183,8 @@ class MyApp(ctk.CTk):
             self.show_report_menu()
         elif menu_name == "AcqMenu":
             self.show_acquisition_menu()
-        #elif menu_name == "LogMenu":
-        #    self.show_log_menu()
+        elif menu_name == "LogMenu":
+            self.show_log_menu()
         #elif menu_name == "AdvMenu":
         #    self.show_adv_menu()
         elif menu_name == "PDF":
@@ -195,6 +195,10 @@ class MyApp(ctk.CTk):
             self.show_pull_data()
         elif menu_name == "ADBBU":
             self.show_adb_bu()
+        elif menu_name == "LogDump":
+            self.show_logcat_dump()
+        elif menu_name == "Dumpsys":
+            self.show_dumpsys_dump()
         #elif menu_name == "Report":
         #    self.show_report()
 
@@ -386,6 +390,70 @@ class MyApp(ctk.CTk):
             i+=1
 
         ctk.CTkButton(self.dynamic_frame, text="Back", command=self.show_main_menu).grid(row=r, column=1, padx=10, pady=10, sticky="e" )
+
+    #Log Menu
+    def show_log_menu(self):
+        self.skip = ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont)
+        self.skip.grid(row=0, column=0, columnspan=2, sticky="w")
+        self.menu_buttons = [
+            ctk.CTkButton(self.dynamic_frame, text="Logcat (Dump)", command=lambda: self.switch_menu("LogDump"), width=200, height=70, font=self.stfont),
+            ctk.CTkButton(self.dynamic_frame, text="Dumpsys", command=lambda: self.switch_menu("Dumpsys"), width=200, height=70, font=self.stfont),
+        ]
+        self.menu_text = ["Dump the saved logcat entries.",
+                          "Extract Dumpsys informations."]
+        self.menu_textbox = []
+        for btn in self.menu_buttons:
+            self.menu_textbox.append(ctk.CTkLabel(self.dynamic_frame, width=right_content, height=70, font=self.stfont, anchor="w", justify="left"))
+        r=1
+        i=0
+        for btn in self.menu_buttons:
+            btn.grid(row=r,column=0, padx=30, pady=10)
+            self.menu_textbox[i].grid(row=r,column=1, padx=10, pady=10)
+            self.menu_textbox[i].configure(text=self.menu_text[i])
+            r+=1
+            i+=1
+
+        ctk.CTkButton(self.dynamic_frame, text="Back", command=self.show_main_menu).grid(row=r, column=1, padx=10, pady=10, sticky="e" )
+
+    #Show the Logcat-Dump Menu
+    def show_logcat_dump(self):
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
+        ctk.CTkLabel(self.dynamic_frame, text="Logcat (Dump)", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
+        self.text = ctk.CTkLabel(self.dynamic_frame, text="Dumping the stored logcat entries.\nThis may take a while.", width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        self.text.pack(anchor="center", pady=25)
+        self.change = ctk.IntVar(self, 0)
+        self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="", width=585, height=20, font=self.stfont, anchor="w", justify="left")
+        self.prog_text.pack()
+        self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
+        self.progress.pack()
+        self.progress.start()
+        self.get_logdump = threading.Thread(target=lambda: dump_logcat(self.change))
+        self.get_logdump.start()
+        self.wait_variable(self.change)
+        self.prog_text.pack_forget()
+        self.progress.pack_forget()
+        self.text.configure(text=f"The stored Logcat entries were saved under: logcat_{snr}.txt")
+        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("LogMenu")).pack(pady=40))
+
+    #Show the Dumpsys-Dump Menu
+    def show_dumpsys_dump(self):
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
+        ctk.CTkLabel(self.dynamic_frame, text="Extract Dumpsys", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
+        self.text = ctk.CTkLabel(self.dynamic_frame, text="Extracting Dumpsys information.\nThis may take a while.", width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        self.text.pack(anchor="center", pady=25)
+        self.change = ctk.IntVar(self, 0)
+        self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="", width=585, height=20, font=self.stfont, anchor="w", justify="left")
+        self.prog_text.pack()
+        self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
+        self.progress.pack()
+        self.progress.start()
+        self.get_logdump = threading.Thread(target=lambda: dump_dumpsys(self.change))
+        self.get_logdump.start()
+        self.wait_variable(self.change)
+        self.prog_text.pack_forget()
+        self.progress.pack_forget()
+        self.text.configure(text=f"Dumpsys saved under: dumpsys_{snr}.txt")
+        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("LogMenu")).pack(pady=40))
 
     #Show the "Pull sdcard" screen
     def show_pull_data(self):
@@ -715,7 +783,7 @@ class MyApp(ctk.CTk):
                                     [{".": [{".b": "Product:"}]}, {"colspan": 3, ".": [{".": product}]}, None, None],
                                     [{"style": {"cell_fill": u_grey}, ".": [{".b": "Platform:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": d_platform}]}, { "style": {"cell_fill": u_grey}, ".": [{".b": "WiFi MAC:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": w_mac}]}],
                                     [{".": [{".b": "Software:"}]}, {".": [{".": software}]}, {".": [{".b": "BT MAC:"}]}, {".": [{".": b_mac}]}],
-                                    [{"style": {"cell_fill": u_grey}, ".": [{".b": "Build Nr:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": build}]}, {"style": {"cell_fill": u_grey}, ".": [{".b": "Data:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": data_s}]}],
+                                    [{"style": {"cell_fill": u_grey}, ".": [{".b": "Build Nr:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": build[:22]}]}, {"style": {"cell_fill": u_grey}, ".": [{".b": "Data:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": data_s}]}],
                                     [{".": [{".b": "SPL:"}]}, {".": [{".": spl}]}, {".": [{".b": "Free Space:"}]}, {".": [{".": free}]}],
                                     [{"style": {"cell_fill": u_grey}, ".": [{".b": "Language:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": locale}]}, {"style": {"cell_fill": u_grey}, ".": [{".b": "Used:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": used_s}]}],
                                     [{".": [{".b": "AD-ID:"}]}, {".": [{".": ad_id}]}, {".": [{".b": "Used %:"}]}, {".": [{".": use_percent}]}],
@@ -933,6 +1001,8 @@ def get_client(host=default_host, port=default_port, check=False):
                     w_mac = match2.group(1).upper()
                 else:
                     w_mac = "-"
+                if "00:00:00" in w_mac:
+                    w_mac = "-"
             global d_name
             d_name = device.shell("settings get global device_name")
             if d_name == "":
@@ -956,7 +1026,7 @@ def get_client(host=default_host, port=default_port, check=False):
                 else:
                     fname_s = ' '.join(wordnames[:-2]) + "\n" + '{:13}'.format(" ") + "\t" + ' '.join(wordnames[-2:])
             else:
-                fname_s = d_name
+                fname_s = full_name
             global data_s
             global used
             global used_s
@@ -1008,7 +1078,10 @@ def get_client(host=default_host, port=default_port, check=False):
             pattern = re.compile(r"package:([^\s]+)\s+installer=([^\s]+)")
             apps = [[pkg, installer] for pkg, installer in pattern.findall(app_query)]
 
-
+            if len(build) > 26:
+                build_s = build[:25] + "\n" + '{:13}'.format(" ") + "\t" + build[25:]
+            else:
+                build_s = build
 
             device_info = ("Device is " + dev_state + "\n\n" +
                     '{:13}'.format("Model: ") + "\t" + fname_s +
@@ -1016,7 +1089,7 @@ def get_client(host=default_host, port=default_port, check=False):
                     "\n" + '{:13}'.format("Product: ") + "\t" + product +
                     "\n" + '{:13}'.format("Platform: ") + "\t" + d_platform +
                     "\n" + '{:13}'.format("Software: ") + "\t" + software +
-                    "\n" + '{:13}'.format("Build-Nr: ") + "\t" + build[:25] +
+                    "\n" + '{:13}'.format("Build-Nr: ") + "\t" + build_s +
                     "\n" + '{:13}'.format("SPL: ") + "\t" + spl +
                     "\n" + '{:13}'.format("Language: ") + "\t" + locale +
                     "\n" + '{:13}'.format("Serialnr: ") + "\t" + snr +
@@ -1071,6 +1144,36 @@ def save_info():
         file.write("\n" + '{:{l}}'.format(app[0], l=al) + "\t" + app[1])
             
     file.close()
+
+def dump_logcat(change):
+    logdump = device.shell("logcat -d -b all -v threadtime", stream=True)
+    buffer = b""
+    with open(f"logcat_{snr}.txt", "w", encoding='utf-8') as logcfile:
+        while True:
+            chunk = logdump.read(1024)
+            if not chunk:
+                break
+            buffer += chunk
+            while b"\n" in buffer:
+                    line, buffer = buffer.split(b"\n", 1)
+                    logcfile.write(line.decode("utf-8", errors="replace") + "\n")
+                    logcfile.flush()
+    change.set(1)
+
+def dump_dumpsys(change):
+    sysdump = device.shell("dumpsys", stream=True)
+    buffer = b""
+    with open(f"dumpsys_{snr}.txt", "w", encoding='utf-8') as dumpsfile:
+        while True:
+            chunk = sysdump.read(1024)
+            if not chunk:
+                break
+            buffer += chunk
+            while b"\n" in buffer:
+                    line, buffer = buffer.split(b"\n", 1)
+                    dumpsfile.write(line.decode("utf-8", errors="replace") + "\n")
+                    dumpsfile.flush()
+    change.set(1)
 
 
 def get_data_size(data_path, change):
