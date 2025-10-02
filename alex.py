@@ -74,7 +74,7 @@ class MyApp(ctk.CTk):
         
         if platform.uname().system == 'Windows':
             self.stfont = ctk.CTkFont("Noto Sans Medium")
-            self.monofont = ctk.CTkFont("Noto Sans Mono ALEX")
+            self.monofont = ctk.CTkFont("Noto Sans Mono UFADE")
             self.monofont.configure(size=fsize)
         else:
             self.stfont = ctk.CTkFont("default")
