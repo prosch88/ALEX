@@ -17,6 +17,8 @@ from importlib.metadata import version
 from adbutils._utils import append_path
 from io import BytesIO
 from pdfme import build_pdf
+import hashlib
+import imagehash
 import tempfile
 import threading
 import adbutils
@@ -40,7 +42,7 @@ class MyApp(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        #self.stop_event = threading.Event()
+        self.stop_event = threading.Event()
         if getattr(sys, 'frozen', False):
             self.report_callback_exception = self.global_exception_handler
             threading.excepthook = lambda args: self.global_exception_handler(args.exc_type, args.exc_value, args.exc_traceback)
@@ -153,7 +155,7 @@ class MyApp(ctk.CTk):
             ctk.CTkButton(self.dynamic_frame, text="Reporting Options", command=lambda: self.switch_menu("ReportMenu"), width=200, height=70, font=self.stfont),
             ctk.CTkButton(self.dynamic_frame, text="Acquisition Options", command=lambda: self.switch_menu("AcqMenu"), width=200, height=70, font=self.stfont),
             ctk.CTkButton(self.dynamic_frame, text="Logging Options", command=lambda: self.switch_menu("LogMenu"), width=200, height=70, font=self.stfont),
-            ctk.CTkButton(self.dynamic_frame, text="Advanced Options", command=lambda: self.show_main_menu(), width=200, height=70, font=self.stfont),
+            ctk.CTkButton(self.dynamic_frame, text="Advanced Options", command=lambda: self.switch_menu("AdvMenu"), width=200, height=70, font=self.stfont),
         ]
         self.menu_text = ["Save informations about the device and installed apps.", 
                           "Allows logical, advanced logical and filesystem\nextractions.", 
@@ -185,8 +187,8 @@ class MyApp(ctk.CTk):
             self.show_acquisition_menu()
         elif menu_name == "LogMenu":
             self.show_log_menu()
-        #elif menu_name == "AdvMenu":
-        #    self.show_adv_menu()
+        elif menu_name == "AdvMenu":
+            self.show_advanced_menu()
         elif menu_name == "PDF":
             self.show_pdf_report()
         elif menu_name == "DevInfo":
@@ -199,6 +201,12 @@ class MyApp(ctk.CTk):
             self.show_logcat_dump()
         elif menu_name == "Dumpsys":
             self.show_dumpsys_dump()
+        elif menu_name == "ScreenDevice":
+            self.screen_device()
+        elif menu_name == "ShotLoop":
+            self.chat_shotloop()
+        elif menu_name == "BugReport":
+            self.show_bugreport()
         #elif menu_name == "Report":
         #    self.show_report()
 
@@ -398,9 +406,35 @@ class MyApp(ctk.CTk):
         self.menu_buttons = [
             ctk.CTkButton(self.dynamic_frame, text="Logcat (Dump)", command=lambda: self.switch_menu("LogDump"), width=200, height=70, font=self.stfont),
             ctk.CTkButton(self.dynamic_frame, text="Dumpsys", command=lambda: self.switch_menu("Dumpsys"), width=200, height=70, font=self.stfont),
+            ctk.CTkButton(self.dynamic_frame, text="Bugreport", command=lambda: self.switch_menu("BugReport"), width=200, height=70, font=self.stfont),
         ]
-        self.menu_text = ["Dump the saved logcat entries.",
-                          "Extract Dumpsys informations."]
+        self.menu_text = ["Dump the saved logcat entries.\nData usually goes back to the last reboot.",
+                          "Extract Dumpsys informations.",
+                          "Collect the Bugreport (Dumpstate)"]
+        self.menu_textbox = []
+        for btn in self.menu_buttons:
+            self.menu_textbox.append(ctk.CTkLabel(self.dynamic_frame, width=right_content, height=70, font=self.stfont, anchor="w", justify="left"))
+        r=1
+        i=0
+        for btn in self.menu_buttons:
+            btn.grid(row=r,column=0, padx=30, pady=10)
+            self.menu_textbox[i].grid(row=r,column=1, padx=10, pady=10)
+            self.menu_textbox[i].configure(text=self.menu_text[i])
+            r+=1
+            i+=1
+
+        ctk.CTkButton(self.dynamic_frame, text="Back", command=self.show_main_menu).grid(row=r, column=1, padx=10, pady=10, sticky="e" )
+
+    #Advanced Menu
+    def show_advanced_menu(self):
+        self.skip = ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont)
+        self.skip.grid(row=0, column=0, columnspan=2, sticky="w")
+        self.menu_buttons = [
+            ctk.CTkButton(self.dynamic_frame, text="Take screenshots", command=lambda: self.switch_menu("ScreenDevice"), width=200, height=70, font=self.stfont),
+            ctk.CTkButton(self.dynamic_frame, text="Chat Capture", command=lambda: self.switch_menu("ShotLoop"), width=200, height=70, font=self.stfont),
+        ]
+        self.menu_text = ["Take screenshots from device screen.\nScreenshots will be saved under \"screenshots\"\nas PNG.",
+                          "Loop through a chat taking screenshots."]
         self.menu_textbox = []
         for btn in self.menu_buttons:
             self.menu_textbox.append(ctk.CTkLabel(self.dynamic_frame, width=right_content, height=70, font=self.stfont, anchor="w", justify="left"))
@@ -561,6 +595,236 @@ class MyApp(ctk.CTk):
                 self.prog_text.configure(text=f"{total/1024/1024:.1f} MB written")
         bu_change.set(1)      
 
+    #Show Bugreport-Screen (Dumpsys)
+    def show_bugreport(self):
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
+        ctk.CTkLabel(self.dynamic_frame, text="Collect Bugreport", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
+        self.text = ctk.CTkLabel(self.dynamic_frame, text="Creating a Dumpstate Zip file.", width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        self.text.pack(pady=15)
+        self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="", width=585, height=20, font=self.stfont, anchor="w", justify="left")
+        self.prog_text.pack()
+        self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)        
+        self.progress.pack()
+        self.progress.start()
+        self.change = ctk.IntVar(self, 0)
+        self.get_bugreport = threading.Thread(target=lambda: dump_bugreport(self.change, self.progress, self.prog_text))
+        self.get_bugreport.start()
+        self.wait_variable(self.change)
+        self.text.configure(text=f"Bugreport saved as: {snr}_dumpstate.zip")
+        self.prog_text.pack_forget()
+        self.progress.pack_forget()
+        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("LogMenu")).pack(pady=40)) 
+
+
+
+    #Device screenshot
+    def screen_device(self):
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
+        ctk.CTkLabel(self.dynamic_frame, text="Take Screenshots", height=30, width=585, font=("standard",24), justify="left").pack(pady=10)
+        self.shotframe = ctk.CTkFrame(self.dynamic_frame, width=400, corner_radius=0, fg_color="transparent")
+        self.textframe = ctk.CTkFrame(self.dynamic_frame, width=200, corner_radius=0, fg_color="transparent")
+        self.shotframe.pack(side="left", pady=20, padx=30, fill="y", expand=True)
+        self.textframe.pack(side="left", pady=20, fill="both", expand=True)
+        self.placeholder_image = ctk.CTkImage(dark_image=Image.open(os.path.join(os.path.dirname(__file__), "assets" , "screen_alex.png")), size=(240, 426))
+        self.imglabel = ctk.CTkLabel(self.shotframe, image=self.placeholder_image, text=" ", width=240, height=426, font=self.stfont, anchor="w", justify="left")
+        self.imglabel.pack()
+        try: os.mkdir("screenshots")
+        except: pass
+        self.shotbutton = ctk.CTkButton(self.textframe, text="Screenshot", font=self.stfont, command=lambda: self.shotthread(self.imglabel, self.namefield))
+        self.shotbutton.pack(pady=20, ipadx=0, anchor="w")
+        self.abortbutton = ctk.CTkButton(self.textframe, text="Back", font=self.stfont, command=lambda: self.switch_menu("AdvMenu"))
+        self.abortbutton.pack(pady=5, ipadx=0, anchor="w")
+        self.namefield = ctk.CTkLabel(self.textframe, text=" ", width=300, height=100, font=self.stfont, anchor="w", justify="left")
+        self.namefield.pack(anchor="w", pady=10)
+
+    def shotthread(self, imglabel, namefield):
+        self.doshot = threading.Thread(target=lambda: self.shot(self.imglabel, self.namefield))
+        self.doshot.start()
+
+    def shot(self, imglabel, namefield):
+        hsize = 426
+        shot = device.screenshot()
+        png_bytes = BytesIO()
+        shot.save(png_bytes, format="PNG")
+        png = png_bytes.getvalue()
+        hperc = (hsize/float(shot.size[1]))
+        wsize = int((float(shot.size[0])*float(hperc)))
+        if wsize > 300:
+            wsize = 300
+            wperc = (wsize/float(shot.size[0]))
+            hsize = int((float(shot.size[1])*float(wperc)))
+        screensh = ctk.CTkImage(dark_image=shot, size=(wsize, hsize))
+        imglabel.configure(image=screensh)
+        hash_sha256 = hashlib.sha256(png).hexdigest()
+        name = snr + "_" + str(datetime.now().strftime("%m_%d_%Y_%H_%M_%S"))
+        filename = name + ".png"
+        hashname = name + ".txt"
+        filepath = os.path.join("screenshots", filename)
+        hashpath = os.path.join("screenshots", hashname)
+        #shot.save(filepath)
+        with open(filepath, "wb") as file:
+           file.write(png)
+        with open(hashpath, "w") as hash_file:
+            hash_file.write(hash_sha256)
+        #log(f"Created screenshot {filename} with hash {hash_sha256}")
+        namefield.configure(text=f"Screenshot saved as:\n{filename}\nHash saved as:\n{hashname}")
+        self.pdf_report(pdf_type="screenshot", shot=filename, sha256=hash_sha256, shot_png=filepath, w=wsize, h=hsize)
+
+    def chat_shotloop(self):
+        try: os.mkdir("screenshots")
+        except: pass
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
+        ctk.CTkLabel(self.dynamic_frame, text="Chat Capture", height=30, width=585, font=("standard",24), justify="left").pack(pady=10)
+        self.shotframe = ctk.CTkFrame(self.dynamic_frame, width=400, corner_radius=0, fg_color="transparent")
+        self.textframe = ctk.CTkFrame(self.dynamic_frame, width=200, corner_radius=0, fg_color="transparent")
+        self.shotframe.pack(side="left", pady=20, padx=30, fill="y", expand=True)
+        self.textframe.pack(side="left", pady=20, fill="both", expand=True)
+        self.placeholder_image = ctk.CTkImage(dark_image=Image.open(os.path.join(os.path.dirname(__file__), "assets" , "screen_alex.png")), size=(240, 426))
+        self.imglabel = ctk.CTkLabel(self.shotframe, image=self.placeholder_image, text=" ", width=240, height=426, font=self.stfont, anchor="w", justify="left")
+        self.imglabel.pack()
+        self.text = ctk.CTkLabel(self.textframe, text="Open the chat application and the chat\nyou want to capture, enter the name of\nthe chosen chat in the given fields", width=300, height=60, font=self.stfont, anchor="w", justify="left")
+        self.text.pack(anchor="w")
+        self.appbox = ctk.CTkEntry(self.textframe, width=140, height=20, corner_radius=0, placeholder_text="name of the app")
+        self.appbox.pack(pady=10, ipadx=0, anchor="w")
+        self.chatbox = ctk.CTkEntry(self.textframe, width=140, height=20, corner_radius=0, placeholder_text="name of the chat")
+        self.chatbox.pack(pady=10, ipadx=0, anchor="w")
+        self.upbutton = ctk.CTkButton(self.textframe, text="↑ Up", font=self.stfont, command=lambda: self.chatshotthread(app_name=self.appbox.get(), chat_name=self.chatbox.get(), direction="up", imglabel=self.imglabel, namefield=self.namefield, text=self.text))
+        self.upbutton.pack(pady=10, ipadx=0, anchor="w")
+        self.downbutton = ctk.CTkButton(self.textframe, text="↓ Down", font=self.stfont, command=lambda: self.chatshotthread(app_name=self.appbox.get(), chat_name=self.chatbox.get(), direction="down", imglabel=self.imglabel, namefield=self.namefield, text=self.text))
+        self.downbutton.pack(pady=10, ipadx=0, anchor="w")
+        self.breakbutton = ctk.CTkButton(self.textframe, text="Cancel Loop", fg_color="#8c2c27", text_color="#DCE4EE", font=self.stfont, command=self.breakshotloop)
+        self.breakbutton.pack(pady=10, ipadx=0, anchor="w")
+        self.abortbutton = ctk.CTkButton(self.textframe, text="Back", font=self.stfont, command=lambda: self.switch_menu("AdvMenu"))
+        self.abortbutton.pack(pady=10, ipadx=0, anchor="w")
+        self.namefield = ctk.CTkLabel(self.textframe, text=" ", width=300, height=60, font=self.stfont, anchor="w", justify="left")
+        self.namefield.pack(anchor="w", pady=5)
+
+
+    def chatshotthread(self, app_name, chat_name, direction, imglabel, namefield, text):
+        ab_count = 0
+        sc_count = 0
+        abs_count = 0
+        self.upbutton.configure(state="disabled")
+        self.downbutton.configure(state="disabled")
+        self.abortbutton.configure(state="disabled")
+        self.stop_event.clear()
+        self.doshot = threading.Thread(target=lambda: self.shotloop(app_name, chat_name, ab_count, sc_count, abs_count, direction, imglabel, namefield, text, first=True))
+        self.doshot.start()
+        
+    
+    def breakshotloop(self):
+        self.stop_event.set()
+    
+    def shotloop(self, app_name, chat_name, ab_count, sc_count, abs_count, direction, imglabel, namefield, text, png=None, first=False, seen_hashes=None, first_hash=None, w=0, h=0):
+        name = chat_name + "_" + str(datetime.now().strftime("%m_%d_%Y_%H_%M_%S"))
+        filename = name + ".png"
+        hashname = name + ".txt"
+        hsize = 426
+        if direction == "down":
+            swipe_direction = lambda: device.swipe(w//2, h//2, w//2, 0, 0.5)
+        else:
+            swipe_direction = lambda: device.swipe(w//2, h//2, w//2, h, 0.5)
+        if text != None:
+            text.configure(text="Chat capture is running.")
+        if first != False:
+            try: os.mkdir(os.path.join("screenshots", app_name))
+            except: pass
+            try: os.mkdir(os.path.join("screenshots", app_name, chat_name))
+            except: pass
+            seen_hashes = []
+            shot = device.screenshot()
+            png_bytes = BytesIO()
+            shot.save(png_bytes, format="PNG")
+            png = png_bytes.getvalue()
+            hperc = (hsize/float(shot.size[1]))
+            wsize = int((float(shot.size[0])*float(hperc)))
+            w = shot.size[0]
+            h = shot.size[0]
+            if wsize > 300:
+                wsize = 300
+                wperc = (wsize/float(shot.size[0]))
+                hsize = int((float(shot.size[1])*float(wperc)))
+            screensh = ctk.CTkImage(dark_image=shot, size=(wsize, hsize))
+            imglabel.configure(image=screensh)
+            filepath = os.path.join("screenshots", app_name, chat_name, filename)
+            hashpath = os.path.join("screenshots", app_name, chat_name, hashname)
+            with open(os.path.join(filepath), "wb") as file:
+                file.write(png)
+            hash_sha256 = hashlib.sha256(png).hexdigest()
+            with open(os.path.join(hashpath), "w") as hash_file:
+                hash_file.write(hash_sha256)
+            #log(f"Created screenshot {filename} with hash {hash_sha256}")
+            namefield.configure(text=f"Screenshot saved as:\n{filename}\nHash saved as:\n{hashname}")
+            first_hash = imagehash.phash(shot)
+            seen_hashes.append(first_hash)
+            self.pdf_report(pdf_type="screenshot", shot=filename, sha256=hash_sha256, shot_png=filepath, app_name=app_name, chat_name=chat_name, w=wsize, h=hsize)
+            self.shotloop(app_name, chat_name, ab_count, sc_count, abs_count, direction, imglabel, namefield, png=png, text=text, seen_hashes=seen_hashes, first_hash=first_hash, w=w, h=h)
+        else:
+            while not self.stop_event.is_set():
+                if ab_count >= 3 or abs_count >= 6:
+                    text.configure(text="Chat loop finished.")
+                    self.upbutton.configure(state="enabled")
+                    self.downbutton.configure(state="enabled")
+                    self.abortbutton.configure(state="enabled")
+                    self.stop_event.set()
+                    return
+                else:
+                    prev = png
+                    swipe_direction()
+                    time.sleep(0.3)
+                    shot = device.screenshot()
+                    png_bytes = BytesIO()
+                    shot.save(png_bytes, format="PNG")
+                    png = png_bytes.getvalue()
+                    l_hash = imagehash.phash(shot)
+                    if png != prev:
+                        duplicate = any(abs(l_hash - h) <= 3 for h in seen_hashes)
+                        if not duplicate:
+                            seen_hashes.append(l_hash)
+                            hperc = (hsize/float(shot.size[1]))
+                            wsize = int((float(shot.size[0])*float(hperc)))
+                            if wsize > 300:
+                                wsize = 300
+                                wperc = (wsize/float(shot.size[0]))
+                                hsize = int((float(shot.size[1])*float(wperc)))
+                            screensh = ctk.CTkImage(dark_image=shot, size=(wsize, hsize))
+                            imglabel.configure(image=screensh)
+                            filepath = os.path.join("screenshots", app_name, chat_name, filename)
+                            hashpath = os.path.join("screenshots", app_name, chat_name, hashname)
+                            with open(os.path.join(filepath), "wb") as file:
+                                file.write(png)
+                            hash_sha256 = hashlib.sha256(png).hexdigest()
+                            with open(os.path.join(hashpath), "w") as hash_file:
+                                hash_file.write(hash_sha256)
+                            #log(f"Created screenshot {filename} with hash {hash_sha256}")
+                            namefield.configure(text=f"Screenshot saved as:\n{filename}\nHash saved as:\n{hashname}")
+                            self.pdf_report(pdf_type="screenshot", shot=filename, sha256=hash_sha256, shot_png=filepath, app_name=app_name, chat_name=chat_name, w=wsize, h=hsize)
+                            sc_count += 1
+                            ab_count = 0
+                            abs_count = 0
+                        else:
+                            abs_count += 1
+                            if sc_count > 2:
+                                ab_count += 1
+                            else:
+                                pass
+                    else:
+                        abs_count += 1
+                        if sc_count > 2:
+                            ab_count += 1
+
+                    if sc_count > 2 and abs(l_hash - first_hash) <= 2:
+                            print("is first")
+                            self.breakshotloop()
+                    self.shotloop(app_name, chat_name, ab_count, sc_count, abs_count, direction, imglabel, namefield, png=png, text=text, seen_hashes=seen_hashes, first_hash=first_hash, w=w, h=h)
+            text.configure(text="Chat loop stopped.")
+            self.upbutton.configure(state="enabled")
+            self.downbutton.configure(state="enabled")
+            self.abortbutton.configure(state="enabled")
+            #AccessibilityAudit(lockdown).set_show_visuals(False)
+            raise SystemExit
+            return("interrupt")
+
     def show_pdf_report(self):
         ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
         ctk.CTkLabel(self.dynamic_frame, text="Generate PDF Report", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
@@ -699,7 +963,7 @@ class MyApp(ctk.CTk):
                                 "style": {"s": 10, "border_color": "lightgrey"},
                                 "table": [
                                     [{".": [{".b": "Dev-Name:"}]}, {"colspan": 3, "image": temp_image_name}, None, None],
-                                    [{"style": {"border_color": "white", "cell_fill": u_grey}, ".": [{".b": "Model-Nr:"}]}, {"colspan": 3, "style": {"cell_fill": u_grey}, ".": [{".": dev_name}]}, None, None],
+                                    [{"style": {"border_color": "white", "cell_fill": u_grey}, ".": [{".b": "Model-Nr:"}]}, {"colspan": 3, "style": {"cell_fill": u_grey}, ".": [{".": full_name}]}, None, None],
                                     [{".": [{".b": "SerialNr:"}]}, {"colspan": 3, ".": [{".": snr}]}, None, None],
                                 ]
                             },
@@ -827,9 +1091,9 @@ class MyApp(ctk.CTk):
         else:
             with open(f'Report_{snr}.pdf', 'wb') as f:
                 build_pdf(document, f)
-
-        self.progress.pack_forget()
-        self.prog_text.pack_forget()
+            self.progress.pack_forget()
+            self.prog_text.pack_forget()
+        
         
         if change != None:
             change.set(1)
@@ -1174,6 +1438,25 @@ def dump_dumpsys(change):
                     dumpsfile.write(line.decode("utf-8", errors="replace") + "\n")
                     dumpsfile.flush()
     change.set(1)
+
+def dump_bugreport(change, progress, prog_text):
+    brpath = ""
+    output = device.shell("bugreportz -p", stream=True)
+    with output:
+        f = output.conn.makefile()
+        for _ in range(10):
+            line = f.readline()
+            if line.startswith("BEGIN:"):
+                brpath = line.strip().split("BEGIN:")[1]
+        f.close()
+    print(brpath)
+    try:
+        device.sync.pull(brpath, f"{snr}_dumpstate.zip")
+    except:
+        pass
+    change.set(1)
+
+
 
 
 def get_data_size(data_path, change):
