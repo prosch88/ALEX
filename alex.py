@@ -1500,7 +1500,10 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
         for file in files:
             new_src:str = append_path(src, file.path) 
             new_dst:str = append_path(dst, file.path) 
-            size = self.pull_file(new_src, new_dst)
+            try:
+                size = self.pull_file(new_src, new_dst)
+            except:
+                size = 0
             s += size
             data_size += size   
             if data_size > total_size:
