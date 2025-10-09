@@ -566,7 +566,12 @@ class MyApp(ctk.CTk):
         ctk.CTkLabel(self.dynamic_frame, text="PRFS Backup", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
         self.text = ctk.CTkLabel(self.dynamic_frame, text="Preparing Data Extraction ...", width=585, height=60, font=self.stfont, anchor="w", justify="left")
         self.text.pack(anchor="center", pady=25)
+        sysfolders = ["/system/apex/","/system/app/","/system/bin/", "/system/cameradata/", "/system/container/", "/system/etc/",
+                      "/system/fake-libs/", "/system/fonts/", "/system/framework/", "/system/hidden/", "/system/lib/", "/system/lib64/", 
+                      "/system/media/", "/system/priv-app/", "/system/saiv/", "/system/tts/", "/system/usr/", "/system/vendor/", 
+                      "/system/xbin/"]
         global data_size
+        global total_size
         total_size = 1
         data_size = 0
         data_path = "/sdcard/"
@@ -589,6 +594,33 @@ class MyApp(ctk.CTk):
         self.pull_data = threading.Thread(target=lambda: pull_dir_mod(device.sync, data_path, folder, text=self.text, prog_text=self.prog_text, progress=self.progress, change=self.change, zip=zip))
         self.pull_data.start()
         self.wait_variable(self.change)
+        try: shutil.rmtree(folder)
+        except: pass
+        for sys_folder in sysfolders:
+            self.after(10)
+            print(sys_folder)
+            total_size = 1
+            data_size = 0
+            data_path = sys_folder
+            self.change.set(0)
+            self.get_dsize = threading.Thread(target=lambda: get_data_size(data_path, self.change))
+            self.get_dsize.start()
+            self.wait_variable(self.change)
+            if total_size > 1:
+                folder = ".temp_folder"
+                try: os.mkdir(folder)
+                except: pass
+                self.change.set(0)
+                self.prog_text.configure(text="0%")
+                self.progress.set(0)
+                self.pull_data = threading.Thread(target=lambda: pull_dir_mod(device.sync, data_path, folder, text=self.text, prog_text=self.prog_text, progress=self.progress, change=self.change, zip=zip))
+                self.pull_data.start()
+                self.wait_variable(self.change)
+                try: shutil.rmtree(folder)
+                except: pass
+            else:
+                pass
+
         zip.close()
         try: shutil.rmtree(folder)
         except: pass
@@ -1525,7 +1557,10 @@ def dump_bugreport(change, progress, prog_text):
 def get_data_size(data_path, change):
     global total_size
     size_cmd = device.shell(f"du -ks {data_path}")
-    total_size = int(size_cmd.split()[0])*1024
+    try:
+        total_size = int(size_cmd.split()[0])*1024
+    except:
+        total_size = 1
     change.set(1)
 
 
@@ -1538,7 +1573,7 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
     Modified function from adbutils for percentage output
     """
 
-    text.configure(text="Performing Data-Extraction")
+    text.configure(text=f"Extracting: {src}")
     rootf = src
     def rec_pull_contents(src: str, dst: typing.Union[str, pathlib.Path], rootf: str, rel_in_zip: str, prog_text, progress, exist_ok: bool = True) -> int:
         s = 0
@@ -1574,7 +1609,7 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
             try:
                 with open(new_dst, "rb") as f:
                     data = f.read()
-                zip_rel_path = f"{rootf}/{rel_in_zip}/{file.path}" 
+                zip_rel_path = os.path.normpath(f"{rootf}/{rel_in_zip}/{file.path}") 
                 zip.writestr(zip_rel_path, data)
                 os.remove(new_dst)
             except Exception as e:
@@ -1598,7 +1633,7 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
         
     os.makedirs(dst, exist_ok=exist_ok)
     func_size = rec_pull_contents(src, dst, rootf, rel_in_zip="", prog_text=prog_text, progress=progress, exist_ok=exist_ok)
-    zip.close()
+    #zip.close()
     change.set(1)
     return func_size
 
@@ -1717,9 +1752,11 @@ def exploit_zygote(zip_path, text, prog_text, change):
                 else:
                     dump_folder_cve(f"/data/data/{app}", zip_path)
             dump_folder_cve("/data/app", zip_path)
+            dump_folder_cve("/system/bin", zip_path)
 
         else:
             dump_folder_cve("/data/", zip_path)
+            dump_folder_cve("/system/bin", zip_path)
     else:
         text.configure(text="Expoliting CVE-2024–31317 failed.")
     change.set(1)
