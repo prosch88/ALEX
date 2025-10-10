@@ -1688,6 +1688,8 @@ def exploit_zygote(zip_path, text, prog_text, change):
                                 if not chunk:
                                     break
                                 zf_out.write(chunk)
+                        zf.fp.flush()
+                        os.fsync(zf.fp.fileno())
         finally:
             try:
                 sock.close()
