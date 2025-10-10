@@ -16,6 +16,7 @@ from tkinter import StringVar
 from importlib.metadata import version
 from adbutils._utils import append_path
 from io import BytesIO
+from pathlib import Path
 from pdfme import build_pdf
 import shutil
 import zipfile
@@ -598,7 +599,6 @@ class MyApp(ctk.CTk):
         except: pass
         for sys_folder in sysfolders:
             self.after(10)
-            print(sys_folder)
             total_size = 1
             data_size = 0
             data_path = sys_folder
@@ -1594,7 +1594,8 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
             new_src:str = append_path(src, dir.path) 
             new_dst:pathlib.Path = pathlib.Path(append_path(dst, dir.path)) 
             os.makedirs(new_dst, exist_ok=exist_ok)
-            zip_dir_path = f"{rootf}/{rel_in_zip}/{dir.path}/"
+            zip_dir_path = f'{rootf.strip("/")}/{rel_in_zip}/{dir.path}/'.replace("//", "/")
+            print(zip_dir_path)
             zip.writestr(zip_dir_path, b'')
             new_rel = f"{rel_in_zip}/{dir.path}"
             s += rec_pull_contents(new_src, new_dst, rootf, new_rel, prog_text, progress, exist_ok=exist_ok)
@@ -1609,7 +1610,8 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
             try:
                 with open(new_dst, "rb") as f:
                     data = f.read()
-                zip_rel_path = os.path.normpath(f"{rootf}/{rel_in_zip}/{file.path}") 
+                zip_rel_path = f'{rootf.strip("/")}/{rel_in_zip}/{file.path}'.replace("//", "/")
+                print(zip_rel_path)
                 zip.writestr(zip_rel_path, data)
                 os.remove(new_dst)
             except Exception as e:
