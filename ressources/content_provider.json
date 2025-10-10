@@ -1,0 +1,115 @@
+{
+    "com.android.calendar": [
+        "calendar_entities",
+        "calendars",
+        "attendees",
+        "event_entities",
+        "properties",
+        "reminders",
+        "calendar_alerts",
+        "colors",
+        "extendedproperties",
+        "syncstate"
+    ],
+    "com.android.contacts": [
+        "raw_contacts",
+        "contacts_directories",
+        "contacts_syncstate",
+        "profile/syncstate",
+        "contacts",
+        "profile/raw_contacts",
+        "profile",
+        "profile/as_vcard",
+        "stream_items",
+        "stream_items/photo",
+        "stream_items_limit",
+        "data",
+        "raw_contact_entities",
+        "profile/raw_contact_entities",
+        "status_updates",
+        "data/phones",
+        "data/phones/filter",
+        "data/emails/lookup",
+        "data/emails/filter",
+        "data/emails",
+        "data/postals",
+        "groups",
+        "groups_summary",
+        "aggregation_exceptions",
+        "settings",
+        "provider_status",
+        "photo_dimensions",
+        "deleted_contacts"
+    ],
+    "downloads": [
+        "my_downloads",
+        "download"
+    ],
+    "media": [
+        "external/file",
+        "external/images/media",
+        "external/images/thumbnails",
+        "external/audio/media",
+        "external/audio/genres",
+        "external/audio/playlists",
+        "external/audio/artists",
+        "external/audio/albums",
+        "external/video/media",
+        "external/video/thumbnails",
+        "internal/file",
+        "internal/images/media",
+        "internal/images/thumbnails",
+        "internal/audio/media",
+        "internal/audio/genres",
+        "internal/audio/playlists",
+        "internal/audio/artists",
+        "internal/audio/albums",
+        "internal/video/media",
+        "internal/video/thumbnails"
+    ],
+    "settings": [
+        "system",
+        "system/ringtone",
+        "system/alarm_alert",
+        "system/notification_sound",
+        "secure",
+        "global",
+        "bookmarks",
+        "system/bluetooth_devices",
+        "system/powersavings_appsettings"
+    ],
+    "nwkinfo": [
+        "nwkinfo",
+        "nwkinfo/carriers",
+        "nwkinfo/dormpolicy"
+    ],
+    "user_dictionary": "words",
+    "com.google.settings": "partner",
+    "browser": [
+        "bookmarks",
+        "searches"
+    ],
+    "com.android.browser": [
+        "accounts",
+        "accounts/account_name",
+        "accounts/account_type",
+        "accounts/sourceid",
+        "settings",
+        "syncstate",
+        "images",
+        "image_mappings",
+        "bookmarks",
+        "bookmarks/folder",
+        "bookmarks/search_suggest_query",
+        "history",
+        "searches",
+        "combined"
+    ]
+}
+
+
+
+
+
+
+
