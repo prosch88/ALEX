@@ -1258,7 +1258,7 @@ def get_client(host=default_host, port=default_port, check=False):
     try:
         ensure_adb_server()
         adb = adbutils.AdbClient(host=host, port=port)
-    except OSError:
+    except Exception:
         adb = None
 
     if adb != None:
