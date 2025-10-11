@@ -1595,7 +1595,7 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
             new_dst:pathlib.Path = pathlib.Path(append_path(dst, dir.path)) 
             os.makedirs(new_dst, exist_ok=exist_ok)
             zip_dir_path = f'{rootf.strip("/")}/{rel_in_zip}/{dir.path}/'.replace("//", "/")
-            print(zip_dir_path)
+            #print(zip_dir_path)
             zip.writestr(zip_dir_path, b'')
             new_rel = f"{rel_in_zip}/{dir.path}"
             s += rec_pull_contents(new_src, new_dst, rootf, new_rel, prog_text, progress, exist_ok=exist_ok)
@@ -1611,7 +1611,7 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
                 with open(new_dst, "rb") as f:
                     data = f.read()
                 zip_rel_path = f'{rootf.strip("/")}/{rel_in_zip}/{file.path}'.replace("//", "/")
-                print(zip_rel_path)
+                #print(zip_rel_path)
                 zip.writestr(zip_rel_path, data)
                 os.remove(new_dst)
             except Exception as e:
@@ -1753,13 +1753,22 @@ def exploit_zygote(zip_path, text, prog_text, change):
         if "/data: Permission denied" in data_test:
             for app in all_apps:
                 app_user = send_and_receive(sock=sock, cmd=f"stat /data/data/{app}")
+                app_user_de = send_and_receive(sock=sock, cmd=f"stat /data/user_de/0/{app}")
                 uid_re = re.search(r'Uid:\s*\(\s*(\d+)\s*/', app_user)
-                uid = uid_re.group(1) if uid_re else None            
+                uid_de_re = re.search(r'Uid:\s*\(\s*(\d+)\s*/', app_user_de)
+                uid = uid_re.group(1) if uid_re else None
+                uid_de = uid_re.group(1) if uid_de_re else None             
                 if uid != "1000" and uid != None:
                     pass
                 else:
                     dump_folder_cve(f"/data/data/{app}", zip_path)
+                if uid_de != "1000" and uid_de != None:
+                    pass
+                else:
+                    dump_folder_cve(f"/data/user_de/0/{app}", zip_path)
+            dump_folder_cve("/data/anr", zip_path)
             dump_folder_cve("/data/app", zip_path)
+            dump_folder_cve("/data/system", zip_path)
             dump_folder_cve("/system/bin", zip_path)
 
         else:
