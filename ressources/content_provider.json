@@ -1,4 +1,19 @@
 {
+    "call_log": "calls",
+    "sms": [
+        "inbox",
+        "sent",
+        "draft",
+        "outbox",
+        "queued",
+        "all"
+    ],
+    "mms": [
+        "inbox",
+        "sent",
+        "draft",
+        "outbox"
+    ],
     "com.android.calendar": [
         "calendar_entities",
         "calendars",
@@ -85,6 +100,7 @@
     ],
     "user_dictionary": "words",
     "com.google.settings": "partner",
+    "com.android.settings.personalvibration.PersonalVibrationProvider": "",
     "browser": [
         "bookmarks",
         "searches"

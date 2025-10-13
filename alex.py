@@ -19,6 +19,7 @@ from io import BytesIO
 from pathlib import Path
 from pdfme import build_pdf
 import shutil
+import json
 import zipfile
 import tarfile
 import hashlib
@@ -183,7 +184,6 @@ class MyApp(ctk.CTk):
         # Erase content of dynamic frame
         for widget in self.dynamic_frame.winfo_children():
             widget.destroy()
-
         # Switch to chosen menu
         self.current_menu = menu_name
         if menu_name == "ReportMenu":
@@ -214,6 +214,8 @@ class MyApp(ctk.CTk):
             self.chat_shotloop()
         elif menu_name == "BugReport":
             self.show_bugreport()
+        elif menu_name == "Content":
+            self.show_content_dump()
         #elif menu_name == "Report":
         #    self.show_report()
 
@@ -441,9 +443,11 @@ class MyApp(ctk.CTk):
         self.menu_buttons = [
             ctk.CTkButton(self.dynamic_frame, text="Take screenshots", command=lambda: self.switch_menu("ScreenDevice"), width=200, height=70, font=self.stfont),
             ctk.CTkButton(self.dynamic_frame, text="Chat Capture", command=lambda: self.switch_menu("ShotLoop"), width=200, height=70, font=self.stfont),
+            ctk.CTkButton(self.dynamic_frame, text="Query Content\nProviders", command=lambda: self.switch_menu("Content"), width=200, height=70, font=self.stfont),
         ]
         self.menu_text = ["Take screenshots from device screen.\nScreenshots will be saved under \"screenshots\"\nas PNG.",
-                          "Loop through a chat taking screenshots."]
+                          "Loop through a chat taking screenshots.",
+                          "Query Data from Content Providers\nas txt or json. (calls, sms, contacts, ...)"]
         self.menu_textbox = []
         for btn in self.menu_buttons:
             self.menu_textbox.append(ctk.CTkLabel(self.dynamic_frame, width=right_content, height=70, font=self.stfont, anchor="w", justify="left"))
@@ -497,6 +501,40 @@ class MyApp(ctk.CTk):
         self.progress.pack_forget()
         self.text.configure(text=f"Dumpsys saved under: dumpsys_{snr}.txt")
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("LogMenu")).pack(pady=40))
+
+    #Show the Content Provider screen
+    def show_content_dump(self):
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
+        ctk.CTkLabel(self.dynamic_frame, text="Query Content Providers", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
+        self.text = ctk.CTkLabel(self.dynamic_frame, text="Choose the output format:", width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        self.text.pack(anchor="center", pady=25)
+        self.change = ctk.IntVar(self, 0)
+        self.choose = ctk.BooleanVar(self, False)
+        self.txtb = ctk.CTkButton(self.dynamic_frame, text="TXT", font=self.stfont, command=lambda: self.choose.set(False))
+        self.txtb.pack(pady=10)
+        self.jsonb = ctk.CTkButton(self.dynamic_frame, text="JSON", font=self.stfont, command=lambda: self.choose.set(True))
+        self.jsonb.pack(pady=10)
+        self.abortb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=lambda: self.switch_menu("AdvMenu"))
+        self.abortb.pack(pady=10)    
+        self.wait_variable(self.choose)   
+        self.txtb.pack_forget()
+        self.jsonb.pack_forget()
+        self.abortb.pack_forget()
+        self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="0%", width=585, height=20, font=self.stfont, anchor="w", justify="left")
+        self.prog_text.pack()
+        self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0)
+        self.progress.set(0)
+        self.prog_text.configure(text="0%")
+        self.progress.pack()
+        self.text.configure(text=f"Extracting Data from Content Providers.\nThis may take some time.")                          
+        outformat = self.choose.get() 
+        self.get_content = threading.Thread(target=lambda: query_content(self.change, self.text, self.progress, self.prog_text, json_out=outformat))
+        self.get_content.start()
+        self.wait_variable(self.change)
+        self.prog_text.pack_forget()
+        self.progress.pack_forget()
+        self.text.configure(text=f"The Content Provider entries were saved under:\ncontent_provider_{snr}")
+        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AdvMenu")).pack(pady=40))
 
     #Show the "Pull sdcard" screen
     def show_pull_data(self):
@@ -637,6 +675,7 @@ class MyApp(ctk.CTk):
         else:
             pass
         self.text.configure(text="Data Extraction complete.")
+        log(f"Created Backup: {zip_path}")
         self.prog_text.pack_forget()
         self.progress.pack_forget()
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
@@ -672,6 +711,7 @@ class MyApp(ctk.CTk):
         self.call_bu = threading.Thread(target=lambda: self.call_backup(bu_file=bu_file, bu_change=self.bu_change, bu_options=bu_options))
         self.call_bu.start()
         self.wait_variable(self.bu_change)
+        log(f"Created Backup: {bu_file}")
         change.set(1)
 
     def call_backup(self, bu_file, bu_change, bu_options,):
@@ -760,7 +800,7 @@ class MyApp(ctk.CTk):
            file.write(png)
         with open(hashpath, "w") as hash_file:
             hash_file.write(hash_sha256)
-        #log(f"Created screenshot {filename} with hash {hash_sha256}")
+        log(f"Created screenshot {filename} with hash {hash_sha256}")
         namefield.configure(text=f"Screenshot saved as:\n{filename}\nHash saved as:\n{hashname}")
         self.pdf_report(pdf_type="screenshot", shot=filename, sha256=hash_sha256, shot_png=filepath, w=wsize, h=hsize)
 
@@ -847,7 +887,7 @@ class MyApp(ctk.CTk):
             hash_sha256 = hashlib.sha256(png).hexdigest()
             with open(os.path.join(hashpath), "w") as hash_file:
                 hash_file.write(hash_sha256)
-            #log(f"Created screenshot {filename} with hash {hash_sha256}")
+            log(f"Created screenshot {filename} with hash {hash_sha256}")
             namefield.configure(text=f"Screenshot saved as:\n{filename}\nHash saved as:\n{hashname}")
             first_hash = imagehash.phash(shot)
             seen_hashes.append(first_hash)
@@ -890,7 +930,7 @@ class MyApp(ctk.CTk):
                             hash_sha256 = hashlib.sha256(png).hexdigest()
                             with open(os.path.join(hashpath), "w") as hash_file:
                                 hash_file.write(hash_sha256)
-                            #log(f"Created screenshot {filename} with hash {hash_sha256}")
+                            log(f"Created screenshot {filename} with hash {hash_sha256}")
                             namefield.configure(text=f"Screenshot saved as:\n{filename}\nHash saved as:\n{hashname}")
                             self.pdf_report(pdf_type="screenshot", shot=filename, sha256=hash_sha256, shot_png=filepath, app_name=app_name, chat_name=chat_name, w=wsize, h=hsize)
                             sc_count += 1
@@ -1183,6 +1223,7 @@ class MyApp(ctk.CTk):
             with open(screen_pdf_path, 'wb') as f:
                 build_pdf(document, f)
         else:
+            log("Created PDF Report")
             with open(f'Report_{snr}.pdf', 'wb') as f:
                 build_pdf(document, f)
             self.progress.pack_forget()
@@ -1193,7 +1234,7 @@ class MyApp(ctk.CTk):
             change.set(1)
 
 
-a_version = 0.01
+a_version = 0.1
 default_host = "127.0.0.1"
 default_port = 5037
 
@@ -1502,9 +1543,9 @@ def save_info():
         file.write('None')
    
     for app in apps:
-        file.write("\n" + '{:{l}}'.format(app[0], l=al) + "\t" + app[1])
-            
+        file.write("\n" + '{:{l}}'.format(app[0], l=al) + "\t" + app[1])        
     file.close()
+    log("Saved Device Info")
 
 def dump_logcat(change):
     logdump = device.shell("logcat -d -b all -v threadtime", stream=True)
@@ -1519,6 +1560,7 @@ def dump_logcat(change):
                     line, buffer = buffer.split(b"\n", 1)
                     logcfile.write(line.decode("utf-8", errors="replace") + "\n")
                     logcfile.flush()
+    log("Extracted Logcat")
     change.set(1)
 
 def dump_dumpsys(change):
@@ -1534,6 +1576,7 @@ def dump_dumpsys(change):
                     line, buffer = buffer.split(b"\n", 1)
                     dumpsfile.write(line.decode("utf-8", errors="replace") + "\n")
                     dumpsfile.flush()
+    log("Extracted Dumpsys")
     change.set(1)
 
 def dump_bugreport(change, progress, prog_text):
@@ -1546,12 +1589,119 @@ def dump_bugreport(change, progress, prog_text):
             if line.startswith("BEGIN:"):
                 brpath = line.strip().split("BEGIN:")[1]
         f.close()
-    print(brpath)
     try:
         device.sync.pull(brpath, f"{snr}_dumpstate.zip")
+        log("Extracted Bugreport")
     except:
+        log("Error extracting Bugreport")
         pass
     change.set(1)
+
+#Query Content Providers (from the dict: content_provider.json)
+def query_content(change, text, progress, prog_text, json_out=False):
+    prov_file = os.path.join(os.path.dirname(__file__), "ressources" , "content_provider.json")
+    error_text = ["Error while accessing provider", "Unsupported argument", "No result found"]
+    out = f"content_provider_{snr}"
+    with open(prov_file) as f:
+        providers = json.load(f)
+    #prov_len = len(providers)
+    prov_len = 0
+    for key, value in providers.items():
+        prov_len += 1 
+        prov_len += 1
+        if isinstance(value, list):
+            prov_len += len(value) 
+    
+    i = 0
+    for key, value in providers.items():
+        #print(key)
+        i+=1
+        current = i/prov_len
+        progress.set(current)
+        prog_text.configure(text=f"{int(current*100)}%")
+        text.configure(text=f"Extracting Data from Content Providers.\nThis may take some time.\nCurrent: {key}")
+        content_out = device.shell(f"content query --uri content://{key}")
+        if any(error in content_out for error in error_text):
+            log(f"No content output for {key}")
+            pass
+        else:
+            if json_out == False:
+                content_path = Path(f'{out}/{key}/{key}.txt')
+                content_path.parent.mkdir(parents=True, exist_ok=True)
+                content_path.write_text(content_out)
+            else:
+                cjson = content_to_json(content_out)
+                json_out = json.dumps(cjson, ensure_ascii=False, indent=2)
+                json_path = Path(f'{out}/{key}/{key}.json')
+                json_path.parent.mkdir(parents=True, exist_ok=True)
+                json_path.write_text(json_out, encoding="utf-8")
+        if isinstance(value, list):
+            for item in value:
+                i+=1
+                current = i/prov_len
+                progress.set(current)
+                prog_text.configure(text=f"{int(current*100)}%")
+                text.configure(text=f"Extracting Data from Content Providers.\nThis may take some time.\nCurrent: {key}/{item}")
+                #print((f"content query --uri content://{key}/{item}"))
+                content_out = device.shell(f"content query --uri content://{key}/{item}")
+                if any(error in content_out for error in error_text):
+                    log(f"No content output for {key}/{item}")
+                    pass
+                else:
+                    if json_out == False:
+                        content_path = Path(f'{out}/{key}/{key}_{item.replace("/","_")}.txt')
+                        content_path.parent.mkdir(parents=True, exist_ok=True)
+                        content_path.write_text(content_out)
+                    else:
+                        cjson = content_to_json(content_out)
+                        json_out = json.dumps(cjson, ensure_ascii=False, indent=2)
+                        json_path = Path(f'{out}/{key}/{key}_{item.replace("/","_")}.json')
+                        json_path.parent.mkdir(parents=True, exist_ok=True)
+                        json_path.write_text(json_out, encoding="utf-8")
+        i+=1
+        current = i/prov_len
+        progress.set(current)
+        prog_text.configure(text=f"{int(current*100)}%")
+        if value == "":
+            pass
+        else:
+            content_out = device.shell(f"content query --uri content://{key}/{value}")
+            if any(error in content_out for error in error_text):
+                if not isinstance(value, list):
+                    log(f"No content output for {key}/{value}")
+                pass
+            else:
+                text.configure(text=f"Extracting Data from Content Providers.\nThis may take some time.\nCurrent: {key}/{value}")
+                if json_out == False:
+                    content_path = Path(f'{out}/{key}/{key}_{value.replace("/","_")}.txt')
+                    content_path.parent.mkdir(parents=True, exist_ok=True)
+                    content_path.write_text(content_out)
+                else:
+                    cjson = content_to_json(content_out)
+                    json_out = json.dumps(cjson, ensure_ascii=False, indent=2)
+                    json_path = Path(f'{out}/{key}/{key}_{value.replace("/","_")}.json')
+                    json_path.parent.mkdir(parents=True, exist_ok=True)
+                    json_path.write_text(json_out, encoding="utf-8")
+    change.set(1)
+
+# Convert the content provider output to JSON
+def content_to_json(text: str):
+    rows = re.split(r'\bRow:\s*\d+\s*', text)
+    result = []
+    for row in rows:
+        row = row.strip()
+        if not row:
+            continue
+        pairs = re.findall(r'(\w+)=((?:[^,]|,(?!\s*\w+=))*)', row)
+        entry = {}
+        for key, value in pairs:
+            value = value.strip()
+            if value in ("NULL", ""):
+                entry[key] = None
+            else:
+                entry[key] = value
+        result.append(entry)
+    return result
 
 
 def get_data_size(data_path, change):
@@ -1606,6 +1756,7 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
             try:
                 size = self.pull_file(new_src, new_dst)
             except:
+                log(f"Error pulling: {new_src}")
                 size = 0
             try:
                 with open(new_dst, "rb") as f:
@@ -1615,6 +1766,7 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
                 zip.writestr(zip_rel_path, data)
                 os.remove(new_dst)
             except Exception as e:
+                log(f"Error zipping: {new_dst}: {e}")
                 print(f"Error zipping {new_dst}: {e}")
 
             s += size
@@ -1636,6 +1788,7 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
     os.makedirs(dst, exist_ok=exist_ok)
     func_size = rec_pull_contents(src, dst, rootf, rel_in_zip="", prog_text=prog_text, progress=progress, exist_ok=exist_ok)
     #zip.close()
+    log(f"Pulled {rootf}")
     change.set(1)
     return func_size
 
@@ -1738,6 +1891,7 @@ def exploit_zygote(zip_path, text, prog_text, change):
     whoami = device.shell(cmd)
     #print(whoami)
     if "system" in whoami:
+        log("Device is vulnerable to CVE-2024–31317")
         device.forward("tcp:4321", "tcp:4321")
         host = "localhost"
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -1776,7 +1930,14 @@ def exploit_zygote(zip_path, text, prog_text, change):
             dump_folder_cve("/system/bin", zip_path)
     else:
         text.configure(text="Expoliting CVE-2024–31317 failed.")
+        log("Device is not vulnerable to CVE-2024–31317 (or other issue)")
     change.set(1)
+
+#ALEX "logging"
+def log(text):
+    with open(f"ALEX_log_{snr}.log", 'a', encoding="utf-8") as logfile:
+        logtime = str(datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+        logfile.write(f"{logtime}: {text}\n")
 
 device = None
 zytotal =0
