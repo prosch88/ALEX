@@ -1028,7 +1028,7 @@ class MyApp(ctk.CTk):
             for d_app in apps:
                 i+=1
                 progr = 100/len(apps)*i
-                app_name = d_app[0]
+                app_name = d_app[0][:43]
                 app_version = device.app_info(d_app[0]).version_name[:30]
                 app_installer = "packageinstaller" if "packageinstaller" in d_app[1] else d_app[1][:25]
                 apps_info.append([app_name, app_version, app_installer])
