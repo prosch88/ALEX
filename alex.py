@@ -216,8 +216,10 @@ class MyApp(ctk.CTk):
             self.show_bugreport()
         elif menu_name == "Content":
             self.show_content_dump()
-        #elif menu_name == "Report":
-        #    self.show_report()
+        #UT Options:
+        elif menu_name == "UT_physical":
+            self.show_ut_physical()
+
 
     # Function to check for adb-binary and device:
     def show_noadbserver(self):
@@ -388,14 +390,23 @@ class MyApp(ctk.CTk):
     def show_acquisition_menu(self):
         self.skip = ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont)
         self.skip.grid(row=0, column=0, columnspan=2, sticky="w")
-        self.menu_buttons = [
-            ctk.CTkButton(self.dynamic_frame, text="Pull \"sdcard\"", command=lambda: self.switch_menu("PullData"), width=200, height=70, font=self.stfont),
-            ctk.CTkButton(self.dynamic_frame, text="ADB Backup", command=lambda: self.switch_menu("ADBBU"), width=200, height=70, font=self.stfont),
-            ctk.CTkButton(self.dynamic_frame, text="Partially Restored\nFilesystem Backup", command=lambda: self.switch_menu("PRFS"), width=200, height=70, font=self.stfont),
-        ]
-        self.menu_text = ["Extract the content of \"/sdcard/\" as a folder.",
-                          "Perform an ADB-Backup.",
-                          "Try to reconstruct parts of the device-filesystem"]
+        if ut == False: 
+            self.menu_buttons = [
+                ctk.CTkButton(self.dynamic_frame, text="Pull \"sdcard\"", command=lambda: self.switch_menu("PullData"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="ADB Backup", command=lambda: self.switch_menu("ADBBU"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Partially Restored\nFilesystem Backup", command=lambda: self.switch_menu("PRFS"), width=200, height=70, font=self.stfont),
+            ]
+            self.menu_text = ["Extract the content of \"/sdcard/\" as a folder.",
+                            "Perform an ADB-Backup.",
+                            "Try to reconstruct parts of the device-filesystem"]
+        else:
+            self.menu_buttons = [
+                ctk.CTkButton(self.dynamic_frame, text="Pull \"Home\"", command=lambda: self.switch_menu("PullData"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Physical Acquisition", command=lambda: self.switch_menu("UT_physical"), width=200, height=70, font=self.stfont),
+            ]
+            self.menu_text = ["Extract the content of \"/Home/\" as a folder.",
+                            "Extract a physical image of the\nBlock-device."]
+
         self.menu_textbox = []
         for btn in self.menu_buttons:
             self.menu_textbox.append(ctk.CTkLabel(self.dynamic_frame, width=right_content, height=70, font=self.stfont, anchor="w", justify="left"))
@@ -545,7 +556,10 @@ class MyApp(ctk.CTk):
         global data_size
         total_size = 1
         data_size = 0
-        data_path = "/sdcard/"
+        if ut == False:
+            data_path = "/sdcard/"
+        else:
+            data_path = device.shell("echo $HOME") + "/"
         self.change = ctk.IntVar(self, 0)
         self.get_dsize = threading.Thread(target=lambda: get_data_size(data_path, self.change))
         self.get_dsize.start()
@@ -749,7 +763,30 @@ class MyApp(ctk.CTk):
         self.progress.pack_forget()
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("LogMenu")).pack(pady=40)) 
 
+    ## Ubuntu Touch visible Options ##
 
+    #Show UT-Physical
+    def show_ut_physical(self):
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
+        ctk.CTkLabel(self.dynamic_frame, text="Physical Extraction", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
+        self.text = ctk.CTkLabel(self.dynamic_frame, text=f'Provide the correct \"sudo\" password:\n(Mostly the device passcode)', width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        self.text.pack(pady=15)
+        self.change = ctk.IntVar(self, 0)
+        self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="0%", width=585, height=20, font=self.stfont, anchor="w", justify="left")
+        self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0)
+        self.progress.set(0)
+        self.prog_text.configure(text="0%")
+        self.passwordbox = ctk.CTkEntry(self.dynamic_frame, width=200, height=20, corner_radius=0, show="*")
+        self.passwordbox.bind(sequence="<Return>", command=lambda x: ut_physical(change=self.change, text=self.text, progress=self.progress, prog_text=self.prog_text, pw_box=self.passwordbox, ok_button=self.okb, back_button=self.backb))
+        self.passwordbox.pack(pady = 15) 
+        self.okb = ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: ut_physical(change=self.change, text=self.text, progress=self.progress, prog_text=self.prog_text, pw_box=self.passwordbox, ok_button=self.okb, back_button=self.backb))
+        self.okb.pack(pady=15) 
+        self.backb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=lambda: self.switch_menu("AcqMenu"))
+        self.backb.pack(pady=5)
+        self.wait_variable(self.change)
+        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))  
+
+    ## End of UT Options ##
 
     #Device screenshot
     def screen_device(self):
@@ -1025,15 +1062,18 @@ class MyApp(ctk.CTk):
             self.progress.pack()
             apps_info = []
             i = 0
-            for d_app in apps:
-                i+=1
-                progr = 100/len(apps)*i
-                app_name = d_app[0][:43]
-                app_version = device.app_info(d_app[0]).version_name[:30]
-                app_installer = "packageinstaller" if "packageinstaller" in d_app[1] else d_app[1][:25]
-                apps_info.append([app_name, app_version, app_installer])
-                self.prog_text.configure(text=f"{int(100/len(apps)*i)}%")
-                self.progress.set(progr/100)        
+            if ut == False:
+                for d_app in apps:
+                    i+=1
+                    progr = 100/len(apps)*i
+                    app_name = d_app[0][:43]
+                    app_version = device.app_info(d_app[0]).version_name[:30]
+                    app_installer = "packageinstaller" if "packageinstaller" in d_app[1] else d_app[1][:25]
+                    apps_info.append([app_name, app_version, app_installer])
+                    self.prog_text.configure(text=f"{int(100/len(apps)*i)}%")
+                    self.progress.set(progr/100) 
+            else:
+                apps_info = apps       
 
         u_grey = [0.970, 0.970, 0.970]
         #background_color = tuple(int(c * 255) for c in u_grey)
@@ -1062,7 +1102,10 @@ class MyApp(ctk.CTk):
             temp_file.write(image_stream.getvalue())
             temp_image_name = temp_file.name
 
-        d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "generic.jpg")
+        if ut == True:
+            d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "ut_generic.jpg")
+        else:
+            d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "generic.jpg")
  
         if pdf_type == "screenshot":
             document = {
@@ -1296,6 +1339,7 @@ def get_client(host=default_host, port=default_port, check=False):
     global state
     global paired
     global apps
+    global ut
     try:
         ensure_adb_server()
         adb = adbutils.AdbClient(host=host, port=port)
@@ -1341,6 +1385,11 @@ def get_client(host=default_host, port=default_port, check=False):
                     "   49 4E 45 53 53 2E")
         else:
             paired = True
+            whoami = device.shell("whoami")
+            if whoami == "phablet":
+                ut = True
+            else:
+                ut = False
             dev_state = "authorized ✔"
             snr = getprop(device, "ro.serialno")
             brand = getprop(device, "ro.product.brand").capitalize()
@@ -1361,10 +1410,20 @@ def get_client(host=default_host, port=default_port, check=False):
             spl = getprop(device, "ro.build.version.security_patch")
             global locale
             locale = getprop(device, "persist.sys.locale")
+            if locale == "-" and whoami == "phablet":
+                locale = device.shell("echo $LANG")
             global imei
             imei = getprop(device, 'gsm.baseband.imei').replace("'","")
             if imei == "-":
-                imei = getprop(device, 'ro.gsm.imei').replace("'","")
+                if whoami == "phablet":
+                    imei_cmd = device.shell('dbus-send --system --print-reply --dest=org.ofono /ril_0 org.ofono.Modem.GetProperties')
+                    match = re.search(r'"(\d{14,17})"', imei_cmd)
+                    if match:
+                        imei = match.group(1)
+                    else:
+                        imei = "-"
+                else:
+                    imei = getprop(device, 'ro.gsm.imei').replace("'","")
             if imei == "-":
                 imei = getprop(device, 'ril.imei').replace("'","")
             if imei == "-":
@@ -1388,20 +1447,29 @@ def get_client(host=default_host, port=default_port, check=False):
                 b_mac = "-"
             if "not found" in b_mac:
                 b_mac = "-"
+            if b_mac == "-" and whoami == "phablet":
+                b_mac = device.shell(f"busctl --system get-property org.bluez /org/bluez/hci0 org.bluez.Adapter1 Address | tr -d 's\" '")
             global w_mac
             w_mac = getprop(device, "ro.boot.wifimacaddr")
             if w_mac == "-":
-                wifi_dump = device.shell("dumpsys wifi")
-                match1 = re.search(r"wifi_sta_factory_mac_address=([0-9a-fA-F:]{17})", wifi_dump)
-                match2 = re.search(r" MAC:\s*([0-9a-fA-F:]{17})", wifi_dump)      
-                if match1:
-                    w_mac = match1.group(1).upper()
-                elif match2:
-                    w_mac = match2.group(1).upper()
+                if whoami == "phablet":
+                    w_mac = device.shell("cat /sys/class/net/wlan0/address")
+                    if "No such file" in w_mac:
+                        w_mac = "-"
+                    else:
+                        w_mac = w_mac.upper()
                 else:
-                    w_mac = "-"
-                if "00:00:00" in w_mac:
-                    w_mac = "-"
+                    wifi_dump = device.shell("dumpsys wifi")
+                    match1 = re.search(r"wifi_sta_factory_mac_address=([0-9a-fA-F:]{17})", wifi_dump)
+                    match2 = re.search(r" MAC:\s*([0-9a-fA-F:]{17})", wifi_dump)      
+                    if match1:
+                        w_mac = match1.group(1).upper()
+                    elif match2:
+                        w_mac = match2.group(1).upper()
+                    else:
+                        w_mac = "-"
+                    if "00:00:00" in w_mac:
+                        w_mac = "-"
             global d_name
             d_name = device.shell("settings get global device_name")
             if d_name == "":
@@ -1410,6 +1478,8 @@ def get_client(host=default_host, port=default_port, check=False):
             if "not found" in d_name:
                 d_name = "-"
                 name_s = d_name
+            if d_name == "-" and whoami == "phablet":
+                d_name = device.shell("hostname")
             if len(d_name) > 26:
                 wordnames = d_name.split()
                 if len(' '.join(wordnames[:-1])) < 27:
@@ -1474,11 +1544,21 @@ def get_client(host=default_host, port=default_port, check=False):
 
             global apps
             global all_apps
-            all_app_query = device.shell("pm list packages")
-            all_apps = [line.replace("package:", "") for line in all_app_query.splitlines() if line.strip()]
-            app_query = device.shell("pm list packages -3 -i")
-            pattern = re.compile(r"package:([^\s]+)\s+installer=([^\s]+)")
-            apps = [[pkg, installer] for pkg, installer in pattern.findall(app_query)]
+            if whoami != "phablet":
+                all_app_query = device.shell("pm list packages")
+                all_apps = [line.replace("package:", "") for line in all_app_query.splitlines() if line.strip()]
+                app_query = device.shell("pm list packages -3 -i")
+                pattern = re.compile(r"package:([^\s]+)\s+installer=([^\s]+)")
+                apps = [[pkg, installer] for pkg, installer in pattern.findall(app_query)]
+            else:
+                app_cmd = device.shell("click list")
+                apps = []
+                for line in app_cmd.splitlines():
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        name = parts[0].strip()
+                        version = parts[1].strip()
+                        apps.append([name, version, "click"])
 
             if len(build) > 26:
                 build_s = build[:25] + "\n" + '{:13}'.format(" ") + "\t" + build[25:]
@@ -1538,7 +1618,10 @@ def save_info():
     except: al = 40 
     file.write("\n\n" + "## Installed Apps (by user) ## \n\n")
     if len(apps) > 0:
-        file.write('{:{l}}'.format("app", l=al) + "\t" + "installer\n")
+        if ut == False:
+            file.write('{:{l}}'.format("app", l=al) + "\t" + "installer\n")
+        else:
+            file.write('{:{l}}'.format("app", l=al) + "\t" + "version\n")
     else:
         file.write('None')
    
@@ -1600,7 +1683,7 @@ def dump_bugreport(change, progress, prog_text):
 #Query Content Providers (from the dict: content_provider.json)
 def query_content(change, text, progress, prog_text, json_out=False):
     prov_file = os.path.join(os.path.dirname(__file__), "ressources" , "content_provider.json")
-    error_text = ["Error while accessing provider", "Unsupported argument", "No result found"]
+    error_text = ["Error while accessing provider", "Unsupported argument", "No result found", "command not found"]
     out = f"content_provider_{snr}"
     with open(prov_file) as f:
         providers = json.load(f)
@@ -1665,23 +1748,24 @@ def query_content(change, text, progress, prog_text, json_out=False):
         if value == "":
             pass
         else:
-            content_out = device.shell(f"content query --uri content://{key}/{value}")
-            if any(error in content_out for error in error_text):
-                if not isinstance(value, list):
-                    log(f"No content output for {key}/{value}")
-                pass
-            else:
-                text.configure(text=f"Extracting Data from Content Providers.\nThis may take some time.\nCurrent: {key}/{value}")
-                if json_out == False:
-                    content_path = Path(f'{out}/{key}/{key}_{value.replace("/","_")}.txt')
-                    content_path.parent.mkdir(parents=True, exist_ok=True)
-                    content_path.write_text(content_out)
+            if not isinstance(value, list):
+                content_out = device.shell(f"content query --uri content://{key}/{value}")
+                if any(error in content_out for error in error_text):
+                    if not isinstance(value, list):
+                        log(f"No content output for {key}/{value}")
+                    pass
                 else:
-                    cjson = content_to_json(content_out)
-                    json_out = json.dumps(cjson, ensure_ascii=False, indent=2)
-                    json_path = Path(f'{out}/{key}/{key}_{value.replace("/","_")}.json')
-                    json_path.parent.mkdir(parents=True, exist_ok=True)
-                    json_path.write_text(json_out, encoding="utf-8")
+                    text.configure(text=f"Extracting Data from Content Providers.\nThis may take some time.\nCurrent: {key}/{value}")
+                    if json_out == False:
+                        content_path = Path(f'{out}/{key}/{key}_{value.replace("/","_")}.txt')
+                        content_path.parent.mkdir(parents=True, exist_ok=True)
+                        content_path.write_text(content_out)
+                    else:
+                        cjson = content_to_json(content_out)
+                        json_out = json.dumps(cjson, ensure_ascii=False, indent=2)
+                        json_path = Path(f'{out}/{key}/{key}_{value.replace("/","_")}.json')
+                        json_path.parent.mkdir(parents=True, exist_ok=True)
+                        json_path.write_text(json_out, encoding="utf-8")
     change.set(1)
 
 # Convert the content provider output to JSON
@@ -1703,6 +1787,62 @@ def content_to_json(text: str):
         result.append(entry)
     return result
 
+def ut_physical(change, text, progress, prog_text, pw_box, ok_button, back_button):
+    sh_pwd = pw_box.get()
+    pw_box.pack_forget()
+    ok_button.pack_forget()
+    back_button.pack_forget()
+
+    #live device
+    dev_cmd = device.shell("ls /dev/")
+    if "mmcblk0" in dev_cmd:
+        target = "mmcblk0"
+    elif "sda" in dev_cmd:
+        target = "sda"
+    else:
+        target = None
+    if target == None:
+        text.configure(text="Block Device not found!")
+        log("No Block Device found")
+        change.set(1)
+        return
+
+    else:
+        size = int(device.shell(f"cat /sys/block/{target}/size"))*512
+        amiroot = device.shell(f"echo {sh_pwd} | sudo -S whoami 2>/dev/null")
+        if amiroot == "root":
+            prog_text.pack()
+            progress.pack()
+            current = 0
+            out_file = f"{snr}_{target}.bin"
+            with open(out_file, "wb") as f:
+                stream = device.shell(f"echo {sh_pwd} | sudo -S dd if=/dev/mmcblk0 2>/dev/null", stream=True)
+                while True:
+                    chunk = stream.read(65536)
+                    text.configure(text="Physical Backup is running.\nThis may take some time.")
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    current += len(chunk)
+
+                    perc = (100 / size) * current
+                    prog_text.configure(text=f"{round(perc)}%")  
+                    progress.set(perc/100)
+                    prog_text.update()
+                    progress.update()
+            prog_text.pack_forget()
+            progress.pack_forget()
+            text.configure(text="Physical Backup complete!")
+        else:
+            text.configure(text="Wrong password! Try again.")
+            log("Wrong password")
+        change.set(1)
+        return
+
+
+
+    
+    
 
 def get_data_size(data_path, change):
     global total_size
