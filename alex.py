@@ -1470,6 +1470,8 @@ def get_client(host=default_host, port=default_port, check=False):
                         w_mac = "-"
                     if "00:00:00" in w_mac:
                         w_mac = "-"
+                    if w_mac == "-":
+                        w_mac = device.shell("ip addr show wlan0 | grep 'link/ether' | awk '{print $2}'").upper()
             global d_name
             d_name = device.shell("settings get global device_name")
             if d_name == "":
