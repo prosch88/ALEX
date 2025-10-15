@@ -19,6 +19,7 @@ from io import BytesIO
 from pathlib import Path
 from pdfme import build_pdf
 import numpy as np
+import sqlite3
 import shutil
 import json
 import zipfile
@@ -1890,10 +1891,75 @@ def ut_app_shot():
     arr = np.frombuffer(data[:expected], dtype=np.uint8).reshape((height, width, 4))
     img = Image.fromarray(arr[:, :, order], "RGBA")
     return img
-    
+
+#Helper functions for DB Recreation
+def collect_columns(data):
+    if not data:
+        return []
+    columns = list(data[0].keys()) 
+    for row in data[1:]:
+        for key in row.keys():
+            if key not in columns:
+                columns.append(key)
+    return columns
+
+def create_table(cur, name, columns):
+    col_def = ", ".join([f'"{col}" TEXT' for col in columns])
+    cur.execute(f"DROP TABLE IF EXISTS {name};")
+    cur.execute(f"CREATE TABLE {name} ({col_def});")
+
+def insert_data(cur, name, columns, mandatory_columns, data):
+    placeholders = ", ".join(["?"] * len(columns))
+    sql = f"INSERT INTO {name} ({', '.join(columns)}) VALUES ({placeholders})"
+    for row in data:
+        values = [row.get(col) for col in columns]
+        cur.execute(sql, values)
+
+#Recreate Device Databases
+def recreate_dbs(change, text):
+    mmssms_db = "mmssms.db"
+    sms_data = device.shell("content query --uri content://sms")
+    sms_json = content_to_json(sms_data) 
+    pdu_data = device.shell("content query --uri content://mms")
+    pdu_json = content_to_json(pdu_data)
+    addr_data = device.shell("content query --uri content://mms/addr")
+    addr_json = content_to_json(addr_data)
+    part_data = device.shell("content query --uri content://mms/part")
+    part_json = content_to_json(part_data)
+    mmssms_map = {"addr": addr_json, "part": part_json, "pdu": pdu_json, "sms": sms_json}
+    conn = sqlite3.connect(mmssms_db)
+    cur = conn.cursor()
+    total_rows = 0
+    mandatory_columns = {}
+    for name, data in mmssms_map.items():
+        columns = collect_columns(data)
+        create_table(cur, name, columns)
+        insert_data(cur, name, columns, mandatory_columns, data)
+        conn.commit()
+    conn.close()
+
+    call_db = "calllog.db"
+    call_data = device.shell("content query --uri content://call_log/calls")
+    call_json = content_to_json(call_data)
+    conn = sqlite3.connect(call_db)
+    cur = conn.cursor()
+    total_rows = 0
+    columns = collect_columns(call_json)
+    mandatory_columns = {
+        "_data": None,          
+        "mime_type": None,       
+        "transcription": None,   
+        "deleted": 0             
+    }       
+    for col in mandatory_columns:
+        if col not in columns:
+            columns.append(col)
+    create_table(cur, "calls", columns)
+    insert_data(cur, "calls", columns, mandatory_columns, call_json)
+    conn.commit()
+    conn.close()
 
 
-    
     
 
 def get_data_size(data_path, change):
