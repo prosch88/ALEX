@@ -18,6 +18,7 @@ from adbutils._utils import append_path
 from io import BytesIO
 from pathlib import Path
 from pdfme import build_pdf
+import numpy as np
 import shutil
 import json
 import zipfile
@@ -157,12 +158,20 @@ class MyApp(ctk.CTk):
         self.current_menu = "MainMenu"
         self.skip = ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont)
         self.skip.grid(row=0, column=0, columnspan=2, sticky="w")
-        self.menu_buttons = [
+        if ut == False:
+            self.menu_buttons = [
+                ctk.CTkButton(self.dynamic_frame, text="Reporting Options", command=lambda: self.switch_menu("ReportMenu"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Acquisition Options", command=lambda: self.switch_menu("AcqMenu"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Logging Options", command=lambda: self.switch_menu("LogMenu"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Advanced Options", command=lambda: self.switch_menu("AdvMenu"), width=200, height=70, font=self.stfont),
+            ]
+        else:
+            self.menu_buttons = [
             ctk.CTkButton(self.dynamic_frame, text="Reporting Options", command=lambda: self.switch_menu("ReportMenu"), width=200, height=70, font=self.stfont),
             ctk.CTkButton(self.dynamic_frame, text="Acquisition Options", command=lambda: self.switch_menu("AcqMenu"), width=200, height=70, font=self.stfont),
-            ctk.CTkButton(self.dynamic_frame, text="Logging Options", command=lambda: self.switch_menu("LogMenu"), width=200, height=70, font=self.stfont),
+            ctk.CTkButton(self.dynamic_frame, text="Logging Options", command=lambda: self.switch_menu("LogMenu"), width=200, height=70, font=self.stfont, state="disabled"),
             ctk.CTkButton(self.dynamic_frame, text="Advanced Options", command=lambda: self.switch_menu("AdvMenu"), width=200, height=70, font=self.stfont),
-        ]
+            ]
         self.menu_text = ["Save information about the device and installed apps.", 
                           "Allows logical, advanced logical and filesystem\nextractions.", 
                           "Collect the Bugreport, dumpsys and logcat logs",
@@ -396,7 +405,7 @@ class MyApp(ctk.CTk):
                 ctk.CTkButton(self.dynamic_frame, text="ADB Backup", command=lambda: self.switch_menu("ADBBU"), width=200, height=70, font=self.stfont),
                 ctk.CTkButton(self.dynamic_frame, text="Partially Restored\nFilesystem Backup", command=lambda: self.switch_menu("PRFS"), width=200, height=70, font=self.stfont),
             ]
-            self.menu_text = ["Extract the content of \"/sdcard/\" as a folder.",
+            self.menu_text = ["Extract the content of \"sdcard\" as a folder.",
                             "Perform an ADB-Backup.",
                             "Try to reconstruct parts of the device-filesystem"]
         else:
@@ -404,8 +413,8 @@ class MyApp(ctk.CTk):
                 ctk.CTkButton(self.dynamic_frame, text="Pull \"Home\"", command=lambda: self.switch_menu("PullData"), width=200, height=70, font=self.stfont),
                 ctk.CTkButton(self.dynamic_frame, text="Physical Acquisition", command=lambda: self.switch_menu("UT_physical"), width=200, height=70, font=self.stfont),
             ]
-            self.menu_text = ["Extract the content of \"/Home/\" as a folder.",
-                            "Extract a physical image of the\nBlock-device."]
+            self.menu_text = ["Extract the content of \"Home\" as a folder.",
+                            "Extract a physical image of the Block-device.\n(Requires the sudo password)"]
 
         self.menu_textbox = []
         for btn in self.menu_buttons:
@@ -451,11 +460,18 @@ class MyApp(ctk.CTk):
     def show_advanced_menu(self):
         self.skip = ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont)
         self.skip.grid(row=0, column=0, columnspan=2, sticky="w")
-        self.menu_buttons = [
+        if ut == False:
+            self.menu_buttons = [
+                ctk.CTkButton(self.dynamic_frame, text="Take screenshots", command=lambda: self.switch_menu("ScreenDevice"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Chat Capture", command=lambda: self.switch_menu("ShotLoop"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Query Content\nProviders", command=lambda: self.switch_menu("Content"), width=200, height=70, font=self.stfont),
+            ]
+        else:
+            self.menu_buttons = [
             ctk.CTkButton(self.dynamic_frame, text="Take screenshots", command=lambda: self.switch_menu("ScreenDevice"), width=200, height=70, font=self.stfont),
-            ctk.CTkButton(self.dynamic_frame, text="Chat Capture", command=lambda: self.switch_menu("ShotLoop"), width=200, height=70, font=self.stfont),
-            ctk.CTkButton(self.dynamic_frame, text="Query Content\nProviders", command=lambda: self.switch_menu("Content"), width=200, height=70, font=self.stfont),
-        ]
+            ctk.CTkButton(self.dynamic_frame, text="Chat Capture", command=lambda: self.switch_menu("ShotLoop"), width=200, height=70, font=self.stfont, state="disabled"),
+            ctk.CTkButton(self.dynamic_frame, text="Query Content\nProviders", command=lambda: self.switch_menu("Content"), width=200, height=70, font=self.stfont, state="disabled"),
+            ]
         self.menu_text = ["Take screenshots from device screen.\nScreenshots will be saved under \"screenshots\"\nas PNG.",
                           "Loop through a chat taking screenshots.",
                           "Query Data from Content Providers\nas txt or json. (calls, sms, contacts, ...)"]
@@ -814,7 +830,10 @@ class MyApp(ctk.CTk):
 
     def shot(self, imglabel, namefield):
         hsize = 426
-        shot = device.screenshot()
+        if ut == False:
+            shot = device.screenshot()
+        else:
+            shot = ut_app_shot()
         png_bytes = BytesIO()
         shot.save(png_bytes, format="PNG")
         png = png_bytes.getvalue()
@@ -1789,6 +1808,7 @@ def content_to_json(text: str):
         result.append(entry)
     return result
 
+#Physical Extraction for Ubuntu Touch
 def ut_physical(change, text, progress, prog_text, pw_box, ok_button, back_button):
     sh_pwd = pw_box.get()
     pw_box.pack_forget()
@@ -1841,6 +1861,36 @@ def ut_physical(change, text, progress, prog_text, pw_box, ok_button, back_butto
         change.set(1)
         return
 
+#UT App-Screenshot
+def ut_app_shot():
+    fbset = device.shell("fbset")
+    mode_match = re.search(r'mode\s+"(\d+)x(\d+)-\d+"', fbset)
+    if not mode_match:
+        raise ValueError("Mode not found")
+    width = int(mode_match.group(1))
+    height = int(mode_match.group(2))
+    if "rgba" in fbset:
+        order = [0, 1, 2, 3]
+    elif "argb" in fbset:
+        order = [1, 2, 3, 0]
+    elif "bgra" in fbset:
+        order = [2, 1, 0, 3]
+    elif "abgr" in fbset:
+        order = [3, 2, 1, 0]
+    elif "rgbx" in fbset:
+        order = [0, 1, 2] + 255
+    else:
+        order = [0, 1, 2, 3]
+    user = device.shell("whoami")
+    u_id = device.shell(f"id -u {user}")
+    data = device.shell(f"mirscreencast -n 1 -m /var/run/user/{u_id}/mir_socket_trusted --stdout", encoding=None)
+    expected = width * height * 4
+    if len(data) < expected:
+        raise ValueError(f"RAW data too small")
+    arr = np.frombuffer(data[:expected], dtype=np.uint8).reshape((height, width, 4))
+    img = Image.fromarray(arr[:, :, order], "RGBA")
+    return img
+    
 
 
     
