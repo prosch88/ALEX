@@ -336,7 +336,7 @@ class MyApp(ctk.CTk):
             dir_top = f"{dir[:45]}..."
         else:
             dir_top = dir
-            self.show_main_menu()
+        self.show_main_menu()
 
     # Filebrowser for working direcory
     def browse_cwd(self, outputbox):
