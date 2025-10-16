@@ -1631,8 +1631,8 @@ def get_client(host=default_host, port=default_port, check=False):
                     parts = line.split()
                     if len(parts) >= 2:
                         name = parts[0].strip()
-                        version = parts[1].strip()
-                        apps.append([name, version, "click"])
+                        a_version = parts[1].strip()
+                        apps.append([name, a_version, "click"])
 
             if len(build) > 26:
                 build_s = build[:25] + "\n" + '{:13}'.format(" ") + "\t" + build[25:]
