@@ -634,7 +634,7 @@ class MyApp(ctk.CTk):
     def show_prfs(self):
         ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
         ctk.CTkLabel(self.dynamic_frame, text="PRFS Backup", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
-        self.text = ctk.CTkLabel(self.dynamic_frame, text="Preparing Data Extraction ...", width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        self.text = ctk.CTkLabel(self.dynamic_frame, text="Please choose what Data to include:", width=585, height=20, font=self.stfont, anchor="w", justify="left")
         self.text.pack(anchor="center", pady=25)
         sysfolders = ["/system/apex/","/system/app/","/system/bin/", "/system/cameradata/", "/system/container/", "/system/etc/",
                       "/system/fake-libs/", "/system/fonts/", "/system/framework/", "/system/hidden/", "/system/lib/", "/system/lib64/", 
@@ -646,13 +646,47 @@ class MyApp(ctk.CTk):
         data_size = 0
         data_path = "/sdcard/"
         self.change = ctk.IntVar(self, 0)
-        self.get_dsize = threading.Thread(target=lambda: get_data_size(data_path, self.change))
-        self.get_dsize.start()
+
+        self.incl_sdcard = ctk.StringVar(value="on")
+        self.incl_sdcard_box = ctk.CTkCheckBox(self.dynamic_frame, text="Include the \"scdard\" folder.", variable=self.incl_sdcard, onvalue="on", offvalue="off")
+        self.incl_sdcard_box.pack(anchor="w", padx= 80, pady=5)
+        self.incl_system = ctk.StringVar(value="on")
+        self.incl_system_box = ctk.CTkCheckBox(self.dynamic_frame, text="Include available \"System\" folders", variable=self.incl_system, onvalue="on", offvalue="off")
+        self.incl_system_box.pack(anchor="w", padx= 80, pady=5)
+        self.incl_cve = ctk.StringVar(value="on")
+        self.incl_cve_box = ctk.CTkCheckBox(self.dynamic_frame, text="Try to perform exploits to acquire more Data.", variable=self.incl_cve, onvalue="on", offvalue="off")
+        self.incl_cve_box.pack(anchor="w", padx= 80, pady=5)
+        self.incl_dbfiles = ctk.StringVar(value="on")
+        self.incl_dbfiles_box = ctk.CTkCheckBox(self.dynamic_frame, text="Include recreated Databases from Content Providers.", variable=self.incl_dbfiles, onvalue="on", offvalue="off")
+        self.incl_dbfiles_box.pack(anchor="w", padx= 80, pady=5)
+        self.startb = ctk.CTkButton(self.dynamic_frame, text="Start", font=self.stfont, command=lambda: self.change.set(1))
+        self.startb.pack(pady=25) 
+        self.backb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=lambda: self.switch_menu("AcqMenu"))
+        self.backb.pack()
         self.wait_variable(self.change)
+        self.incl_sdcard_box.pack_forget()
+        self.incl_system_box.pack_forget()
+        self.incl_cve_box.pack_forget()
+        self.incl_dbfiles_box.pack_forget()
+        self.startb.pack_forget()
+        self.backb.pack_forget()
+        incl_sdcard = self.incl_sdcard.get()
+        incl_system = self.incl_system.get()
+        incl_cve = self.incl_cve.get()
+        incl_dbfiles = self.incl_dbfiles.get()
+        self.text.configure(height=60)
+        self.after(50)
+
+        if incl_sdcard == "on":
+            self.change.set(0)
+            self.text.configure(text="Preparing Data Extraction ...")
+            self.get_dsize = threading.Thread(target=lambda: get_data_size(data_path, self.change))
+            self.get_dsize.start()
+            self.wait_variable(self.change)
         folder = f'{snr}_prfs_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}'
         zip_path = f"{folder}.zip"
-        
         zip = zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=1)
+        
         try: os.mkdir(folder)
         except: pass
         self.change.set(0)
@@ -662,61 +696,67 @@ class MyApp(ctk.CTk):
         self.progress.set(0)
         self.prog_text.configure(text="0%")
         self.progress.pack()
-        self.pull_data = threading.Thread(target=lambda: pull_dir_mod(device.sync, data_path, folder, text=self.text, prog_text=self.prog_text, progress=self.progress, change=self.change, zip=zip))
-        self.pull_data.start()
-        self.wait_variable(self.change)
-        try: shutil.rmtree(folder)
-        except: pass
-        for sys_folder in sysfolders:
-            self.after(10)
-            total_size = 1
-            data_size = 0
-            data_path = sys_folder
-            self.change.set(0)
-            self.get_dsize = threading.Thread(target=lambda: get_data_size(data_path, self.change))
-            self.get_dsize.start()
+        if incl_sdcard == "on":
+            self.pull_data = threading.Thread(target=lambda: pull_dir_mod(device.sync, data_path, folder, text=self.text, prog_text=self.prog_text, progress=self.progress, change=self.change, zip=zip))
+            self.pull_data.start()
             self.wait_variable(self.change)
-            if total_size > 1:
-                folder = ".temp_folder"
-                try: os.mkdir(folder)
-                except: pass
+            try: shutil.rmtree(folder)
+            except: pass
+        if incl_system == "on":
+            for sys_folder in sysfolders:
+                self.after(10)
+                total_size = 1
+                data_size = 0
+                data_path = sys_folder
                 self.change.set(0)
-                self.prog_text.configure(text="0%")
-                self.progress.set(0)
-                self.pull_data = threading.Thread(target=lambda: pull_dir_mod(device.sync, data_path, folder, text=self.text, prog_text=self.prog_text, progress=self.progress, change=self.change, zip=zip))
-                self.pull_data.start()
+                self.get_dsize = threading.Thread(target=lambda: get_data_size(data_path, self.change))
+                self.get_dsize.start()
                 self.wait_variable(self.change)
-                try: shutil.rmtree(folder)
-                except: pass
-            else:
-                pass
+                if total_size > 1:
+                    folder = ".temp_folder"
+                    try: os.mkdir(folder)
+                    except: pass
+                    self.change.set(0)
+                    self.prog_text.configure(text="0%")
+                    self.progress.set(0)
+                    self.pull_data = threading.Thread(target=lambda: pull_dir_mod(device.sync, data_path, folder, text=self.text, prog_text=self.prog_text, progress=self.progress, change=self.change, zip=zip))
+                    self.pull_data.start()
+                    self.wait_variable(self.change)
+                    try: shutil.rmtree(folder)
+                    except: pass
+                else:
+                    pass
         zip.close()
         try: shutil.rmtree(folder)
         except: pass
+
         # Exploiting attempt
-        if int(software.split(".")[0]) in range(9,11):
+        if incl_cve == "on":
+            if int(software.split(".")[0]) in range(9,11):
+                self.change.set(0)
+                self.prog_text.configure(text="")
+                self.progress.pack_forget()
+                self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
+                self.progress.pack()
+                self.progress.start()
+                self.pull_zygote = threading.Thread(target=lambda: exploit_zygote(zip_path=zip_path, text=self.text, prog_text=self.prog_text, change=self.change))
+                self.pull_zygote.start()
+                self.wait_variable(self.change)
+            else:
+                pass
+
+        # Database Recreation
+        if incl_dbfiles == "on":
+            #self.text.configure(text="Trying to recreate Databases.")
             self.change.set(0)
             self.prog_text.configure(text="")
             self.progress.pack_forget()
             self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
             self.progress.pack()
             self.progress.start()
-            self.pull_zygote = threading.Thread(target=lambda: exploit_zygote(zip_path=zip_path, text=self.text, prog_text=self.prog_text, change=self.change))
-            self.pull_zygote.start()
+            self.recreate_dbs = threading.Thread(target=lambda: recreate_dbs(change=self.change, text=self.text, zip_path=zip_path))
+            self.recreate_dbs.start()
             self.wait_variable(self.change)
-        else:
-            pass
-
-        # Database Recreation
-        self.change.set(0)
-        self.prog_text.configure(text="")
-        self.progress.pack_forget()
-        self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
-        self.progress.pack()
-        self.progress.start()
-        self.recreate_dbs = threading.Thread(target=lambda: recreate_dbs(change=self.change, text=self.text, zip_path=zip_path))
-        self.recreate_dbs.start()
-        self.wait_variable(self.change)
         self.text.configure(text="Data Extraction complete.")
         log(f"Created Backup: {zip_path}")
         self.prog_text.pack_forget()
@@ -1934,7 +1974,7 @@ def insert_data(cur, table_name, schema_defaults, data_rows):
 def recreate_dbs(change, text, zip_path=None):
   
     #SMS/MMS
-    text.configure("Attempt to recreate the mmssms.db database.")
+    text.configure(text="Attempt to recreate the mmssms.db database.")
     mmssms_db = "mmssms.db"
     try: os.remove(mmssms_db)
     except: pass
@@ -1991,7 +2031,7 @@ def recreate_dbs(change, text, zip_path=None):
     log("Recreated mmssms.db (partial)")
     
     #CallLog
-    text.configure("Attempt to recreate the calllog.db database.")
+    text.configure(text="Attempt to recreate the calllog.db database.")
     call_db = "calllog.db"
     try: os.remove(call_db)
     except: pass
@@ -2021,7 +2061,7 @@ def recreate_dbs(change, text, zip_path=None):
     log("Recreated calllog.db (partial)")
 
     #CONTACTS
-    text.configure("Attempt to recreate the contacts2.db database.")
+    text.configure(text="Attempt to recreate the contacts2.db database.")
     contact_db = "contacts2.db"
     try: os.remove(contact_db)
     except: pass
@@ -2091,6 +2131,12 @@ def recreate_dbs(change, text, zip_path=None):
                 zf.write(call_db, "data/data/com.android.providers.contacts/databases/calllog.db")
             if os.path.exists(contact_db):
                 zf.write(contact_db, "data/data/com.android.providers.contacts/databases/contacts2.db")
+    try: os.remove(mmssms_db)
+    except: pass
+    try: os.remove(call_db)
+    except: pass
+    try: os.remove(contact_db)
+    except: pass
     change.set(1)
     
 
