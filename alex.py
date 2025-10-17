@@ -638,8 +638,9 @@ class MyApp(ctk.CTk):
         self.text.pack(anchor="center", pady=25)
         sysfolders = ["/system/apex/","/system/app/","/system/bin/", "/system/cameradata/", "/system/container/", "/system/etc/",
                       "/system/fake-libs/", "/system/fonts/", "/system/framework/", "/system/hidden/", "/system/lib/", "/system/lib64/", 
-                      "/system/media/", "/system/priv-app/", "/system/saiv/", "/system/tts/", "/system/usr/", "/system/vendor/", 
-                      "/system/xbin/"]
+                      "/system/media/", "/system/product/", "/system/priv-app/", "/system/saiv/", "/system/tts/", "/system/usr/", "/system/vendor/", 
+                      "/system/xbin/, /product/, /vendor/, /etc/"]
+        sysfolders.extend(apps_path)
         global data_size
         global total_size
         total_size = 1
@@ -696,6 +697,13 @@ class MyApp(ctk.CTk):
         self.progress.set(0)
         self.prog_text.configure(text="0%")
         self.progress.pack()
+
+        # Create a device_info file
+        self.change.set(0)
+        self.create_info = threading.Thread(target=lambda: save_info_json(zip_path=zip, change=self.change))
+        self.create_info.start()
+        self.wait_variable(self.change)
+
         if incl_sdcard == "on":
             self.pull_data = threading.Thread(target=lambda: pull_dir_mod(device.sync, data_path, folder, text=self.text, prog_text=self.prog_text, progress=self.progress, change=self.change, zip=zip))
             self.pull_data.start()
@@ -1464,6 +1472,8 @@ def get_client(host=default_host, port=default_port, check=False):
                 ut = False
             dev_state = "authorized ✔"
             snr = getprop(device, "ro.serialno")
+            global brand
+            global model
             brand = getprop(device, "ro.product.brand").capitalize()
             model = getprop(device, "ro.product.model").capitalize()
             global full_name   
@@ -1631,8 +1641,18 @@ def get_client(host=default_host, port=default_port, check=False):
                     parts = line.split()
                     if len(parts) >= 2:
                         name = parts[0].strip()
-                        version = parts[1].strip()
-                        apps.append([name, version, "click"])
+                        app_version = parts[1].strip()
+                        apps.append([name, app_version, "click"])
+            global apps_path
+            apps_path = []
+            apps_path_query = device.shell("pm list packages -f -3")
+            for line in apps_path_query.splitlines():
+                match = re.match(r"package:(.+)/base\.apk=.*", line)
+                if match:
+                    app_path = match.group(1)
+                    apps_path.append(app_path)
+
+
 
             if len(build) > 26:
                 build_s = build[:25] + "\n" + '{:13}'.format(" ") + "\t" + build[25:]
@@ -1679,6 +1699,33 @@ def get_client(host=default_host, port=default_port, check=False):
         "   6c 6c 6f 77 2c 20 69 66 20 49 20 \n" +
         "   63 61 6e 2e")
     return adb
+
+def save_info_json(zip_path, change):
+    device_info_alex = [
+        {"_comment": f"This data was generated from ADB live commands using ALEX version {a_version}"},
+        {"Brand": brand},
+        {"Model": model},
+        {"Name": product},
+        {"Platform": d_platform},
+        {"Software": software},
+        {"SDK": sdk},
+        {"SPL": spl},
+        {"Build": build},
+        {"Locale": locale},
+        {"Serialnumber": snr_id},
+        {"IMEI": imei},
+        {"WiFi MAC": w_mac},
+        {"Bluetooth MAC": b_mac},
+        {"Data size": data_s},
+        {"Encryption state": crypt_on},
+        {"Encryption type": crypt_type}
+    ]
+
+    json_data = json.dumps(device_info_alex, ensure_ascii=False, indent=2)
+
+    zip_path.writestr("device_info_alex.json", json_data)
+    change.set(1)
+
 
 def save_info():
     file = open("device_" + snr + ".txt", "w", encoding='utf-8')
@@ -2369,6 +2416,7 @@ zytotal =0
 paired = False
 apps = []
 all_apps = []
+apps_path=[]
 adb = None
 state = None
 case_number = ""
