@@ -2159,7 +2159,6 @@ def recreate_dbs(change, text, zip_path=None):
     }    
     conn = sqlite3.connect(contact_db)
     cur = conn.cursor()
-    
     for table_name, (table_defaults, table_data) in tables_map.items():
         schema_columns = list(table_defaults.keys())
         columns = schema_columns
@@ -2170,6 +2169,71 @@ def recreate_dbs(change, text, zip_path=None):
     conn.close()
     log("Recreated contacts2.db (partial)")
 
+    #Calendar
+    text.configure(text="Attempt to recreate the calendar.db database.")
+    calendar_db = "calendar.db"
+    try: os.remove(calendar_db)
+    except: pass
+    try:
+        colors_data = device.shell("content query --uri content://com.android.calendar/colors")
+        colors_json = content_to_json(colors_data) 
+    except:
+        colors_json = [{}]
+    try:
+        calendars_data = device.shell("content query --uri content://com.android.calendar/calendars")
+        calendars_json = content_to_json(calendars_data)
+    except:
+        calendars_json = [{}]
+    try:
+        event_data = device.shell("content query --uri content://com.android.calendar/event_entities")
+        event_json = content_to_json(event_data)
+    except:
+        event_json = [{}]
+    try:
+        extended_data = device.shell("content query --uri content://com.android.calendar/extendedproperties")
+        extended_json = content_to_json(extended_data)
+    except:
+        extended_json = [{}]
+    try:
+        reminders_data = device.shell("content query --uri content://com.android.calendar/reminders")
+        reminders_json = content_to_json(reminders_data)
+    except:
+        reminders_json = [{}]
+    try:
+        syncstate_data = device.shell("content query --uri content://com.android.calendar/syncstate")
+        syncstate_json = content_to_json(syncstate_data)
+    except:
+        syncstate_json = [{}]
+    
+    calendar_schema = os.path.join(os.path.dirname(__file__), "ressources" , "calendar.json")
+    with open(calendar_schema, "r", encoding="utf-8") as f:
+        schema = json.load(f)
+    calendar_defaults = schema["Calendars"]
+    color_defaults = schema["Colors"]
+    event_defaults = schema["Events"]
+    extended_defaults = schema["ExtendedProperties"]
+    reminders_defaults = schema["Reminders"]
+    sync_defaults = schema["_sync_state"]
+    tables_map = {
+        "Calendars": (calendar_defaults, calendars_json),
+        "Colors": (color_defaults, colors_json),
+        "Events": (event_defaults, event_json),
+        "ExtendedProperties": (extended_defaults, extended_json),
+        "Reminders": (reminders_defaults, reminders_json),
+        "_sync_state": (sync_defaults, syncstate_json)
+    }  
+    conn = sqlite3.connect(calendar_db)
+    cur = conn.cursor()
+    for table_name, (table_defaults, table_data) in tables_map.items():
+        schema_columns = list(table_defaults.keys())
+        columns = schema_columns
+        cur.execute(f"DROP TABLE IF EXISTS {table_name}")
+        create_table(cur, table_name, columns)
+        insert_data(cur, table_name, table_defaults, table_data)
+    conn.commit()
+    conn.close()
+    log("Recreated calendar.db (partial)")
+
     if zip_path != None:
         with zipfile.ZipFile(zip_path, mode="a") as zf:
             if os.path.exists(mmssms_db):
@@ -2178,11 +2242,15 @@ def recreate_dbs(change, text, zip_path=None):
                 zf.write(call_db, "data/data/com.android.providers.contacts/databases/calllog.db")
             if os.path.exists(contact_db):
                 zf.write(contact_db, "data/data/com.android.providers.contacts/databases/contacts2.db")
+            if os.path.exists(calendar_db):
+                zf.write(calendar_db, "data/data/com.android.providers.calendar/databases/calendar.db")
     try: os.remove(mmssms_db)
     except: pass
     try: os.remove(call_db)
     except: pass
     try: os.remove(contact_db)
+    except: pass
+    try: os.remove(calendar_db)
     except: pass
     change.set(1)
     
