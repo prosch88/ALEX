@@ -740,7 +740,7 @@ class MyApp(ctk.CTk):
 
         # Exploiting attempt
         if incl_cve == "on":
-            if int(software.split(".")[0]) in range(9,11):
+            if int(software.split(".")[0]) in range(9,12):
                 self.change.set(0)
                 self.prog_text.configure(text="")
                 self.progress.pack_forget()
@@ -2427,7 +2427,7 @@ def exploit_zygote(zip_path, text, prog_text, change):
         cve_cmd = f.read()
     try: device.shell(cve_cmd, timeout=4)
     except: pass
-    cmd = '''sh -c \"echo 'whoami' | toybox nc localhost 4321\"'''
+    cmd = '''sh -c \"echo 'toybox whoami' | toybox nc localhost 4321\"'''
     z_whoami = device.shell(cmd)
     #print(z_whoami)
     if "system" in z_whoami:
