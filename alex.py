@@ -1575,11 +1575,11 @@ def get_client(host=default_host, port=default_port, check=False):
             if len(full_name) > 26:
                 wordnames = full_name.split()
                 if len(' '.join(wordnames[:-1])) < 27:
-                    fname_s = ' '.join(wordnames[:-1]) + "\n" + '{:13}'.format(" ") + "\t" + wordnames[-1]
+                    fname_s = (' '.join(wordnames[:-1]) + "\n" + '{:13}'.format(" ") + "\t" + wordnames[-1]).title()
                 else:
-                    fname_s = ' '.join(wordnames[:-2]) + "\n" + '{:13}'.format(" ") + "\t" + ' '.join(wordnames[-2:])
+                    fname_s = (' '.join(wordnames[:-2]) + "\n" + '{:13}'.format(" ") + "\t" + ' '.join(wordnames[-2:])).title()
             else:
-                fname_s = full_name
+                fname_s = full_name.title()
             global data_s
             global used
             global used_s
