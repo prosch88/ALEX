@@ -1,4 +1,10 @@
 # ALEX
+
+<div align="center">
+<img src="./assets/alex.png" alt="UFADE Logo" width="200"/>
+</div>
+<br>
+
 **Android Logical Extractor**
 
 This is a Python script intended as an ADB counterpart to UFADE.
