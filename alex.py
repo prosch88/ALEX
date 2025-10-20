@@ -891,13 +891,34 @@ class MyApp(ctk.CTk):
 
     def shot(self, imglabel, namefield):
         hsize = 426
+        shotfail = False
+        name = snr + "_" + str(datetime.now().strftime("%m_%d_%Y_%H_%M_%S"))
+        filename = name + ".png"
+        hashname = name + ".txt"
+        filepath = os.path.join("screenshots", filename)
+        hashpath = os.path.join("screenshots", hashname)
         if ut == False:
-            shot = device.screenshot()
+            try:
+                shot = device.screenshot(error_ok=False)
+                png_bytes = BytesIO()
+                shot.save(png_bytes, format="PNG")
+                png = png_bytes.getvalue()
+            except:
+                shotfail = True
+                shot_path = "/sdcard/alex_shot.png"
+                device.shell(f"screencap {shot_path}")
+                device.sync.pull(shot_path, filepath)
+                device.shell(f"rm {shot_path}")
+                shot = Image.open(filepath)
+                png_bytes = BytesIO()
+                shot.save(png_bytes, format="PNG")
+                png = png_bytes.getvalue()
         else:
             shot = ut_app_shot()
-        png_bytes = BytesIO()
-        shot.save(png_bytes, format="PNG")
-        png = png_bytes.getvalue()
+            png_bytes = BytesIO()
+            shot.save(png_bytes, format="PNG")
+            png = png_bytes.getvalue()
+        
         hperc = (hsize/float(shot.size[1]))
         wsize = int((float(shot.size[0])*float(hperc)))
         if wsize > 300:
@@ -906,15 +927,14 @@ class MyApp(ctk.CTk):
             hsize = int((float(shot.size[1])*float(wperc)))
         screensh = ctk.CTkImage(dark_image=shot, size=(wsize, hsize))
         imglabel.configure(image=screensh)
-        hash_sha256 = hashlib.sha256(png).hexdigest()
-        name = snr + "_" + str(datetime.now().strftime("%m_%d_%Y_%H_%M_%S"))
-        filename = name + ".png"
-        hashname = name + ".txt"
-        filepath = os.path.join("screenshots", filename)
-        hashpath = os.path.join("screenshots", hashname)
-        #shot.save(filepath)
-        with open(filepath, "wb") as file:
-           file.write(png)
+        if shotfail == False:
+            hash_sha256 = hashlib.sha256(png).hexdigest()
+        else: 
+            hash_sha256 = hashlib.sha256(open(filepath, "rb").read()).hexdigest()
+        
+        if shotfail == False:
+            with open(filepath, "wb") as file:
+                file.write(png)
         with open(hashpath, "w") as hash_file:
             hash_file.write(hash_sha256)
         log(f"Created screenshot {filename} with hash {hash_sha256}")
@@ -970,6 +990,9 @@ class MyApp(ctk.CTk):
         name = chat_name + "_" + str(datetime.now().strftime("%m_%d_%Y_%H_%M_%S"))
         filename = name + ".png"
         hashname = name + ".txt"
+        filepath = os.path.join("screenshots", app_name, chat_name, filename)
+        hashpath = os.path.join("screenshots", app_name, chat_name, hashname)
+        shotfail = False
         hsize = 426
         if direction == "down":
             swipe_direction = lambda: device.swipe(w//2, h//2, w//2, 0, 0.5)
@@ -983,10 +1006,21 @@ class MyApp(ctk.CTk):
             try: os.mkdir(os.path.join("screenshots", app_name, chat_name))
             except: pass
             seen_hashes = []
-            shot = device.screenshot()
-            png_bytes = BytesIO()
-            shot.save(png_bytes, format="PNG")
-            png = png_bytes.getvalue()
+            try:
+                shot = device.screenshot(error_ok=False)
+                png_bytes = BytesIO()
+                shot.save(png_bytes, format="PNG")
+                png = png_bytes.getvalue()
+            except:
+                shotfail = True
+                shot_path = "/sdcard/alex_shot.png"
+                device.shell(f"screencap {shot_path}")
+                device.sync.pull(shot_path, filepath)
+                device.shell(f"rm {shot_path}")
+                shot = Image.open(filepath)
+                png_bytes = BytesIO()
+                shot.save(png_bytes, format="PNG")
+                png = png_bytes.getvalue()
             hperc = (hsize/float(shot.size[1]))
             wsize = int((float(shot.size[0])*float(hperc)))
             w = shot.size[0]
@@ -997,11 +1031,12 @@ class MyApp(ctk.CTk):
                 hsize = int((float(shot.size[1])*float(wperc)))
             screensh = ctk.CTkImage(dark_image=shot, size=(wsize, hsize))
             imglabel.configure(image=screensh)
-            filepath = os.path.join("screenshots", app_name, chat_name, filename)
-            hashpath = os.path.join("screenshots", app_name, chat_name, hashname)
-            with open(os.path.join(filepath), "wb") as file:
-                file.write(png)
-            hash_sha256 = hashlib.sha256(png).hexdigest()
+            if shotfail == False:
+                with open(os.path.join(filepath), "wb") as file:
+                    file.write(png)
+                hash_sha256 = hashlib.sha256(png).hexdigest()
+            else:
+                hash_sha256 = hashlib.sha256(open(filepath, "rb").read()).hexdigest()
             with open(os.path.join(hashpath), "w") as hash_file:
                 hash_file.write(hash_sha256)
             log(f"Created screenshot {filename} with hash {hash_sha256}")
@@ -1023,10 +1058,21 @@ class MyApp(ctk.CTk):
                     prev = png
                     swipe_direction()
                     time.sleep(0.3)
-                    shot = device.screenshot()
-                    png_bytes = BytesIO()
-                    shot.save(png_bytes, format="PNG")
-                    png = png_bytes.getvalue()
+                    try:
+                        shot = device.screenshot(error_ok=False)
+                        png_bytes = BytesIO()
+                        shot.save(png_bytes, format="PNG")
+                        png = png_bytes.getvalue()
+                    except:
+                        shotfail = True
+                        shot_path = "/sdcard/alex_shot.png"
+                        device.shell(f"screencap {shot_path}")
+                        device.sync.pull(shot_path, filepath)
+                        device.shell(f"rm {shot_path}")
+                        shot = Image.open(filepath)
+                        png_bytes = BytesIO()
+                        shot.save(png_bytes, format="PNG")
+                        png = png_bytes.getvalue()
                     l_hash = imagehash.phash(shot)
                     if png != prev:
                         duplicate = any(abs(l_hash - h) <= 3 for h in seen_hashes)
@@ -1040,11 +1086,12 @@ class MyApp(ctk.CTk):
                                 hsize = int((float(shot.size[1])*float(wperc)))
                             screensh = ctk.CTkImage(dark_image=shot, size=(wsize, hsize))
                             imglabel.configure(image=screensh)
-                            filepath = os.path.join("screenshots", app_name, chat_name, filename)
-                            hashpath = os.path.join("screenshots", app_name, chat_name, hashname)
-                            with open(os.path.join(filepath), "wb") as file:
-                                file.write(png)
-                            hash_sha256 = hashlib.sha256(png).hexdigest()
+                            if shotfail == False:
+                                with open(os.path.join(filepath), "wb") as file:
+                                    file.write(png)
+                                hash_sha256 = hashlib.sha256(png).hexdigest()
+                            else:
+                                hash_sha256 = hashlib.sha256(open(filepath, "rb").read()).hexdigest()
                             with open(os.path.join(hashpath), "w") as hash_file:
                                 hash_file.write(hash_sha256)
                             log(f"Created screenshot {filename} with hash {hash_sha256}")
