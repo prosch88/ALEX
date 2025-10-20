@@ -73,7 +73,9 @@ Possibly the trust-message is shown on the device screen. Confirm with "always t
 Now you should see the device information screen and will be prompted to choose a working directory.
 By default, the script is setting this to the directory from which it has been called.
 
-Currently extractions are possible for Android, WearOS and Ubuntu Touch devices.
+Currently extractions are possible for Android, FireOS, WearOS and Ubuntu Touch devices.
+
+For Ubuntu Touch devices there is also a physical acquisition flow.
 
 <br />
 
