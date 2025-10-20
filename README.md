@@ -48,7 +48,7 @@ pip install -r requirements.txt
 Windows:
 
 ```
-winget install --id Google.PlatformTool
+winget install --id Google.PlatformTools
 ```
 
 Highly recommended: Disable the [Maximum Path Length Limitation](https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=Registry) 
