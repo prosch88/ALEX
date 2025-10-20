@@ -13,7 +13,6 @@ Requires Python == 3.11.
 
 More features may follow.
 
-
 <br />
 
 ## Installation
@@ -53,8 +52,6 @@ winget install --id Google.PlatformTool
 ```
 
 Highly recommended: Disable the [Maximum Path Length Limitation](https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=Registry) 
-
-<br />
 
 <br />
 
