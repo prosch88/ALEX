@@ -2281,6 +2281,27 @@ def recreate_dbs(change, text, zip_path=None):
     conn.close()
     log("Recreated calendar.db (partial)")
 
+    #Package-usage
+    text.configure(text="Attempt to recreate the package-usage.list")
+    packageusage = "package-usage.list"
+    usages = device.shell("dumpsys usagestats")
+    with open(packageusage, "w", encoding="utf-8") as uf:
+        uf.write("PACKAGE_USAGE__VERSION_1\n")
+        for line in usages.splitlines():
+            m = re.match(r'\s*package=([\w\.]+)\s+totalTimeUsed="[^"]*"\s+lastTimeUsed="([^"]+)"\s+totalTimeVisible="[^"]*"\s+lastTimeVisible="([^"]+)"\s+lastTimeComponentUsed="([^"]+)"\s+totalTimeFS="[^"]*"\s+lastTimeFS="([^"]+)"', line)
+            if m:
+                pkg, lused, lvis, lcomp, lfs = m.groups()
+                f1 = 0
+                f2 = usage_to_ms(lused)
+                f3 = 0
+                f4 = usage_to_ms(lcomp)
+                f5 = usage_to_ms(lvis)
+                f6 = usage_to_ms(lfs)
+                useline = f"{pkg} {f1} {f2} {f3} {f4} {f5} {f6} 0 0"
+                if "0 0 0 0 0 0 0 0" not in useline:
+                    uf.write(f"{useline}\n")
+    log("Recreated package-usage.list")
+
     if zip_path != None:
         with zipfile.ZipFile(zip_path, mode="a") as zf:
             if os.path.exists(mmssms_db):
@@ -2291,6 +2312,8 @@ def recreate_dbs(change, text, zip_path=None):
                 zf.write(contact_db, "data/data/com.android.providers.contacts/databases/contacts2.db")
             if os.path.exists(calendar_db):
                 zf.write(calendar_db, "data/data/com.android.providers.calendar/databases/calendar.db")
+            if os.path.exists(packageusage):
+                zf.write(packageusage, "data/system/package-usage.list")
     try: os.remove(mmssms_db)
     except: pass
     try: os.remove(call_db)
@@ -2298,6 +2321,8 @@ def recreate_dbs(change, text, zip_path=None):
     try: os.remove(contact_db)
     except: pass
     try: os.remove(calendar_db)
+    except: pass
+    try: os.remove(packageusage)
     except: pass
     change.set(1)
     
@@ -2310,6 +2335,15 @@ def get_data_size(data_path, change):
     except:
         total_size = 1
     change.set(1)
+
+def usage_to_ms(s):
+    if s in ("1970-01-01 00:00:00", "1970-01-01 01:00:00"):
+        return 0
+    try:
+        dt = datetime.strptime(s, "%Y-%m-%d %H:%M:%S")
+        return int(dt.replace(tzinfo=timezone.utc).timestamp() * 1000)
+    except:
+        return 0
 
 
 def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, prog_text, progress, change, exist_ok: bool = True, zip=None) -> int:

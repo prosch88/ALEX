@@ -1,0 +1,89 @@
+# ALEX
+**Android Logical Extractor**
+
+This is a Python script intended as an ADB counterpart to [UFADE](https://github.com/prosch88/UFADE).
+
+It utilizes [adbutils](https://github.com/openatx/adbutils) to automate the acquisition of mobile devices (Mostly Android) via ADB.
+Many of the features are based on the Bash Script [android_triage](https://github.com/RealityNet/android_triage), and one of the basic ideas behind the project is to make these features available across all common operating systems.
+Since I only have a limited supply of test devices and the features offered vary across different manufacturers, I am dependent on the support of the community to ensure stable and predictable behavior.
+
+The interface is based on [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter). This project is at an early stage and compiled versions will follow, when more testing is done.
+
+Requires Python == 3.11.
+
+More features may follow.
+
+<br />
+
+## Installation
+
+**Clone the repo:**
+```
+git clone https://github.com/prosch88/ALEX
+```
+
+**Install dependencies:**
+
+Arch / Manjaro:
+```
+sudo pacman -S tk, android-tools
+```
+Debian / Ubuntu:
+```
+sudo apt-get install python3-tk libasound2-dev, adb
+```
+CentOS / Red Hat:
+```
+sudo yum install tkinter, adb
+```
+MacOS:
+```
+brew install python@3.11 python-tk@3.11 android-platform-tools
+```
+
+**Install the requirements:**
+```
+pip install -r requirements.txt 
+```
+Windows:
+
+```
+winget install --id Google.PlatformTool
+```
+
+Highly recommended: Disable the [Maximum Path Length Limitation](https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=Registry) 
+
+<br />
+
+## Usage
+
+Activate ADB debugging on the device and connect an Ap device to your workstation, unlock and pair the device.
+Start the script:
+```
+python alex.py
+```
+
+Possibly the trust-message is shown on the device screen. Confirm with "always trust this computer".
+Now you should see the device information screen and will be prompted to choose a working directory.
+By default, the script is setting this to the directory from which it has been called.
+
+Currently extractions are possible for Android, WearOS and Ubuntu Touch devices.
+
+<br />
+
+Like this tool? 
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/I3I3H646F)
+
+## Acknowledgements
+
+This script utilizes the following projects:
+
+[adbutils](https://github.com/openatx/adbutils) by [openatx](https://github.com/openatx)
+
+[CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) by [TomSchimansky](https://github.com/TomSchimansky) 
+
+[crossfiledialog](https://github.com/maikelwever/crossfiledialog) by [maikelwever](https://github.com/maikelwever)
+
+[simpleaudio](https://github.com/hamiltron/py-simple-audio), [pdfme](https://github.com/aFelipeSP/pdfme)
+
