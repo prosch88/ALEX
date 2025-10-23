@@ -2281,6 +2281,35 @@ def recreate_dbs(change, text, zip_path=None):
     conn.close()
     log("Recreated calendar.db (partial)")
 
+    #packages.list
+    text.configure(text="Attempt to recreate the packages.list")
+    packages_list = "packages.list"
+    try: os.remove(packages_list)
+    except: pass
+    with open(packages_list, "w", encoding="utf-8") as pl:
+        for app in all_apps:
+            a_class = device.shell(f"pm path {app}")
+            if "priv-app" in a_class:
+                pack_class = "platform:privapp"
+            elif "vendor" in a_class:
+                pack_class = "platform:vendor"
+            else:
+                pack_class = "default"
+            dumpsys = device.shell(f"dumpsys package {app}")
+            app_dir = re.search(r"dataDir=([^\s]+)", dumpsys)
+            app_uid = re.search(r"\buid=(\d+)", dumpsys)
+            app_tar = re.search(r"targetSdk=(\d+)", dumpsys)
+            gids_matches = re.findall(r"gids=\[([^\]]*)\]", dumpsys)
+            gids = []
+            baseapk_match = re.search(r"base\.apk\s*-\s*(\d+)", dumpsys)
+            baseapk_value = baseapk_match.group(1) if baseapk_match else 0
+            for match in gids_matches:
+                gids += [g.strip() for g in match.split(',') if g.strip()]
+            app_gids = sorted(set(gids), key=int) if gids else None
+            gid_str = ",".join(gids) if gids else "none"
+            pl.write(f"{app} {app_uid.group(1) if app_uid else 0} 0 {app_dir.group(1) if app_dir else 'none'} {pack_class}:targetSdkVersion={app_tar.group(1) if pack_class else 0} {gid_str} 0 {baseapk_value}\n")
+    log("Recreated packages.list")
+
     if zip_path != None:
         with zipfile.ZipFile(zip_path, mode="a") as zf:
             if os.path.exists(mmssms_db):
@@ -2291,6 +2320,8 @@ def recreate_dbs(change, text, zip_path=None):
                 zf.write(contact_db, "data/data/com.android.providers.contacts/databases/contacts2.db")
             if os.path.exists(calendar_db):
                 zf.write(calendar_db, "data/data/com.android.providers.calendar/databases/calendar.db")
+            if os.path.exists(packages_list):
+                zf.write(packages_list, "data/system/packages.list")
     try: os.remove(mmssms_db)
     except: pass
     try: os.remove(call_db)
@@ -2298,6 +2329,8 @@ def recreate_dbs(change, text, zip_path=None):
     try: os.remove(contact_db)
     except: pass
     try: os.remove(calendar_db)
+    except: pass
+    try: os.remove(packages_list)
     except: pass
     change.set(1)
     
