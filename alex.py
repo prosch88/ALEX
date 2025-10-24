@@ -1193,8 +1193,8 @@ class MyApp(ctk.CTk):
                 for d_app in apps:
                     i+=1
                     progr = 100/len(apps)*i
-                    app_name = d_app[0][:43]
-                    app_version = device.app_info(d_app[0]).version_name[:30]
+                    app_name = d_app[0][:42]
+                    app_version = device.app_info(d_app[0]).version_name[:28]
                     app_installer = "packageinstaller" if "packageinstaller" in d_app[1] else d_app[1][:25]
                     apps_info.append([app_name, app_version, app_installer])
                     self.prog_text.configure(text=f"{int(100/len(apps)*i)}%")
@@ -1267,7 +1267,7 @@ class MyApp(ctk.CTk):
                                 "style": {"s": 10, "border_color": "lightgrey"},
                                 "table": [
                                     [{".": [{".b": "Dev-Name:"}]}, {"colspan": 3, "image": temp_image_name}, None, None],
-                                    [{"style": {"border_color": "white", "cell_fill": u_grey}, ".": [{".b": "Model-Nr:"}]}, {"colspan": 3, "style": {"cell_fill": u_grey}, ".": [{".": full_name}]}, None, None],
+                                    [{"style": {"border_color": "white", "cell_fill": u_grey}, ".": [{".b": "Model-Nr:"}]}, {"colspan": 3, "style": {"cell_fill": u_grey}, ".": [{".": full_name.title()}]}, None, None],
                                     [{".": [{".b": "SerialNr:"}]}, {"colspan": 3, ".": [{".": snr}]}, None, None],
                                 ]
                             },
@@ -1347,7 +1347,7 @@ class MyApp(ctk.CTk):
                                 "style": {"s": 10, "border_color": "lightgrey"},
                                 "table": [
                                     [{".": [{".b": "Dev-Name:"}]}, {"colspan": 3, "image": temp_image_name}, None, None],
-                                    [{"style": {"border_color": "white", "cell_fill": u_grey}, ".": [{".b": "Model-Nr:"}]}, {"colspan": 3, "style": {"cell_fill": u_grey}, ".": [{".": full_name}]}, None, None],
+                                    [{"style": {"border_color": "white", "cell_fill": u_grey}, ".": [{".b": "Model-Nr:"}]}, {"colspan": 3, "style": {"cell_fill": u_grey}, ".": [{".": full_name.title()}]}, None, None],
                                     [{".": [{".b": "Product:"}]}, {"colspan": 3, ".": [{".": product}]}, None, None],
                                     [{"style": {"cell_fill": u_grey}, ".": [{".b": "Platform:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": d_platform}]}, { "style": {"cell_fill": u_grey}, ".": [{".b": "WiFi MAC:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": w_mac}]}],
                                     [{".": [{".b": "Software:"}]}, {".": [{".": software}]}, {".": [{".b": "BT MAC:"}]}, {".": [{".": b_mac}]}],
@@ -1776,7 +1776,7 @@ def save_info_json(zip_path, change):
 
 def save_info():
     file = open("device_" + snr + ".txt", "w", encoding='utf-8')
-    file.write("## DEVICE ##\n\n" + "Model-Nr:   " + full_name + "\nDev-Name:   " + d_name + "\nProduct:    " + product + 
+    file.write("## DEVICE ##\n\n" + "Model-Nr:   " + full_name.title() + "\nDev-Name:   " + d_name + "\nProduct:    " + product + 
         "\nPlatform:   " + d_platform + "\nSoftware:   " + software + "\nBuild-Nr:   " + build + "\nLanguage:   " + locale + "\nSerialnr:   " + snr + 
         "\nWifi MAC:   " + w_mac + "\nBT-MAC:     " + b_mac + "\nData:       " + data_s + "\nFree Space: " + free + 
         "\nAD-ID :     " + ad_id + "\nIMEI :      " + imei)    
