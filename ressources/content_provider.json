@@ -108,6 +108,7 @@
         "bookmarks",
         "searches"
     ],
+    "com.google.android.gms.phenotype": "com.google.android.gms.auth_account",    
     "com.android.browser": [
         "accounts",
         "accounts/account_name",
