@@ -655,7 +655,7 @@ class MyApp(ctk.CTk):
             sign = "-"
         output_format = "%d/%m/%Y %H:%M:%S" 
         starttime = str(now.strftime(output_format)) + " (" + sign + str(int(utc_offset_hours)) + ")"
-        ufed_folder = f"{snr}_Advanced_Logical_UFED_Style_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}"
+        ufed_folder = f"{snr}_Advanced_Logical_UFED_Style_{str(datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))}"
         try: 
             os.mkdir(ufed_folder)
         except: 
