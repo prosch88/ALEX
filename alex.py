@@ -2565,7 +2565,6 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
                 dt = datetime.fromtimestamp(mtime) or datetime.now()
                 zip_info.date_time = dt.timetuple()[:6]
                 zip.writestr(zip_info, data)
-                print("zipped")
                 os.remove(new_dst)
             except Exception as e:
                 log(f"Error zipping: {new_dst}: {e}")
