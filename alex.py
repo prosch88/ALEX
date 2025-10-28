@@ -126,16 +126,6 @@ class MyApp(ctk.CTk):
 
         # Show Main Menu
         self.show_noadbserver()
-        #if lockdown != None:
-        #    if ispaired != False:
-        #        self.show_cwd()
-        #    else:
-        #        self.show_notpaired()
-        #else:
-        #    if mode == "normal":
-        #        self.show_nodevice()
-        #    else:
-        #        self.show_recovery()
 
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
