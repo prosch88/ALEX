@@ -84,7 +84,7 @@ def ufd_report_xml(contact_dict, call_dict, calendar_dict, sms_dict, brand="Unkn
             ET.SubElement(phone_el, "designation").text = "Mobile"
             ET.SubElement(phone_el, "value").text = number
             normalized = number.replace("-", "")
-            contact_map[normalized] = f"{cdata["name"]} "
+            contact_map[normalized] = f"{cdata['name']} "
         
     # Callog
     incoming = []
