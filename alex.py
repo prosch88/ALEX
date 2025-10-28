@@ -18,6 +18,7 @@ from adbutils._utils import append_path
 from io import BytesIO
 from pathlib import Path
 from pdfme import build_pdf
+from alex import ufed_style
 import numpy as np
 import sqlite3
 import shutil
@@ -210,6 +211,8 @@ class MyApp(ctk.CTk):
             self.show_save_device_info()
         elif menu_name == "PullData":
             self.show_pull_data()
+        elif menu_name == "AdvUFED":
+            self.show_ufed_bu()
         elif menu_name == "PRFS":
             self.show_prfs()
         elif menu_name == "ADBBU":
@@ -404,10 +407,12 @@ class MyApp(ctk.CTk):
             self.menu_buttons = [
                 ctk.CTkButton(self.dynamic_frame, text="Pull \"sdcard\"", command=lambda: self.switch_menu("PullData"), width=200, height=70, font=self.stfont),
                 ctk.CTkButton(self.dynamic_frame, text="ADB Backup", command=lambda: self.switch_menu("ADBBU"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Logical+ Backup\n(UFED-Style)", command=lambda: self.switch_menu("AdvUFED"), width=200, height=70, font=self.stfont),
                 ctk.CTkButton(self.dynamic_frame, text="Partially Restored\nFilesystem Backup", command=lambda: self.switch_menu("PRFS"), width=200, height=70, font=self.stfont),
             ]
             self.menu_text = ["Extract the content of \"sdcard\" as a folder.",
                             "Perform an ADB-Backup.",
+                            "Creates an advanced Logical Backup as ZIP\nwith an UFD File for PA.",
                             "Try to reconstruct parts of the device-filesystem"]
         else:
             self.menu_buttons = [
@@ -620,7 +625,7 @@ class MyApp(ctk.CTk):
         self.incl_system_box = ctk.CTkCheckBox(self.dynamic_frame, text="Include System-Apps.", variable=self.incl_system, onvalue="on", offvalue="off")
         self.incl_system_box.pack(anchor="w", padx= 80, pady=5)
         self.change = ctk.IntVar(self, 0)
-        self.startb = ctk.CTkButton(self.dynamic_frame, text="Start", font=self.stfont, command=lambda: self.adb_bu(self. change, incl_shared=self.incl_shared.get(), incl_apps=self.incl_apps.get(), incl_system=self.incl_system.get()))
+        self.startb = ctk.CTkButton(self.dynamic_frame, text="Start", font=self.stfont, command=lambda: self.adb_bu(self.change, incl_shared=self.incl_shared.get(), incl_apps=self.incl_apps.get(), incl_system=self.incl_system.get()))
         self.startb.pack(pady=20) 
         self.backb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=lambda: self.switch_menu("AcqMenu"))
         self.backb.pack(pady=5)
@@ -628,6 +633,80 @@ class MyApp(ctk.CTk):
         self.text.configure(text="ADB-Backup complete.")
         self.prog_text.pack_forget()
         self.progress.pack_forget()
+        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
+
+    #Show the UFED-Style Backup screen
+    def show_ufed_bu(self):
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
+        ctk.CTkLabel(self.dynamic_frame, text="Logical+ Backup (UFED-Style)", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
+        self.text = ctk.CTkLabel(self.dynamic_frame, text="Please unlock the device and confirm \"Backup my Data\".", width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        self.text.pack(pady=15)
+        total_size = 1
+        global data_size
+        data_size = 0
+        log("Started UFED-Style Logical+ Backup")
+        now = datetime.now()
+        local_timezone = datetime.now(timezone.utc).astimezone().tzinfo
+        utc_offset = now.astimezone().utcoffset()
+        utc_offset_hours = utc_offset.total_seconds() / 3600
+        if utc_offset_hours >= 0:
+            sign = "+"
+        else:
+            sign = "-"
+        output_format = "%d/%m/%Y %H:%M:%S" 
+        starttime = str(now.strftime(output_format)) + " (" + sign + str(int(utc_offset_hours)) + ")"
+        ufed_folder = f"{snr}_Advanced_Logical_UFED_Style_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}"
+        try: 
+            os.mkdir(ufed_folder)
+        except: 
+            return
+        fname = f'{brand}_{model}'
+        zip_path = f"{fname}.zip"
+        zip = zipfile.ZipFile(os.path.join(ufed_folder, zip_path), "w", compression=zipfile.ZIP_DEFLATED, compresslevel=1)
+        self.incl_shared = ctk.StringVar(value="off")
+        self.incl_apps = ctk.StringVar(value="on")
+        self.incl_system = ctk.StringVar(value="on")
+        self.change = ctk.IntVar(self, 0)
+        self.adbu = threading.Thread(target=lambda: self.adb_bu(self.change, incl_shared=self.incl_shared.get(), incl_apps=self.incl_apps.get(), incl_system=self.incl_system.get()))
+        self.adbu.start()
+        self.wait_variable(self.change)
+        self.prog_text.configure(text="")
+        self.change.set(0)
+        self.zip_backup = threading.Thread(target=lambda: self.zip_bu(zip, self.text, self.change))
+        self.zip_backup.start()
+        self.wait_variable(self.change)
+        data_path = "/sdcard/"
+        
+        self.get_dsize = threading.Thread(target=lambda: get_data_size(data_path, self.change))
+        self.get_dsize.start()
+        self.wait_variable(self.change)
+        folder = f'Data_{snr}_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}'
+        self.change.set(0)
+        self.progress.pack_forget()
+        self.prog_text.configure(text="0%")
+        self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0)
+        self.progress.set(0)
+        self.prog_text.configure(text="0%")
+        self.progress.pack()
+        self.pull_data = threading.Thread(target=lambda: pull_dir_mod(device.sync, data_path, folder, text=self.text, prog_text=self.prog_text, progress=self.progress, change=self.change, zip=zip, mode="ufed"))
+        self.pull_data.start()
+        self.wait_variable(self.change)
+        zip.close()
+        try: shutil.rmtree(folder)
+        except: pass
+        self.change.set(0)
+        self.prog_text.configure(text="")
+        self.progress.pack_forget()
+        self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
+        self.progress.pack()
+        self.progress.start()
+        self.ufd_data = threading.Thread(target=lambda: ufed_style_files(self.change, ufed_folder, zip, fname, starttime, self.text))
+        self.ufd_data.start()
+        self.wait_variable(self.change)
+        self.text.configure(text="Advanced Logical Backup complete.")
+        self.prog_text.pack_forget()
+        self.progress.pack_forget()
+        log("UFED-Style Logical+ Backup complete")
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))  
 
     #Show the "PRFS"-Backup screen
@@ -772,11 +851,15 @@ class MyApp(ctk.CTk):
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
 
     def adb_bu(self, change, incl_shared, incl_apps, incl_system):
-        self.startb.pack_forget()
-        self.backb.pack_forget()
-        self.incl_apps_box.pack_forget()
-        self.incl_shared_box.pack_forget()
-        self.incl_system_box.pack_forget()
+        global bu_file
+        try:
+            self.startb.pack_forget()
+            self.backb.pack_forget()
+            self.incl_apps_box.pack_forget()
+            self.incl_shared_box.pack_forget()
+            self.incl_system_box.pack_forget()
+        except:
+            pass
         self.text.pack_forget()
         self.text = ctk.CTkLabel(self.dynamic_frame, text="Please unlock the device and confirm \"Backup my Data\".", width=585, height=60, font=self.stfont, anchor="w", justify="left")
         self.text.pack(pady=25)
@@ -805,9 +888,10 @@ class MyApp(ctk.CTk):
         log(f"Created Backup: {bu_file}")
         change.set(1)
 
+
     def call_backup(self, bu_file, bu_change, bu_options,):
         total = 0
-        print(bu_options)
+        #print(bu_options)
         with open(bu_file, "wb") as f:
             stream = device.shell(f"bu backup{bu_options}", stream=True)
             while True:
@@ -819,6 +903,12 @@ class MyApp(ctk.CTk):
                 total += len(chunk)
                 self.prog_text.configure(text=f"{total/1024/1024:.1f} MB written")
         bu_change.set(1)    
+
+    def zip_bu(self, zip, text, change):
+        text.configure(text="Including the backup to the Zip.")
+        zip.write(bu_file, "backup/backup.ab")
+        os.remove(bu_file)
+        change.set(1)
 
     #Show Bugreport-Screen (Dumpsys)
     def show_bugreport(self):
@@ -1619,6 +1709,7 @@ def get_client(host=default_host, port=default_port, check=False):
                     name_s = ' '.join(wordnames[:-2]) + "\n" + '{:13}'.format(" ") + "\t" + ' '.join(wordnames[-2:])
             else:
                 name_s = d_name
+            global fname_s
             if len(full_name) > 26:
                 wordnames = full_name.split()
                 if len(' '.join(wordnames[:-1])) < 27:
@@ -2333,6 +2424,67 @@ def recreate_dbs(change, text, zip_path=None):
     try: os.remove(packages_list)
     except: pass
     change.set(1)
+
+def ufed_style_files(change, ufed_folder, zip, zipname, starttime, text):
+    text.configure(text="Creating UFED-Style Report files.")
+    with open(os.path.join(ufed_folder, "InstalledAppsList.txt"), "w") as apps_file:
+        for app in all_apps:
+            apps_file.write(f"{app}\n")
+    #Contacts
+    text.configure(text="Creating UFED-Style Report files.\nQuery: content://com.android.contacts/data/phones")
+    contact_query = device.shell("content query --uri content://com.android.contacts/data/phones")
+    contact_json = content_to_json(contact_query)
+    #Calls
+    text.configure(text="Creating UFED-Style Report files.\nQuery: content://call_log/calls")
+    calls_query = device.shell("content query --uri content://call_log/calls")
+    calls_json = content_to_json(calls_query)
+    #Calendar
+    text.configure(text="Creating UFED-Style Report files.\nQuery: content://com.android.calendar/event_entities")
+    calendar_query = device.shell("content query --uri content://com.android.calendar/event_entities")
+    calendar_json = content_to_json(calendar_query)
+    #SMS
+    text.configure(text="Creating UFED-Style Report files.\nQuery: content://sms")
+    sms_query = device.shell("content query --uri content://sms")
+    sms_json = content_to_json(sms_query)
+
+    end = datetime.now()
+    local_timezone = datetime.now(timezone.utc).astimezone().tzinfo
+    utc_offset = end.astimezone().utcoffset()
+    utc_offset_hours = utc_offset.total_seconds() / 3600
+    if utc_offset_hours >= 0:
+        sign = "+"
+    else:
+        sign = "-"
+    output_format = "%d/%m/%Y %H:%M:%S" 
+    endtime = str(end.strftime(output_format)) + " (" + sign + str(int(utc_offset_hours)) + ")"
+
+    #Report.xml   
+    text.configure(text="Creating UFED-Style Report files.\nCreating Report.xml")
+    xml_path = os.path.join(ufed_folder, "report.xml")
+    reportxml = ufed_style.ufd_report_xml(contact_json, calls_json, calendar_json, sms_json, brand, model, software, build, imei, ad_id, starttime, endtime, a_version, f"{zipname}.zip")
+    with open(xml_path, "w") as xml_file:
+        xml_file.write(reportxml)
+    with zipfile.ZipFile(f'{os.path.join(ufed_folder, zipname)}.zip', mode="a") as zf:
+        zf.write(xml_path, "logical/Report.xml")
+    try: os.remove(xml_path)
+    except: pass
+
+    #UFD-File
+    text.configure(text="Creating UFED-Style Report files.\nCalculating Zip-Hash. This may take a while.")
+    try:
+        with open(f'{os.path.join(ufed_folder, zipname)}.zip', 'rb', buffering=0) as z:
+            z_hash = hashlib.file_digest(z, 'sha256').hexdigest()
+    except:
+        z_hash = " Error - Python >= 3.11 required"
+
+    text.configure(text="Creating UFED-Style Report files.\nCreating UFD-File")
+    with open(f'{os.path.join(ufed_folder, zipname)}.ufd', "w") as ufdf:
+        ufdf.write("[Backup]\nSharedBackupEnabled=True\nType=ZIP\nZIPLogicalPath=backup\n\n" + "[DeviceInfo]\nChipset=" + d_platform + "\nModel=" + model + "\nOS=" + software + "\nSecurityPatchLevel=" + spl + "\nVendor=" + brand + "\n\n[Dumps]\nBackup=" + zipname +
+        ".zip\nXML=" + zipname + ".zip\n\n[ExtractionStatus]\nExtractionStatus=Success\n\n[General]\nADBPull=True\nAcquisitionTool=ALEX by Christian Peter\nAndroid_ID=" + ad_id + "\nConnectionType=Cable No. 100 or 170\nDate=" + starttime + "\nDevice=Report\nEndTime=" + 
+        endtime + "\nExtractionMethod=ADB_BACKUP\nExtractionType=AdvancedLogical\nFullName=" + fname_s + "\nGUID=\nInternalBuild=\nMachineName=\nModel=" + model + 
+        "\nSuggested = Profile\nUfdVer=1.2\nUnitId=\nUserName=\nVendor=Detected Model\nVersion=other\n\n[InstalledApps]\nFile=InstalledAppsList.txt\n\n[SHA256]\n" + zipname + ".zip=" + z_hash.upper() + "\n\n[XML]\nType=ZIP\nZIPLogicalPath=logical/Report.xml")
+    
+    change.set(1)
     
 
 def get_data_size(data_path, change):
@@ -2345,7 +2497,7 @@ def get_data_size(data_path, change):
     change.set(1)
 
 
-def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, prog_text, progress, change, exist_ok: bool = True, zip=None) -> int:
+def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, prog_text, progress, change, exist_ok: bool = True, zip=None, mode="default") -> int:
     """Pull directory from device:src into local:dst
 
     Returns:
@@ -2375,7 +2527,10 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
             new_src:str = append_path(src, dir.path) 
             new_dst:pathlib.Path = pathlib.Path(append_path(dst, dir.path)) 
             os.makedirs(new_dst, exist_ok=exist_ok)
-            zip_dir_path = f'{rootf.strip("/")}/{rel_in_zip}/{dir.path}/'.replace("//", "/")
+            if mode == "ufed":
+                zip_dir_path = f'backup/{rootf.strip("/")}/{rel_in_zip}/{dir.path}/'.replace("//", "/")
+            else:
+                zip_dir_path = f'{rootf.strip("/")}/{rel_in_zip}/{dir.path}/'.replace("//", "/")
             #print(zip_dir_path)
             zip.writestr(zip_dir_path, b'')
             new_rel = f"{rel_in_zip}/{dir.path}"
@@ -2385,15 +2540,25 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
             new_src:str = append_path(src, file.path) 
             new_dst:str = append_path(dst, file.path) 
             try:
+                try: mtime = self.stat(new_src).mdtime.timestamp()
+                except:pass
                 size = self.pull_file(new_src, new_dst)
+                try:
+                    if mtime < datetime.fromisoformat('1980-01-01').timestamp():
+                        mtime = datetime.fromisoformat('1980-01-01').timestamp() 
+                    os.utime(dst, (mtime, mtime))
+                except: 
+                    pass
             except:
                 log(f"Error pulling: {new_src}")
                 size = 0
             try:
                 with open(new_dst, "rb") as f:
                     data = f.read()
-                zip_rel_path = f'{rootf.strip("/")}/{rel_in_zip}/{file.path}'.replace("//", "/")
-                #print(zip_rel_path)
+                if mode == "ufed":
+                    zip_rel_path = f'backup/{rootf.strip("/")}/{rel_in_zip}/{file.path}'.replace("//", "/")
+                else:
+                    zip_rel_path = f'{rootf.strip("/")}/{rel_in_zip}/{file.path}'.replace("//", "/")
                 zip.writestr(zip_rel_path, data)
                 os.remove(new_dst)
             except Exception as e:
