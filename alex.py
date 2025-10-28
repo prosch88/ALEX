@@ -2540,13 +2540,15 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
             new_src:str = append_path(src, file.path) 
             new_dst:str = append_path(dst, file.path) 
             try:
-                try: mtime = self.stat(new_src).mdtime.timestamp()
-                except:pass
+                try: 
+                    mtime = self.stat(new_src).mtime.timestamp()
+                except:
+                    pass
                 size = self.pull_file(new_src, new_dst)
                 try:
                     if mtime < datetime.fromisoformat('1980-01-01').timestamp():
                         mtime = datetime.fromisoformat('1980-01-01').timestamp() 
-                    os.utime(dst, (mtime, mtime))
+                    os.utime(new_dst, (mtime, mtime))
                 except: 
                     pass
             except:
@@ -2559,7 +2561,11 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
                     zip_rel_path = f'backup/{rootf.strip("/")}/{rel_in_zip}/{file.path}'.replace("//", "/")
                 else:
                     zip_rel_path = f'{rootf.strip("/")}/{rel_in_zip}/{file.path}'.replace("//", "/")
-                zip.writestr(zip_rel_path, data)
+                zip_info = zipfile.ZipInfo(zip_rel_path)
+                dt = datetime.fromtimestamp(mtime) or datetime.now()
+                zip_info.date_time = dt.timetuple()[:6]
+                zip.writestr(zip_info, data)
+                print("zipped")
                 os.remove(new_dst)
             except Exception as e:
                 log(f"Error zipping: {new_dst}: {e}")
