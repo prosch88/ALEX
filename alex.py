@@ -875,23 +875,28 @@ class MyApp(ctk.CTk):
         self.call_bu = threading.Thread(target=lambda: self.call_backup(bu_file=bu_file, bu_change=self.bu_change, bu_options=bu_options))
         self.call_bu.start()
         self.wait_variable(self.bu_change)
-        log(f"Created Backup: {bu_file}")
         change.set(1)
 
 
     def call_backup(self, bu_file, bu_change, bu_options,):
         total = 0
         #print(bu_options)
-        with open(bu_file, "wb") as f:
-            stream = device.shell(f"bu backup{bu_options}", stream=True)
-            while True:
-                chunk = stream.read(65536)
-                self.text.configure(text="ADB-Backup is running.\nThis may take some time.")
-                if not chunk:
-                    break
-                f.write(chunk)
-                total += len(chunk)
-                self.prog_text.configure(text=f"{total/1024/1024:.1f} MB written")
+        try:
+            with open(bu_file, "wb") as f:
+                stream = device.shell(f"bu backup{bu_options}", stream=True)
+                while True:
+                    chunk = stream.read(65536)
+                    self.text.configure(text="ADB-Backup is running.\nThis may take some time.")
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    total += len(chunk)
+                    self.prog_text.configure(text=f"{total/1024/1024:.1f} MB written")
+            log(f"Created Backup: {bu_file}")
+        except Exception as e:
+            log(f"Error creating backup: {e}")
+            pass
+
         bu_change.set(1)    
 
     def zip_bu(self, zip, text, change):
