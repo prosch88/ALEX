@@ -26,7 +26,7 @@ def random_sha256():
     random256 = sha256_hash.hexdigest()
     return random256
 
-def ufd_report_xml(contact_dict, call_dict, calendar_dict, sms_dict, brand="Unknown", model="Unknown", sw= "", revision="-", imei="-", adid="-", starttime="", endtime="", aversion="0", zipname=""):
+def ufd_report_xml(contact_dict, call_dict, calendar_dict, sms_dict, brand="Unknown", model="Unknown", sw= "", revision="-", imei="-", adid="-", estarttime="", endtime="", aversion="0", zipname=""):
     contacts = {}
     for entry in contact_dict:
         cid = entry.get("contact_id")
@@ -352,9 +352,9 @@ def ufd_report_xml(contact_dict, call_dict, calendar_dict, sms_dict, brand="Unkn
     ET.SubElement(general_el, "revision").text = f"{sw} {revision}"
     ET.SubElement(general_el, "imei").text = imei
     ET.SubElement(general_el, "advertisingid").text = adid
-    ET.SubElement(general_el, "start_date_time").text = starttime
+    ET.SubElement(general_el, "start_date_time").text = estarttime
     ET.SubElement(general_el, "end_date_time").text = endtime
-    ET.SubElement(general_el, "phone_date_time").text = starttime
+    ET.SubElement(general_el, "phone_date_time").text = estarttime
     ET.SubElement(general_el, "connection_type").text = "USB Cable"
     ufed_ver_el = ET.SubElement(general_el, "ufed_version")
     ET.SubElement(ufed_ver_el, "xml_format").text = "1.0.2.9"
