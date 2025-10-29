@@ -63,7 +63,7 @@ Highly recommended: Disable the [Maximum Path Length Limitation](https://learn.m
 
 ## Usage
 
-Activate ADB debugging on the device and connect an Ap device to your workstation, unlock and pair the device.
+Activate ADB debugging on the device and connect it to your workstation, unlock and pair the device.
 Start the script:
 ```
 python alex.py
