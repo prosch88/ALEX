@@ -786,8 +786,12 @@ class MyApp(ctk.CTk):
                 data_size = 0
                 data_path = sys_folder
                 self.change.set(0)
-                self.get_dsize = threading.Thread(target=lambda: get_data_size(data_path, self.change))
-                self.get_dsize.start()
+                try:
+                    self.get_dsize = threading.Thread(target=lambda: get_data_size(data_path, self.change))
+                    self.get_dsize.start()
+                except:
+                    log(f"Error getting size for: {sys_folder}")
+                    self.change.set(1)                
                 self.wait_variable(self.change)
                 if total_size > 1:
                     folder = ".temp_folder"

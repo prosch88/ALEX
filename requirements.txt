@@ -2,3 +2,5 @@ adbutils
 customtkinter
 crossfiledialog
 pdfme
+numpy
+imagehash
