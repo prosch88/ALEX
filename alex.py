@@ -786,12 +786,8 @@ class MyApp(ctk.CTk):
                 data_size = 0
                 data_path = sys_folder
                 self.change.set(0)
-                try:
-                    self.get_dsize = threading.Thread(target=lambda: get_data_size(data_path, self.change))
-                    self.get_dsize.start()
-                except:
-                    log(f"Error getting size for: {sys_folder}")
-                    self.change.set(1)                
+                self.get_dsize = threading.Thread(target=lambda: get_data_size(data_path, self.change))
+                self.get_dsize.start()         
                 self.wait_variable(self.change)
                 if total_size > 1:
                     folder = ".temp_folder"
@@ -2488,10 +2484,11 @@ def ufed_style_files(change, ufed_folder, zip, zipname, starttime, text):
 
 def get_data_size(data_path, change):
     global total_size
-    size_cmd = device.shell(f"du -ks {data_path}")
+    size_cmd = device.shell(f"du -ks {data_path} 2>/dev/null")
     try:
         total_size = int(size_cmd.split()[0])*1024
-    except:
+    except Exception as e:
+        print(e)
         total_size = 1
     change.set(1)
 
