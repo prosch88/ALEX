@@ -150,18 +150,25 @@ class MyApp(ctk.CTk):
         self.current_menu = "MainMenu"
         self.skip = ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont)
         self.skip.grid(row=0, column=0, columnspan=2, sticky="w")
-        if ut == False:
+        if ut == True:
             self.menu_buttons = [
                 ctk.CTkButton(self.dynamic_frame, text="Reporting Options", command=lambda: self.switch_menu("ReportMenu"), width=200, height=70, font=self.stfont),
                 ctk.CTkButton(self.dynamic_frame, text="Acquisition Options", command=lambda: self.switch_menu("AcqMenu"), width=200, height=70, font=self.stfont),
-                ctk.CTkButton(self.dynamic_frame, text="Logging Options", command=lambda: self.switch_menu("LogMenu"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Logging Options", command=lambda: self.switch_menu("LogMenu"), width=200, height=70, font=self.stfont, state="disabled"),
                 ctk.CTkButton(self.dynamic_frame, text="Advanced Options", command=lambda: self.switch_menu("AdvMenu"), width=200, height=70, font=self.stfont),
+            ]
+        elif aos == True:
+            self.menu_buttons = [
+                ctk.CTkButton(self.dynamic_frame, text="Reporting Options", command=lambda: self.switch_menu("ReportMenu"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Acquisition Options", command=lambda: self.switch_menu("AcqMenu"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Logging Options", command=lambda: self.switch_menu("LogMenu"), width=200, height=70, font=self.stfont, state="disabled"),
+                ctk.CTkButton(self.dynamic_frame, text="Advanced Options", command=lambda: self.switch_menu("AdvMenu"), width=200, height=70, font=self.stfont, state="disabled"),
             ]
         else:
             self.menu_buttons = [
             ctk.CTkButton(self.dynamic_frame, text="Reporting Options", command=lambda: self.switch_menu("ReportMenu"), width=200, height=70, font=self.stfont),
             ctk.CTkButton(self.dynamic_frame, text="Acquisition Options", command=lambda: self.switch_menu("AcqMenu"), width=200, height=70, font=self.stfont),
-            ctk.CTkButton(self.dynamic_frame, text="Logging Options", command=lambda: self.switch_menu("LogMenu"), width=200, height=70, font=self.stfont, state="disabled"),
+            ctk.CTkButton(self.dynamic_frame, text="Logging Options", command=lambda: self.switch_menu("LogMenu"), width=200, height=70, font=self.stfont),
             ctk.CTkButton(self.dynamic_frame, text="Advanced Options", command=lambda: self.switch_menu("AdvMenu"), width=200, height=70, font=self.stfont),
             ]
         self.menu_text = ["Save information about the device and installed apps.", 
@@ -393,7 +400,15 @@ class MyApp(ctk.CTk):
     def show_acquisition_menu(self):
         self.skip = ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont)
         self.skip.grid(row=0, column=0, columnspan=2, sticky="w")
-        if ut == False: 
+        if ut == True or aos == True:
+            self.menu_buttons = [
+                ctk.CTkButton(self.dynamic_frame, text="Pull \"Home\"", command=lambda: self.switch_menu("PullData"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Physical Acquisition", command=lambda: self.switch_menu("UT_physical"), width=200, height=70, font=self.stfont),
+            ]
+            self.menu_text = ["Extract the content of \"Home\" as a folder.",
+                            "Extract a physical image of the Block-device.\n(Requires the sudo password)"] 
+            
+        else:
             self.menu_buttons = [
                 ctk.CTkButton(self.dynamic_frame, text="Pull \"sdcard\"", command=lambda: self.switch_menu("PullData"), width=200, height=70, font=self.stfont),
                 ctk.CTkButton(self.dynamic_frame, text="ADB Backup", command=lambda: self.switch_menu("ADBBU"), width=200, height=70, font=self.stfont),
@@ -403,14 +418,7 @@ class MyApp(ctk.CTk):
             self.menu_text = ["Extract the content of \"sdcard\" as a folder.",
                             "Perform an ADB-Backup.",
                             "Creates an advanced Logical Backup as ZIP\nwith an UFD File for PA.",
-                            "Try to reconstruct parts of the device-filesystem"]
-        else:
-            self.menu_buttons = [
-                ctk.CTkButton(self.dynamic_frame, text="Pull \"Home\"", command=lambda: self.switch_menu("PullData"), width=200, height=70, font=self.stfont),
-                ctk.CTkButton(self.dynamic_frame, text="Physical Acquisition", command=lambda: self.switch_menu("UT_physical"), width=200, height=70, font=self.stfont),
-            ]
-            self.menu_text = ["Extract the content of \"Home\" as a folder.",
-                            "Extract a physical image of the Block-device.\n(Requires the sudo password)"]
+                            "Try to reconstruct parts of the device-filesystem"]            
 
         self.menu_textbox = []
         for btn in self.menu_buttons:
@@ -938,13 +946,17 @@ class MyApp(ctk.CTk):
         self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0)
         self.progress.set(0)
         self.prog_text.configure(text="0%")
-        self.passwordbox = ctk.CTkEntry(self.dynamic_frame, width=200, height=20, corner_radius=0, show="*")
-        self.passwordbox.bind(sequence="<Return>", command=lambda x: ut_physical(change=self.change, text=self.text, progress=self.progress, prog_text=self.prog_text, pw_box=self.passwordbox, ok_button=self.okb, back_button=self.backb))
-        self.passwordbox.pack(pady = 15) 
-        self.okb = ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: ut_physical(change=self.change, text=self.text, progress=self.progress, prog_text=self.prog_text, pw_box=self.passwordbox, ok_button=self.okb, back_button=self.backb))
-        self.okb.pack(pady=15) 
-        self.backb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=lambda: self.switch_menu("AcqMenu"))
-        self.backb.pack(pady=5)
+        if aos == False:
+            self.passwordbox = ctk.CTkEntry(self.dynamic_frame, width=200, height=20, corner_radius=0, show="*")
+            self.passwordbox.bind(sequence="<Return>", command=lambda x: ut_physical(change=self.change, text=self.text, progress=self.progress, prog_text=self.prog_text, pw_box=self.passwordbox, ok_button=self.okb, back_button=self.backb))
+            self.passwordbox.pack(pady = 15) 
+            self.okb = ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: ut_physical(change=self.change, text=self.text, progress=self.progress, prog_text=self.prog_text, pw_box=self.passwordbox, ok_button=self.okb, back_button=self.backb))
+            self.okb.pack(pady=15) 
+            self.backb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=lambda: self.switch_menu("AcqMenu"))
+            self.backb.pack(pady=5)
+        else:
+            self.aosphysical = threading.Thread(target=lambda: ut_physical(change=self.change, text=self.text, progress=self.progress, prog_text=self.prog_text))
+            self.aosphysical.start()
         self.wait_variable(self.change)
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))  
 
@@ -1316,6 +1328,8 @@ class MyApp(ctk.CTk):
 
         if ut == True:
             d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "ut_generic.jpg")
+        elif aos == True:
+            d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "asteroidos.jpg")
         else:
             d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "generic.jpg")
  
@@ -1552,6 +1566,7 @@ def get_client(host=default_host, port=default_port, check=False):
     global paired
     global apps
     global ut
+    global aos
     try:
         ensure_adb_server()
         adb = adbutils.AdbClient(host=host, port=port)
@@ -1598,10 +1613,15 @@ def get_client(host=default_host, port=default_port, check=False):
         else:
             paired = True
             whoami = device.shell("whoami")
+            osr = device.shell("cat /etc/os-release")
             if whoami == "phablet":
                 ut = True
             else:
                 ut = False
+            if "asteroidos" in osr.lower():
+                aos = True
+            else:
+                aos = False
             dev_state = "authorized ✔"
             snr = getprop(device, "ro.serialno")
             global brand
@@ -1661,8 +1681,9 @@ def get_client(host=default_host, port=default_port, check=False):
                 b_mac = "-"
             if "not found" in b_mac:
                 b_mac = "-"
-            if b_mac == "-" and whoami == "phablet":
-                b_mac = device.shell(f"busctl --system get-property org.bluez /org/bluez/hci0 org.bluez.Adapter1 Address | tr -d 's\" '")
+            if b_mac == "-":
+                if whoami == "phablet" or aos == True:
+                    b_mac = device.shell(f"busctl --system get-property org.bluez /org/bluez/hci0 org.bluez.Adapter1 Address | tr -d 's\" '")
             global w_mac
             w_mac = getprop(device, "ro.boot.wifimacaddr")
             if w_mac == "-":
@@ -1694,8 +1715,9 @@ def get_client(host=default_host, port=default_port, check=False):
             if "not found" in d_name:
                 d_name = "-"
                 name_s = d_name
-            if d_name == "-" and whoami == "phablet":
-                d_name = device.shell("hostname")
+            if d_name == "-":
+                if whoami == "phablet" or aos == True:
+                    d_name = device.shell("hostname")
             if len(d_name) > 26:
                 wordnames = d_name.split()
                 if len(' '.join(wordnames[:-1])) < 27:
@@ -1719,12 +1741,16 @@ def get_client(host=default_host, port=default_port, check=False):
             global free
             global use_percent
             old_dev = False
-            data_df = device.shell("df -h /data")
+            if aos == True:
+                data_dev = ""
+            else:
+                data_dev =  "data"
+            data_df = device.shell(f"df -h /{data_dev}")
             if "-h" in data_df.lower():
                 old_dev = True
                 data_df = device.shell("df /data")
             data_lines = data_df.strip().splitlines()
-            if len(data_lines) >= 2:
+            if len(data_lines) >= 2 and "can't find mount point" not in data_df:
                 data_line = data_lines[1]
                 parts = re.split(r"\s+", data_line)
                 size, used, avail, use_percent = parts[1:5]
@@ -1742,7 +1768,7 @@ def get_client(host=default_host, port=default_port, check=False):
                         graph_progress = "" + "▓" * int(26/100*use_percent) + "░" * int(26/100*(100-use_percent)) + ""
                     except: graph_progress = "-"
             else:
-                data_s, used, free, use_percent = "-"
+                data_s, used_s, free, use_percent = "-", "-", "-", "-"
                 graph_progress = "-"
             global ad_id
             ad_id = device.shell("settings get secure android_id")
@@ -2042,11 +2068,12 @@ def content_to_json(text: str):
     return result
 
 #Physical Extraction for Ubuntu Touch
-def ut_physical(change, text, progress, prog_text, pw_box, ok_button, back_button):
-    sh_pwd = pw_box.get()
-    pw_box.pack_forget()
-    ok_button.pack_forget()
-    back_button.pack_forget()
+def ut_physical(change, text, progress, prog_text, pw_box=None, ok_button=None, back_button=None):
+    if aos == False:
+        sh_pwd = pw_box.get()
+        pw_box.pack_forget()
+        ok_button.pack_forget()
+        back_button.pack_forget()
 
     #live device
     dev_cmd = device.shell("ls /dev/")
@@ -2064,14 +2091,20 @@ def ut_physical(change, text, progress, prog_text, pw_box, ok_button, back_butto
 
     else:
         size = int(device.shell(f"cat /sys/block/{target}/size"))*512
-        amiroot = device.shell(f"echo {sh_pwd} | sudo -S whoami 2>/dev/null")
+        if aos == False:
+            amiroot = device.shell(f"echo {sh_pwd} | sudo -S whoami 2>/dev/null")
+        else:
+            amiroot = device.shell("whoami 2>/dev/null")
         if amiroot == "root":
             prog_text.pack()
             progress.pack()
             current = 0
             out_file = f"{snr}_{target}.bin"
             with open(out_file, "wb") as f:
-                stream = device.shell(f"echo {sh_pwd} | sudo -S dd if=/dev/mmcblk0 2>/dev/null", stream=True)
+                if aos == False:
+                    stream = device.shell(f"echo {sh_pwd} | sudo -S dd if=/dev/mmcblk0 2>/dev/null", stream=True)
+                else:
+                    stream = device.shell("dd if=/dev/mmcblk0 2>/dev/null", stream=True)
                 while True:
                     chunk = stream.read(65536)
                     text.configure(text="Physical Backup is running.\nThis may take some time.")
