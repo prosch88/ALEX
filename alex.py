@@ -150,19 +150,12 @@ class MyApp(ctk.CTk):
         self.current_menu = "MainMenu"
         self.skip = ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont)
         self.skip.grid(row=0, column=0, columnspan=2, sticky="w")
-        if ut == True:
+        if ut == True or aos == True:
             self.menu_buttons = [
                 ctk.CTkButton(self.dynamic_frame, text="Reporting Options", command=lambda: self.switch_menu("ReportMenu"), width=200, height=70, font=self.stfont),
                 ctk.CTkButton(self.dynamic_frame, text="Acquisition Options", command=lambda: self.switch_menu("AcqMenu"), width=200, height=70, font=self.stfont),
                 ctk.CTkButton(self.dynamic_frame, text="Logging Options", command=lambda: self.switch_menu("LogMenu"), width=200, height=70, font=self.stfont, state="disabled"),
                 ctk.CTkButton(self.dynamic_frame, text="Advanced Options", command=lambda: self.switch_menu("AdvMenu"), width=200, height=70, font=self.stfont),
-            ]
-        elif aos == True:
-            self.menu_buttons = [
-                ctk.CTkButton(self.dynamic_frame, text="Reporting Options", command=lambda: self.switch_menu("ReportMenu"), width=200, height=70, font=self.stfont),
-                ctk.CTkButton(self.dynamic_frame, text="Acquisition Options", command=lambda: self.switch_menu("AcqMenu"), width=200, height=70, font=self.stfont),
-                ctk.CTkButton(self.dynamic_frame, text="Logging Options", command=lambda: self.switch_menu("LogMenu"), width=200, height=70, font=self.stfont, state="disabled"),
-                ctk.CTkButton(self.dynamic_frame, text="Advanced Options", command=lambda: self.switch_menu("AdvMenu"), width=200, height=70, font=self.stfont, state="disabled"),
             ]
         else:
             self.menu_buttons = [
@@ -464,7 +457,7 @@ class MyApp(ctk.CTk):
     def show_advanced_menu(self):
         self.skip = ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont)
         self.skip.grid(row=0, column=0, columnspan=2, sticky="w")
-        if ut == False:
+        if ut == False and aos == False:
             self.menu_buttons = [
                 ctk.CTkButton(self.dynamic_frame, text="Take screenshots", command=lambda: self.switch_menu("ScreenDevice"), width=200, height=70, font=self.stfont),
                 ctk.CTkButton(self.dynamic_frame, text="Chat Capture", command=lambda: self.switch_menu("ShotLoop"), width=200, height=70, font=self.stfont),
@@ -994,7 +987,22 @@ class MyApp(ctk.CTk):
         hashname = name + ".txt"
         filepath = os.path.join("screenshots", filename)
         hashpath = os.path.join("screenshots", hashname)
-        if ut == False:
+        if ut == True:
+            shot = ut_app_shot()
+            png_bytes = BytesIO()
+            shot.save(png_bytes, format="PNG")
+            png = png_bytes.getvalue()
+        elif aos == True:
+            shotfail = True
+            shot_path = "/home/ceres/alex_shot.png"
+            device.shell(f"screenshottool {shot_path} 0")
+            device.sync.pull(shot_path, filepath)
+            device.shell(f"rm {shot_path}")
+            shot = Image.open(filepath)
+            png_bytes = BytesIO()
+            shot.save(png_bytes, format="PNG")
+            png = png_bytes.getvalue()
+        else:
             try:
                 shot = device.screenshot(error_ok=False)
                 png_bytes = BytesIO()
@@ -1010,11 +1018,6 @@ class MyApp(ctk.CTk):
                 png_bytes = BytesIO()
                 shot.save(png_bytes, format="PNG")
                 png = png_bytes.getvalue()
-        else:
-            shot = ut_app_shot()
-            png_bytes = BytesIO()
-            shot.save(png_bytes, format="PNG")
-            png = png_bytes.getvalue()
         
         hperc = (hsize/float(shot.size[1]))
         wsize = int((float(shot.size[0])*float(hperc)))
