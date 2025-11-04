@@ -2562,12 +2562,12 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
                 if dir.path != dirout:
                     log(f"Renamed {dir.path} to {dirout}")
             new_src:str = append_path(src, dir.path) 
-            new_dst:pathlib.Path = pathlib.Path(append_path(dst, dir.path)) 
+            new_dst:pathlib.Path = pathlib.Path(append_path(dst, dirout)) 
             os.makedirs(new_dst, exist_ok=exist_ok)
             if mode == "ufed":
-                zip_dir_path = f'backup/{rootf.strip("/")}/{rel_in_zip}/{dirout}/'.replace("//", "/")
+                zip_dir_path = f'backup/{rootf.strip("/")}/{rel_in_zip}/{dir.path}/'.replace("//", "/")
             else:
-                zip_dir_path = f'{rootf.strip("/")}/{rel_in_zip}/{dirout}/'.replace("//", "/")
+                zip_dir_path = f'{rootf.strip("/")}/{rel_in_zip}/{dir.path}/'.replace("//", "/")
             #print(zip_dir_path)
             zip.writestr(zip_dir_path, b'')
             new_rel = f"{rel_in_zip}/{dir.path}"
