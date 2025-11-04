@@ -2556,13 +2556,18 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
 
         
         for dir in dirs:
+            dirout = dir.path
+            if platform.uname().system == 'Windows':
+                dirout = re.sub(r"[?%*:|\"<>\x7F\x00-\x1F]", "-", dir.path)
+                if dir.path != dirout:
+                    log(f"Renamed {dir.path} to {dirout}")
             new_src:str = append_path(src, dir.path) 
             new_dst:pathlib.Path = pathlib.Path(append_path(dst, dir.path)) 
             os.makedirs(new_dst, exist_ok=exist_ok)
             if mode == "ufed":
-                zip_dir_path = f'backup/{rootf.strip("/")}/{rel_in_zip}/{dir.path}/'.replace("//", "/")
+                zip_dir_path = f'backup/{rootf.strip("/")}/{rel_in_zip}/{dirout}/'.replace("//", "/")
             else:
-                zip_dir_path = f'{rootf.strip("/")}/{rel_in_zip}/{dir.path}/'.replace("//", "/")
+                zip_dir_path = f'{rootf.strip("/")}/{rel_in_zip}/{dirout}/'.replace("//", "/")
             #print(zip_dir_path)
             zip.writestr(zip_dir_path, b'')
             new_rel = f"{rel_in_zip}/{dir.path}"
@@ -2572,8 +2577,8 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
             fileout = file.path
             if platform.uname().system == 'Windows':
                 fileout = re.sub(r"[?%*:|\"<>\x7F\x00-\x1F]", "-", file.path)
-                if file != fileout:
-                    log(f"Renamed {file} to {fileout}")
+                if file.path != fileout:
+                    log(f"Renamed {file.path} to {fileout}")
 
             new_src:str = append_path(src, file.path) 
             new_dst:str = append_path(dst, fileout) 
