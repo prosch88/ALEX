@@ -2571,7 +2571,7 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
         for file in files:
             fileout = file.path
             if platform.uname().system == 'Windows':
-                fileout = re.sub(r"[?%*:|\"<>\x7F\x00-\x1F]", "-", file)
+                fileout = re.sub(r"[?%*:|\"<>\x7F\x00-\x1F]", "-", file.path)
                 if file != fileout:
                     log(f"Renamed {file} to {fileout}")
 
