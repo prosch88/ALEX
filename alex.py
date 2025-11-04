@@ -2569,8 +2569,14 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
             s += rec_pull_contents(new_src, new_dst, rootf, new_rel, prog_text, progress, exist_ok=exist_ok)
                 
         for file in files:
+            fileout = file.path
+            if platform.uname().system == 'Windows':
+                fileout = re.sub(r"[?%*:|\"<>\x7F\x00-\x1F]", "-", file)
+                if file != fileout:
+                    log(f"Renamed {file} to {fileout}")
+
             new_src:str = append_path(src, file.path) 
-            new_dst:str = append_path(dst, file.path) 
+            new_dst:str = append_path(dst, fileout) 
             try:
                 try: 
                     mtime = self.stat(new_src).mtime.timestamp()
