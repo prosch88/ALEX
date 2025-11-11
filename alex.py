@@ -146,6 +146,7 @@ class MyApp(ctk.CTk):
             self.show_noadbserver()
             return()
         # Show Main Menu
+
         self.menu_var.set("MainMenu")
         self.current_menu = "MainMenu"
         self.skip = ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont)
@@ -157,6 +158,22 @@ class MyApp(ctk.CTk):
                 ctk.CTkButton(self.dynamic_frame, text="Logging Options", command=lambda: self.switch_menu("LogMenu"), width=200, height=70, font=self.stfont, state="disabled"),
                 ctk.CTkButton(self.dynamic_frame, text="Advanced Options", command=lambda: self.switch_menu("AdvMenu"), width=200, height=70, font=self.stfont),
             ]
+        elif recovery == True:
+            if rec_root == False:
+                self.menu_buttons = [
+                ctk.CTkButton(self.dynamic_frame, text="Reporting Options", command=lambda: self.switch_menu("ReportMenu"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Acquisition Options", command=lambda: self.switch_menu("AcqMenu"), width=200, height=70, font=self.stfont, state ="disabled"),
+                ctk.CTkButton(self.dynamic_frame, text="Logging Options", command=lambda: self.switch_menu("LogMenu"), width=200, height=70, font=self.stfont, state="disabled"),
+                ctk.CTkButton(self.dynamic_frame, text="Advanced Options", command=lambda: self.switch_menu("AdvMenu"), width=200, height=70, font=self.stfont, state="disabled"),
+                ]
+            else:
+                self.menu_buttons = [
+                ctk.CTkButton(self.dynamic_frame, text="Reporting Options", command=lambda: self.switch_menu("ReportMenu"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Acquisition Options", command=lambda: self.switch_menu("AcqMenu"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Logging Options", command=lambda: self.switch_menu("LogMenu"), width=200, height=70, font=self.stfont, state="disabled"),
+                ctk.CTkButton(self.dynamic_frame, text="Advanced Options", command=lambda: self.switch_menu("AdvMenu"), width=200, height=70, font=self.stfont, state="disabled"),
+                ]
+
         else:
             self.menu_buttons = [
             ctk.CTkButton(self.dynamic_frame, text="Reporting Options", command=lambda: self.switch_menu("ReportMenu"), width=200, height=70, font=self.stfont),
@@ -400,6 +417,13 @@ class MyApp(ctk.CTk):
             ]
             self.menu_text = ["Extract the content of \"Home\" as a folder.",
                             "Extract a physical image of the Block-device.\n(Requires the sudo password)"] 
+
+        elif recovery == True:
+            self.menu_buttons = [
+                ctk.CTkButton(self.dynamic_frame, text="Physical Acquisition", command=lambda: self.switch_menu("UT_physical"), width=200, height=70, font=self.stfont),
+            ]
+            self.menu_text = ["Extract a physical image of the Block-device.\n(Block-device might be encrypted.)"] 
+
             
         else:
             self.menu_buttons = [
@@ -932,14 +956,23 @@ class MyApp(ctk.CTk):
     def show_ut_physical(self):
         ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
         ctk.CTkLabel(self.dynamic_frame, text="Physical Extraction", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
-        self.text = ctk.CTkLabel(self.dynamic_frame, text=f'Provide the correct \"sudo\" password:\n(Mostly the device passcode)', width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        if ut == True:
+            self.text = ctk.CTkLabel(self.dynamic_frame, text=f'Provide the correct \"sudo\" password:\n(Mostly the device passcode)', width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        else:
+            self.text = ctk.CTkLabel(self.dynamic_frame, text='Starting physical acquisition ...', width=585, height=60, font=self.stfont, anchor="w", justify="left")
         self.text.pack(pady=15)
         self.change = ctk.IntVar(self, 0)
         self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="0%", width=585, height=20, font=self.stfont, anchor="w", justify="left")
         self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0)
         self.progress.set(0)
         self.prog_text.configure(text="0%")
-        if aos == False:
+        if aos == True:
+            self.aosphysical = threading.Thread(target=lambda: ut_physical(change=self.change, text=self.text, progress=self.progress, prog_text=self.prog_text))
+            self.aosphysical.start()            
+        elif rec_root == True:
+            self.recphysical = threading.Thread(target=lambda: ut_physical(change=self.change, text=self.text, progress=self.progress, prog_text=self.prog_text))
+            self.recphysical.start()   
+        else:
             self.passwordbox = ctk.CTkEntry(self.dynamic_frame, width=200, height=20, corner_radius=0, show="*")
             self.passwordbox.bind(sequence="<Return>", command=lambda x: ut_physical(change=self.change, text=self.text, progress=self.progress, prog_text=self.prog_text, pw_box=self.passwordbox, ok_button=self.okb, back_button=self.backb))
             self.passwordbox.pack(pady = 15) 
@@ -947,9 +980,6 @@ class MyApp(ctk.CTk):
             self.okb.pack(pady=15) 
             self.backb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=lambda: self.switch_menu("AcqMenu"))
             self.backb.pack(pady=5)
-        else:
-            self.aosphysical = threading.Thread(target=lambda: ut_physical(change=self.change, text=self.text, progress=self.progress, prog_text=self.prog_text))
-            self.aosphysical.start()
         self.wait_variable(self.change)
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))  
 
@@ -1615,7 +1645,7 @@ def get_client(host=default_host, port=default_port, check=False):
                     "   49 4E 45 53 53 2E")
         else:
             paired = True
-            whoami = device.shell("whoami")
+            whoami = device.shell("whoami 2>/dev/null")
             osr = device.shell("cat /etc/os-release")
             if whoami == "phablet":
                 ut = True
@@ -1755,11 +1785,19 @@ def get_client(host=default_host, port=default_port, check=False):
             data_lines = data_df.strip().splitlines()
             if len(data_lines) >= 2 and "can't find mount point" not in data_df:
                 data_line = data_lines[1]
-                parts = re.split(r"\s+", data_line)
-                size, used, avail, use_percent = parts[1:5]
-                data_s = f"{add_space(size)}B"
-                used_s = f"{add_space(used)}B"
-                free = f"{add_space(avail)}B"
+                try:
+                    parts = re.split(r"\s+", data_line)
+                    size, used, avail, use_percent = parts[1:5]
+                except:
+                    data_line = data_lines[2]
+                    parts = re.split(r"\s+", data_line)
+                    size, used, avail, use_percent = parts[1:5]
+                try:
+                    data_s = f"{add_space(size)}B"
+                    used_s = f"{add_space(used)}B"
+                    free = f"{add_space(avail)}B"
+                except:
+                    data_s, used_s, free, use_percent = "-", "-", "-", "-"
                 if old_dev == False:
                     try: graph_progress = "" + "▓" * int(26/100*int(use_percent.rstrip("%"))) + "░" * int(26/100*(100-int(use_percent.rstrip("%")))) + ""
                     except: graph_progress = "-"
@@ -1820,8 +1858,15 @@ def get_client(host=default_host, port=default_port, check=False):
                 build_s = build[:25] + "\n" + '{:13}'.format(" ") + "\t" + build[25:]
             else:
                 build_s = build
-
-            device_info = ("Device is " + dev_state + "\n\n" +
+            global recovery
+            global rec_root
+            recovery = False
+            rec_root = False
+            if state == "recovery":
+                recovery = True
+                if device.shell("whoami") == "root":
+                    rec_root = True
+                device_info = ("Device is in recovery mode" + "\n\n" +
                     '{:13}'.format("Model: ") + "\t" + fname_s +
                     "\n" + '{:13}'.format("Name: ") + "\t" + name_s +
                     "\n" + '{:13}'.format("Product: ") + "\t" + product +
@@ -1832,14 +1877,32 @@ def get_client(host=default_host, port=default_port, check=False):
                     "\n" + '{:13}'.format("Language: ") + "\t" + locale +
                     "\n" + '{:13}'.format("Serialnr: ") + "\t" + snr +
                     "\n" + '{:13}'.format("IMEI: ") + "\t" + imei +
-                    "\n" + '{:13}'.format("Wifi MAC: ") + "\t" + w_mac +
-                    "\n" + '{:13}'.format("BT MAC: ") + "\t" + b_mac +
                     "\n" + '{:13}'.format("Disk Use: ") + "\t" + graph_progress +
                     "\n" + '{:13}'.format("Data: ") + "\t" + data_s +
                     "\n" + '{:13}'.format("Used: ") + "\t" + used_s +
                     "\n" + '{:13}'.format("Free: ") + "\t" + free +
                     "\n" + '{:13}'.format("Ad-ID: ") + "\t" + ad_id +
-                    "\n" + '{:13}'.format("State: ") + "\t" + crypt_on + " " + crypt_type)             
+                    "\n" + '{:13}'.format("State: ") + "\t" + crypt_on + " " + crypt_type)   
+            else:
+                device_info = ("Device is " + dev_state + "\n\n" +
+                        '{:13}'.format("Model: ") + "\t" + fname_s +
+                        "\n" + '{:13}'.format("Name: ") + "\t" + name_s +
+                        "\n" + '{:13}'.format("Product: ") + "\t" + product +
+                        "\n" + '{:13}'.format("Platform: ") + "\t" + d_platform +
+                        "\n" + '{:13}'.format("Software: ") + "\t" + software +
+                        "\n" + '{:13}'.format("Build-Nr: ") + "\t" + build_s +
+                        "\n" + '{:13}'.format("SPL: ") + "\t" + spl +
+                        "\n" + '{:13}'.format("Language: ") + "\t" + locale +
+                        "\n" + '{:13}'.format("Serialnr: ") + "\t" + snr +
+                        "\n" + '{:13}'.format("IMEI: ") + "\t" + imei +
+                        "\n" + '{:13}'.format("Wifi MAC: ") + "\t" + w_mac +
+                        "\n" + '{:13}'.format("BT MAC: ") + "\t" + b_mac +
+                        "\n" + '{:13}'.format("Disk Use: ") + "\t" + graph_progress +
+                        "\n" + '{:13}'.format("Data: ") + "\t" + data_s +
+                        "\n" + '{:13}'.format("Used: ") + "\t" + used_s +
+                        "\n" + '{:13}'.format("Free: ") + "\t" + free +
+                        "\n" + '{:13}'.format("Ad-ID: ") + "\t" + ad_id +
+                        "\n" + '{:13}'.format("State: ") + "\t" + crypt_on + " " + crypt_type)             
 
     else:
         device = None
@@ -2072,14 +2135,17 @@ def content_to_json(text: str):
 
 #Physical Extraction for Ubuntu Touch
 def ut_physical(change, text, progress, prog_text, pw_box=None, ok_button=None, back_button=None):
-    if aos == False:
+    if ut == True:
         sh_pwd = pw_box.get()
         pw_box.pack_forget()
         ok_button.pack_forget()
         back_button.pack_forget()
 
     #live device
-    dev_cmd = device.shell("ls /dev/")
+    if recovery == True:
+        dev_cmd = device.shell("ls /dev/block")
+    else:
+        dev_cmd = device.shell("ls /dev")
     if "mmcblk0" in dev_cmd:
         target = "mmcblk0"
     elif "sda" in dev_cmd:
@@ -2094,8 +2160,10 @@ def ut_physical(change, text, progress, prog_text, pw_box=None, ok_button=None, 
 
     else:
         size = int(device.shell(f"cat /sys/block/{target}/size"))*512
-        if aos == False:
+        if ut == True:
             amiroot = device.shell(f"echo {sh_pwd} | sudo -S whoami 2>/dev/null")
+        if aos == True:
+            amiroot = device.shell("whoami 2>/dev/null")
         else:
             amiroot = device.shell("whoami 2>/dev/null")
         if amiroot == "root":
@@ -2103,11 +2171,13 @@ def ut_physical(change, text, progress, prog_text, pw_box=None, ok_button=None, 
             progress.pack()
             current = 0
             out_file = f"{snr}_{target}.bin"
+            if recovery == True:
+                target = f"block/{target}"
             with open(out_file, "wb") as f:
-                if aos == False:
-                    stream = device.shell(f"echo {sh_pwd} | sudo -S dd if=/dev/mmcblk0 2>/dev/null", stream=True)
+                if ut == True:
+                    stream = device.shell(f"echo {sh_pwd} | sudo -S dd if=/dev/{target} 2>/dev/null", encoding=None, stream=True)
                 else:
-                    stream = device.shell("dd if=/dev/mmcblk0 2>/dev/null", stream=True)
+                    stream = device.shell(f"dd if=/dev/{target} 2>/dev/null", encoding=None, stream=True)
                 while True:
                     chunk = stream.read(65536)
                     text.configure(text="Physical Backup is running.\nThis may take some time.")
