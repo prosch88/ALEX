@@ -2175,22 +2175,37 @@ def ut_physical(change, text, progress, prog_text, pw_box=None, ok_button=None, 
                 target = f"block/{target}"
             with open(out_file, "wb") as f:
                 if ut == True:
-                    stream = device.shell(f"echo {sh_pwd} | sudo -S dd if=/dev/{target} 2>/dev/null", encoding=None, stream=True)
+                    proc = subprocess.Popen(["adb", "exec-out", f"echo {sh_pwd}| sudo -S cat /dev/{target} 2>/dev/null"], stdout=subprocess.PIPE)
+                    stream = proc.stdout
+                    #stream = device.shell(f"echo {sh_pwd} | sudo -S cat /dev/{target} 2>/dev/null", encoding=None, stream=True)
                 else:
-                    stream = device.shell(f"dd if=/dev/{target} 2>/dev/null", encoding=None, stream=True)
+                    stream = device.shell(f"cat /dev/{target} 2>/dev/null", encoding=None, stream=True)
                 while True:
-                    chunk = stream.read(65536)
-                    text.configure(text="Physical Backup is running.\nThis may take some time.")
-                    if not chunk:
-                        break
-                    f.write(chunk)
-                    current += len(chunk)
+                    if ut == True:
+                        chunk = stream.read(65536)
+                        text.configure(text="Physical Backup is running.\nThis may take some time.")
+                        if not chunk:
+                            break
+                        f.write(chunk)
+                        current += len(chunk)
 
-                    perc = (100 / size) * current
-                    prog_text.configure(text=f"{round(perc)}%")  
-                    progress.set(perc/100)
-                    prog_text.update()
-                    progress.update()
+                        perc = (100 / size) * current
+                        prog_text.configure(text=f"{round(perc)}%")  
+                        progress.set(perc/100)
+                        prog_text.update()
+                        progress.update()
+                    else:
+                        text.configure(text="Physical Backup is running.\nThis may take some time.")
+                        for chunk in device.sync.iter_content(f"/dev/{target}"):
+                            if not chunk:
+                                break
+                            f.write(chunk)
+                            current += len(chunk)
+                            perc = (100 / size) * current
+                            prog_text.configure(text=f"{round(perc)}%")  
+                            progress.set(perc/100)
+                            prog_text.update()
+                            progress.update()
             prog_text.pack_forget()
             progress.pack_forget()
             text.configure(text="Physical Backup complete!")
