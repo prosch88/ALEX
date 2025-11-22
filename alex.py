@@ -903,7 +903,7 @@ class MyApp(ctk.CTk):
         change.set(1)
 
 
-    def call_backup(self, bu_file, bu_change, bu_options,):
+    def call_backup(self, bu_file, bu_change, bu_options):
         total = 0
         #print(bu_options)
         try:
@@ -926,8 +926,11 @@ class MyApp(ctk.CTk):
 
     def zip_bu(self, zip, text, change):
         text.configure(text="Including the backup to the Zip.")
-        zip.write(bu_file, "backup/backup.ab")
-        os.remove(bu_file)
+        try:
+            zip.write(bu_file, "backup/backup.ab")
+            os.remove(bu_file)
+        except:
+            pass
         change.set(1)
 
     #Show Bugreport-Screen (Dumpsys)
