@@ -2818,8 +2818,14 @@ def exploit_zygote(zip_path, text, prog_text, change):
                 app_user_de = send_and_receive(sock=sock, cmd=f"stat /data/user_de/0/{app}")
                 uid_re = re.search(r'Uid:\s*\(\s*(\d+)\s*/', app_user)
                 uid_de_re = re.search(r'Uid:\s*\(\s*(\d+)\s*/', app_user_de)
-                uid = uid_re.group(1) if uid_re else None
-                uid_de = uid_re.group(1) if uid_de_re else None             
+                try:
+                    uid = uid_re.group(1) if uid_re else None
+                except:
+                    uid = None
+                try:
+                    uid_de = uid_re.group(1) if uid_de_re else None      
+                except:
+                    uid_de = None       
                 if uid != "1000" and uid != None:
                     pass
                 else:
