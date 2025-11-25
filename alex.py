@@ -908,7 +908,9 @@ class MyApp(ctk.CTk):
         #print(bu_options)
         try:
             with open(bu_file, "wb") as f:
-                stream = device.shell(f"bu backup{bu_options}", stream=True)
+                proc = subprocess.Popen(["adb", "exec-out", f"bu backup{bu_options} 2>/dev/null"], stdout=subprocess.PIPE)
+                stream = proc.stdout
+                #stream = device.shell(f"bu backup{bu_options}", stream=True)
                 while True:
                     chunk = stream.read(65536)
                     self.text.configure(text="ADB-Backup is running.\nThis may take some time.")
