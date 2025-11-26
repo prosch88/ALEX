@@ -908,7 +908,7 @@ class MyApp(ctk.CTk):
         #print(bu_options)
         try:
             with open(bu_file, "wb") as f:
-                proc = subprocess.Popen(["adb", "exec-out", f"bu backup{bu_options} 2>/dev/null"], stdout=subprocess.PIPE)
+                proc = subprocess.Popen(["adb", "exec-out", f"bu backup{bu_options}"], stdout=subprocess.PIPE)
                 stream = proc.stdout
                 #stream = device.shell(f"bu backup{bu_options}", stream=True)
                 while True:
@@ -2766,6 +2766,10 @@ def exploit_zygote(zip_path, text, prog_text, change):
                                 zf_out.write(chunk)
                         zf.fp.flush()
                         os.fsync(zf.fp.fileno())
+        
+        except Exception as e:
+            log(f"Error dumping {name}: {e}")
+
         finally:
             try:
                 sock.close()
@@ -2812,7 +2816,7 @@ def exploit_zygote(zip_path, text, prog_text, change):
         timeout_seconds=600
 
         app_uid = {}
-        device.forward("tcp:4321", "tcp:4321")
+        #device.forward("tcp:4321", "tcp:4321")
 
         if "/data: Permission denied" in data_test:
             for app in all_apps:
