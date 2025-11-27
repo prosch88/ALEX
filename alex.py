@@ -18,7 +18,7 @@ from adbutils._utils import append_path
 from io import BytesIO
 from pathlib import Path
 from pdfme import build_pdf
-from alex import ufed_style
+from alex import ufed_style, devdump
 import numpy as np
 import sqlite3
 import shutil
@@ -236,6 +236,10 @@ class MyApp(ctk.CTk):
             self.show_bugreport()
         elif menu_name == "Content":
             self.show_content_dump()
+        elif menu_name == "CheckRoot":
+            self.show_check_root()
+        elif menu_name == "RootAcq":
+            self.show_root_acq_menu()
         #UT Options:
         elif menu_name == "UT_physical":
             self.show_ut_physical()
@@ -431,11 +435,13 @@ class MyApp(ctk.CTk):
                 ctk.CTkButton(self.dynamic_frame, text="ADB Backup", command=lambda: self.switch_menu("ADBBU"), width=200, height=70, font=self.stfont),
                 ctk.CTkButton(self.dynamic_frame, text="Logical+ Backup\n(UFED-Style)", command=lambda: self.switch_menu("AdvUFED"), width=200, height=70, font=self.stfont),
                 ctk.CTkButton(self.dynamic_frame, text="Partially Restored\nFilesystem Backup", command=lambda: self.switch_menu("PRFS"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Root-based Backups", command=lambda: self.switch_menu("CheckRoot"), width=200, height=70, font=self.stfont, state="disabled"),
             ]
             self.menu_text = ["Extract the content of \"sdcard\" as a folder.",
                             "Perform an ADB-Backup.",
                             "Creates an advanced Logical Backup as ZIP\nwith an UFD File for PA.",
-                            "Try to reconstruct parts of the device-filesystem"]            
+                            "Try to reconstruct parts of the device-filesystem",
+                            "Show backup options for rooted devices."]            
 
         self.menu_textbox = []
         for btn in self.menu_buttons:
@@ -496,6 +502,61 @@ class MyApp(ctk.CTk):
         self.menu_text = ["Take screenshots from device screen.\nScreenshots will be saved under \"screenshots\"\nas PNG.",
                           "Loop through a chat taking screenshots.",
                           "Query Data from Content Providers\nas txt or json. (calls, sms, contacts, ...)"]
+        self.menu_textbox = []
+        for btn in self.menu_buttons:
+            self.menu_textbox.append(ctk.CTkLabel(self.dynamic_frame, width=right_content, height=70, font=self.stfont, anchor="w", justify="left"))
+        r=1
+        i=0
+        for btn in self.menu_buttons:
+            btn.grid(row=r,column=0, padx=30, pady=10)
+            self.menu_textbox[i].grid(row=r,column=1, padx=10, pady=10)
+            self.menu_textbox[i].configure(text=self.menu_text[i])
+            r+=1
+            i+=1
+
+        ctk.CTkButton(self.dynamic_frame, text="Back", command=self.show_main_menu).grid(row=r, column=1, padx=10, pady=10, sticky="e" )
+
+    
+
+    #Show the Check Root
+    def show_check_root(self):
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
+        ctk.CTkLabel(self.dynamic_frame, text="", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
+        self.text = ctk.CTkLabel(self.dynamic_frame, text="Checking the root state ...", width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        self.text.pack(anchor="center", pady=25)
+        show_root = False
+        self.change = ctk.IntVar(self, 0)
+        if whoami == "root":
+            show_root = True
+        else:
+            if su_app != None:
+                self.text.configure(text="Please allow the following superuser request on the device.")
+                check_su = threading.Thread(target=lambda:has_root(self.change))
+                check_su.start()
+                self.wait_variable(self.change)
+                if self.change.get() == 1:
+                    show_root = True
+                else:
+                    self.text.configure(text="Root access has not been confirmed.")
+                    self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
+                    return
+        if show_root == True:
+            self.after(100, lambda: self.switch_menu("RootAcq"))
+            return
+        else:
+            self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
+            return
+
+    #Show rooted Backup Options
+    def show_root_acq_menu(self):
+        self.skip = ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont)
+        self.skip.grid(row=0, column=0, columnspan=2, sticky="w")
+        self.menu_buttons = [
+            ctk.CTkButton(self.dynamic_frame, text="Filesystem Backup\n(rooted)", command=lambda: self.switch_menu("LogDump"), width=200, height=70, font=self.stfont),
+            ctk.CTkButton(self.dynamic_frame, text="Physical Backup", command=lambda: self.switch_menu("Dumpsys"), width=200, height=70, font=self.stfont, state="disabled"),
+        ]
+        self.menu_text = ["Creates a FFS Backup of an already\nrooted Device",
+                            "Creates a physical Backup of an already\nrooted Device.",]
         self.menu_textbox = []
         for btn in self.menu_buttons:
             self.menu_textbox.append(ctk.CTkLabel(self.dynamic_frame, width=right_content, height=70, font=self.stfont, anchor="w", justify="left"))
@@ -1650,6 +1711,7 @@ def get_client(host=default_host, port=default_port, check=False):
                     "   49 4E 45 53 53 2E")
         else:
             paired = True
+            global whoami
             whoami = device.shell("whoami 2>/dev/null")
             osr = device.shell("cat /etc/os-release")
             if whoami == "phablet":
@@ -1833,12 +1895,24 @@ def get_client(host=default_host, port=default_port, check=False):
 
             global apps
             global all_apps
+            global su_app
+            su_app = None
+            su_apps = [".supersu", ".magisk", ".su", ".superuser", ".kinguser", ".kernelsu"]
             if whoami != "phablet":
                 all_app_query = device.shell("pm list packages")
                 all_apps = [line.replace("package:", "") for line in all_app_query.splitlines() if line.strip()]
                 app_query = device.shell("pm list packages -3 -i")
                 pattern = re.compile(r"package:([^\s]+)\s+installer=([^\s]+)")
                 apps = [[pkg, installer] for pkg, installer in pattern.findall(app_query)]
+
+                su_app = next(
+                    (pkg for pkg, installer in apps if pkg.endswith(tuple(su_apps))),
+                    None
+                )
+
+                if su_app:
+                    print("Found:", su_app)
+
             else:
                 app_cmd = device.shell("click list")
                 apps = []
@@ -1848,6 +1922,7 @@ def get_client(host=default_host, port=default_port, check=False):
                         name = parts[0].strip()
                         app_version = parts[1].strip()
                         apps.append([name, app_version, "click"])
+
             global apps_path
             apps_path = []
             apps_path_query = device.shell("pm list packages -f -3")
@@ -1856,7 +1931,6 @@ def get_client(host=default_host, port=default_port, check=False):
                 if match:
                     app_path = match.group(1)
                     apps_path.append(app_path)
-
 
 
             if len(build) > 26:
@@ -1907,7 +1981,11 @@ def get_client(host=default_host, port=default_port, check=False):
                         "\n" + '{:13}'.format("Used: ") + "\t" + used_s +
                         "\n" + '{:13}'.format("Free: ") + "\t" + free +
                         "\n" + '{:13}'.format("Ad-ID: ") + "\t" + ad_id +
-                        "\n" + '{:13}'.format("State: ") + "\t" + crypt_on + " " + crypt_type)             
+                        "\n" + '{:13}'.format("State: ") + "\t" + crypt_on + " " + crypt_type)
+                
+                if su_app != None:
+                    device_info = device_info + "\n" + '{:13}'.format("root: ") + "\t" + "su manager found"
+
 
     else:
         device = None
@@ -2852,6 +2930,31 @@ def exploit_zygote(zip_path, text, prog_text, change):
         text.configure(text="Expoliting CVE-2024–31317 failed.")
         log("Device is not vulnerable to CVE-2024–31317 (or other issue)")
     change.set(1)
+
+
+def has_root(change, timeout=30):
+    result_holder = {"value": None}
+
+    def check_root():
+        try:
+            result_holder["value"] = device.shell("su -c whoami").strip() == "root"
+            print(result_holder["value"])
+        except Exception:
+            result_holder["value"] = False
+
+    thread = threading.Thread(target=check_root)
+    thread.start()
+    thread.join(timeout)
+
+    if thread.is_alive():
+        change.set(3)
+        return False
+    if result_holder["value"] == True:
+        change.set(1)
+        return True
+    else:
+        change.set(2)
+        return True
 
 #ALEX "logging"
 def log(text):
