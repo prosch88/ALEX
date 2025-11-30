@@ -240,6 +240,8 @@ class MyApp(ctk.CTk):
             self.show_check_root()
         elif menu_name == "RootAcq":
             self.show_root_acq_menu()
+        elif menu_name == "RootFFS":
+            self.show_root_ffs()
         #UT Options:
         elif menu_name == "UT_physical":
             self.show_ut_physical()
@@ -435,7 +437,7 @@ class MyApp(ctk.CTk):
                 ctk.CTkButton(self.dynamic_frame, text="ADB Backup", command=lambda: self.switch_menu("ADBBU"), width=200, height=70, font=self.stfont),
                 ctk.CTkButton(self.dynamic_frame, text="Logical+ Backup\n(UFED-Style)", command=lambda: self.switch_menu("AdvUFED"), width=200, height=70, font=self.stfont),
                 ctk.CTkButton(self.dynamic_frame, text="Partially Restored\nFilesystem Backup", command=lambda: self.switch_menu("PRFS"), width=200, height=70, font=self.stfont),
-                ctk.CTkButton(self.dynamic_frame, text="Root-based Backups", command=lambda: self.switch_menu("CheckRoot"), width=200, height=70, font=self.stfont, state="disabled"),
+                ctk.CTkButton(self.dynamic_frame, text="Filesystem / Physical\nBackups (rooted)", command=lambda: self.switch_menu("CheckRoot"), width=200, height=70, font=self.stfont),
             ]
             self.menu_text = ["Extract the content of \"sdcard\" as a folder.",
                             "Perform an ADB-Backup.",
@@ -552,10 +554,10 @@ class MyApp(ctk.CTk):
         self.skip = ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont)
         self.skip.grid(row=0, column=0, columnspan=2, sticky="w")
         self.menu_buttons = [
-            ctk.CTkButton(self.dynamic_frame, text="Filesystem Backup\n(rooted)", command=lambda: self.switch_menu("LogDump"), width=200, height=70, font=self.stfont),
+            ctk.CTkButton(self.dynamic_frame, text="Filesystem Backup\n(rooted)", command=lambda: self.switch_menu("RootFFS"), width=200, height=70, font=self.stfont),
             ctk.CTkButton(self.dynamic_frame, text="Physical Backup", command=lambda: self.switch_menu("Dumpsys"), width=200, height=70, font=self.stfont, state="disabled"),
         ]
-        self.menu_text = ["Creates a FFS Backup of an already\nrooted Device",
+        self.menu_text = ["Creates a FFS Backup of an already\nrooted Device.",
                             "Creates a physical Backup of an already\nrooted Device.",]
         self.menu_textbox = []
         for btn in self.menu_buttons:
@@ -644,6 +646,29 @@ class MyApp(ctk.CTk):
         self.progress.pack_forget()
         self.text.configure(text=f"The Content Provider entries were saved under:\ncontent_provider_{snr}")
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AdvMenu")).pack(pady=40))
+
+    #Show the Root FFS Screen
+    def show_root_ffs(self):
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
+        ctk.CTkLabel(self.dynamic_frame, text="Filesystem Backup", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
+        self.text = ctk.CTkLabel(self.dynamic_frame, text="Extracting available files from the device filesystem.", width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        self.text.pack(anchor="center", pady=25)
+        self.change = ctk.IntVar(self, 0)
+        log("Started FFS Backup")
+        zip_path = f'FFS_{snr}_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}'
+        self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="", width=585, height=20, font=self.stfont, anchor="w", justify="left")
+        self.prog_text.pack()
+        self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
+        self.progress.pack()
+        self.progress.start()
+        self.do_root_ffs = threading.Thread(target=lambda: devdump.su_root_ffs(outzip=zip_path, filetext=self.text, prog_text=self.prog_text, log=log, change=self.change))
+        self.do_root_ffs.start()
+        self.wait_variable(self.change)
+        self.text.configure(text="Data Extraction complete.")
+        self.prog_text.pack_forget()
+        self.progress.pack_forget()
+        log(f"FFS Backup complete: {zip_path}")
+        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
 
     #Show the "Pull sdcard" screen
     def show_pull_data(self):
@@ -1602,7 +1627,7 @@ class MyApp(ctk.CTk):
             change.set(1)
 
 
-a_version = 0.1
+a_version = 0.2
 default_host = "127.0.0.1"
 default_port = 5037
 
@@ -2938,7 +2963,7 @@ def has_root(change, timeout=30):
     def check_root():
         try:
             result_holder["value"] = device.shell("su -c whoami").strip() == "root"
-            print(result_holder["value"])
+            #print(result_holder["value"])
         except Exception:
             result_holder["value"] = False
 

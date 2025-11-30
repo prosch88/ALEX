@@ -7,10 +7,14 @@ import tempfile
 MARKER_PREFIX = "<<<FILE PATH="
 
 DEFAULT_EXCLUDES = [
-    "/proc", "/sys", "/dev", "/tmp", "/cache", "/run", "/acct",
-    "/mnt", "/mnt/runtime", "/mnt/asec", "/mnt/obb",
-    "/data/dalvik-cache", "/data/local/tmp"
+    "/proc", "/apex", "/dev", "/tmp", "/cache", "/run", "/acct",
+    "/mnt", "/mnt/runtime", "/mnt/asec", "/mnt/obb", "/config",
+    "/data/dalvik-cache", "/data/local/tmp", "/bootstrap-apex",
+    "/lost+found", "/linkerconfig", "/data/apex", "/system/apex",
+    "/sys", "*.apex"
 ]
+
+normalize = r"${f//\/\//\/}"
 
 def build_remote_script(root, excludes):
     excl_str = " ".join(excludes)
@@ -31,7 +35,7 @@ walk() {{
   for f in "$DIR"/*; do
     [ -e "$f" ] || continue
     [ -L "$f" ] && continue
-    f="${{f//\\/\\//\/}}"  # normalize //
+    f="{normalize}"  # normalize //
     should_exclude "$f" && continue
     if [ -d "$f" ]; then
       walk "$f"
@@ -83,7 +87,7 @@ def push_temp_script(script_text):
     os.unlink(local_path)
     return remote_path
 
-def su_root_ffs(outzip=None, filetext=None, prog_text=None, change=None, log=None):
+def su_root_ffs(outzip=None, filetext=None, prog_text=None, log=None, change=None):
     if outzip == None:
         outzip = "FFS.zip"
     root = "/"
@@ -146,16 +150,17 @@ def su_root_ffs(outzip=None, filetext=None, prog_text=None, change=None, log=Non
         if filetext == None:
             print(f"[{count}] {path} ({size} bytes)")
         else:
-            if len(path) > 48:
-                fpath = f"...{path[-45:]}"
+            if len(path) > 60:
+                fpath = f"...{path[-57:]}"
             else:
                 fpath = path
-            filetext.configure(text=f"File: {fpath}")
+            filetext.configure(text=f"Extracting available files from the device filesystem.\nFile: {fpath}")
 
         zi = zipfile.ZipInfo(path)
         try:
             dt = datetime.fromtimestamp(mtime)
-            zi.date_time = (dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+            year = max(1980, min(dt.year, 2107))
+            zi.date_time = (year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
         except:
             zi.date_time = time.localtime()[:6]
         zi.external_attr = (mode & 0xFFFF) << 16
@@ -170,14 +175,17 @@ def su_root_ffs(outzip=None, filetext=None, prog_text=None, change=None, log=Non
                     zfile.write(chunk)
                     ffs_size += len(chunk)
                     if prog_text != None:
-                        prog_text.configure(text=f"{total/1024/1024:.1f} MB written")
+                        prog_text.configure(text=f"{ffs_size/1024/1024:.1f} MB written")
                     remaining -= len(chunk)
                 while True:
                     l2 = read_line(proc)
                     if l2 is None or l2.strip() == b"<<<DONE>>>":
                         break
         except Exception as e:
-            print(f"ERROR reading {path}: {e}")
+            if log == None:
+                print(f"ERROR reading {path}: {e}")
+            else:
+                log(f"ERROR reading {path}: {e}")
 
     zf.close()
     proc.stdout.close()
