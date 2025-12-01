@@ -201,5 +201,6 @@ def su_root_ffs(outzip=None, filetext=None, prog_text=None, log=None, change=Non
     else:
         print(f"DONE: files={count}, elapsed={int(elapsed)}s")
 
+
 if __name__ == "__main__":
     su_root_ffs()

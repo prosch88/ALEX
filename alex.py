@@ -125,6 +125,9 @@ class MyApp(ctk.CTk):
         self.current_menu = None
 
         # Show Main Menu
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="center")
+        #self.text = ctk.CTkLabel(self.dynamic_frame, width=400, height=250, font=self.stfont, text="Checking adb and device connection ...", anchor="w", justify="left")
+        #self.after(2000)
         self.show_noadbserver()
 
         self.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -242,36 +245,31 @@ class MyApp(ctk.CTk):
             self.show_root_acq_menu()
         elif menu_name == "RootFFS":
             self.show_root_ffs()
+        elif menu_name == "TarRootFFS":
+            self.show_root_tar_ffs()
         #UT Options:
-        elif menu_name == "UT_physical":
-            self.show_ut_physical()
+        elif menu_name == "Physical":
+            self.show_physical()
 
 
     # Function to check for adb-binary and device:
     def show_noadbserver(self):
         for widget in self.dynamic_frame.winfo_children():
             widget.destroy()
-        self.after(10)
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="center")
+        self.text = ctk.CTkLabel(self.dynamic_frame, width=400, height=250, font=self.stfont, anchor="w", justify="left")
+        start_error = False
         global device
         global adb
         global paired
-        get_client()
+        self.after(10)
+        try:
+            get_client()
+        except:
+            start_error = True
 
-        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="center")
-        self.text = ctk.CTkLabel(self.dynamic_frame, width=400, height=250, font=self.stfont, anchor="w", justify="left")    
-        if adb == None:
-            self.text.configure(text="No ADB Server found!\n\n" +
-                            "Make sure ADB is installed (e.g. via Platform Tools)\nand available in PATH.")
-            self.text.pack(pady=50)
-            ctk.CTkButton(self.dynamic_frame, text="Check again", command=self.show_noadbserver).pack(pady=10)
-            itext = device_info
-            self.info_text.configure(state="normal")
-            self.info_text.delete("0.0", "end")
-            self.info_text.configure(text_color="#4d4d4d")
-            self.info_text.insert("0.0", itext)
-            self.info_text.configure(state="disabled")
-        elif adb != None and device == None:
-            self.text.configure(text="No device found!\n\n" +
+        if start_error == True:
+            self.text.configure(text="An error occured!\n\n" +
                             "Make sure the device is connected and the\ndeveloper options are enabled.")
             self.text.pack(pady=50)
             ctk.CTkButton(self.dynamic_frame, text="Check again", command=self.show_noadbserver).pack(pady=10)
@@ -281,38 +279,62 @@ class MyApp(ctk.CTk):
             self.info_text.configure(text_color="#4d4d4d")
             self.info_text.insert("0.0", itext)
             self.info_text.configure(state="disabled")
-        elif device != None and paired == False:
-            self.text.configure(text="Device is not authorized!\n\n" +
-                            "Confirm the \"Always trust this Computer\" message\nand check again.")
-            self.text.pack(pady=50)
-            ctk.CTkButton(self.dynamic_frame, text="Check again", command=self.show_noadbserver).pack(pady=10)
-            itext = device_info
-            self.info_text.configure(state="normal")
-            self.info_text.delete("0.0", "end")
-            self.info_text.configure(text_color="#abb3bd")
-            self.info_text.insert("0.0", itext)
-            self.info_text.configure(state="disabled")
-        elif paired == True:
-            itext = device_info
-            self.info_text.configure(state="normal")
-            self.info_text.delete("0.0", "end")
-            self.info_text.configure(text_color="#abb3bd")
-            self.info_text.insert("0.0", itext)
-            self.info_text.configure(state="disabled")
-            self.show_cwd()
 
         else:
-            self.text.configure(text="Unknown operation state.")
-            self.text.pack(pady=50)
-            itext = device_info
-            self.info_text.configure(state="normal")
-            self.info_text.delete("0.0", "end")
-            self.info_text.configure(text_color="#abb3bd")
-            self.info_text.insert("0.0", itext)
-            self.info_text.configure(state="disabled")
-            self.text.configure(text="ADB Server found!")
-            self.text.pack(pady=50)
-            pass
+            if adb == None:
+                self.text.configure(text="No ADB Server found!\n\n" +
+                                "Make sure ADB is installed (e.g. via Platform Tools)\nand available in PATH.")
+                self.text.pack(pady=50)
+                ctk.CTkButton(self.dynamic_frame, text="Check again", command=self.show_noadbserver).pack(pady=10)
+                itext = device_info
+                self.info_text.configure(state="normal")
+                self.info_text.delete("0.0", "end")
+                self.info_text.configure(text_color="#4d4d4d")
+                self.info_text.insert("0.0", itext)
+                self.info_text.configure(state="disabled")
+            elif adb != None and device == None:
+                self.text.configure(text="No device found!\n\n" +
+                                "Make sure the device is connected and the\ndeveloper options are enabled.")
+                self.text.pack(pady=50)
+                ctk.CTkButton(self.dynamic_frame, text="Check again", command=self.show_noadbserver).pack(pady=10)
+                itext = device_info
+                self.info_text.configure(state="normal")
+                self.info_text.delete("0.0", "end")
+                self.info_text.configure(text_color="#4d4d4d")
+                self.info_text.insert("0.0", itext)
+                self.info_text.configure(state="disabled")
+            elif device != None and paired == False:
+                self.text.configure(text="Device is not authorized!\n\n" +
+                                "Confirm the \"Always trust this Computer\" message\nand check again.")
+                self.text.pack(pady=50)
+                ctk.CTkButton(self.dynamic_frame, text="Check again", command=self.show_noadbserver).pack(pady=10)
+                itext = device_info
+                self.info_text.configure(state="normal")
+                self.info_text.delete("0.0", "end")
+                self.info_text.configure(text_color="#abb3bd")
+                self.info_text.insert("0.0", itext)
+                self.info_text.configure(state="disabled")
+            elif paired == True:
+                itext = device_info
+                self.info_text.configure(state="normal")
+                self.info_text.delete("0.0", "end")
+                self.info_text.configure(text_color="#abb3bd")
+                self.info_text.insert("0.0", itext)
+                self.info_text.configure(state="disabled")
+                self.show_cwd()
+
+            else:
+                self.text.configure(text="Unknown operation state.")
+                self.text.pack(pady=50)
+                itext = device_info
+                self.info_text.configure(state="normal")
+                self.info_text.delete("0.0", "end")
+                self.info_text.configure(text_color="#abb3bd")
+                self.info_text.insert("0.0", itext)
+                self.info_text.configure(state="disabled")
+                self.text.configure(text="ADB Server found!")
+                self.text.pack(pady=50)
+                pass
 
     # Select the working directory
     def show_cwd(self):
@@ -419,14 +441,14 @@ class MyApp(ctk.CTk):
         if ut == True or aos == True:
             self.menu_buttons = [
                 ctk.CTkButton(self.dynamic_frame, text="Pull \"Home\"", command=lambda: self.switch_menu("PullData"), width=200, height=70, font=self.stfont),
-                ctk.CTkButton(self.dynamic_frame, text="Physical Acquisition", command=lambda: self.switch_menu("UT_physical"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Physical Acquisition", command=lambda: self.switch_menu("Physical"), width=200, height=70, font=self.stfont),
             ]
             self.menu_text = ["Extract the content of \"Home\" as a folder.",
                             "Extract a physical image of the Block-device.\n(Requires the sudo password)"] 
 
         elif recovery == True:
             self.menu_buttons = [
-                ctk.CTkButton(self.dynamic_frame, text="Physical Acquisition", command=lambda: self.switch_menu("UT_physical"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Physical Acquisition", command=lambda: self.switch_menu("Physical"), width=200, height=70, font=self.stfont),
             ]
             self.menu_text = ["Extract a physical image of the Block-device.\n(Block-device might be encrypted.)"] 
 
@@ -526,6 +548,7 @@ class MyApp(ctk.CTk):
         ctk.CTkLabel(self.dynamic_frame, text="", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
         self.text = ctk.CTkLabel(self.dynamic_frame, text="Checking the root state ...", width=585, height=60, font=self.stfont, anchor="w", justify="left")
         self.text.pack(anchor="center", pady=25)
+        global show_root
         show_root = False
         self.change = ctk.IntVar(self, 0)
         if whoami == "root":
@@ -546,6 +569,7 @@ class MyApp(ctk.CTk):
             self.after(100, lambda: self.switch_menu("RootAcq"))
             return
         else:
+            self.text.configure(text="Root access has not been confirmed.")
             self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
             return
 
@@ -553,12 +577,33 @@ class MyApp(ctk.CTk):
     def show_root_acq_menu(self):
         self.skip = ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont)
         self.skip.grid(row=0, column=0, columnspan=2, sticky="w")
-        self.menu_buttons = [
-            ctk.CTkButton(self.dynamic_frame, text="Filesystem Backup\n(rooted)", command=lambda: self.switch_menu("RootFFS"), width=200, height=70, font=self.stfont),
-            ctk.CTkButton(self.dynamic_frame, text="Physical Backup", command=lambda: self.switch_menu("Dumpsys"), width=200, height=70, font=self.stfont, state="disabled"),
-        ]
-        self.menu_text = ["Creates a FFS Backup of an already\nrooted Device.",
-                            "Creates a physical Backup of an already\nrooted Device.",]
+        if crypt_on == "unencrypted":
+            self.menu_buttons = [
+                ctk.CTkButton(self.dynamic_frame, text="Filesystem Backup\nMethod 1", command=lambda: self.switch_menu("RootFFS"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Filesystem Backup\nMethod 2", command=lambda: self.switch_menu("TarRootFFS"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Physical Backup", command=lambda: self.switch_menu("Physical"), width=200, height=70, font=self.stfont),
+            ]
+            self.menu_text = ["Creates a FFS Backup of an already\nrooted Device. (As Zip - more reliable)",
+                              "Creates a FFS Backup of an already\nrooted Device. (As Tar - faster)",
+                              "Creates a physical Backup of an already\nrooted Device.",]
+        elif crypt_on == "encrypted":
+            self.menu_buttons = [
+                ctk.CTkButton(self.dynamic_frame, text="Filesystem Backup\nMethod 1", command=lambda: self.switch_menu("RootFFS"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Filesystem Backup\nMethod 2", command=lambda: self.switch_menu("TarRootFFS"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Physical Backup", command=lambda: self.switch_menu("Physical"), fg_color="#8c2c27", text_color="#DCE4EE", width=200, height=70, font=self.stfont),
+            ]
+            self.menu_text = ["Creates a FFS Backup of an already\nrooted Device. (As Zip - more reliable)",
+                              "Creates a FFS Backup of an already\nrooted Device. (As Tar - faster)",
+                              "Creates a physical Backup of a rooted Device.\n(Device is encrypted - the dump may be unusable!)",]
+        else:
+            self.menu_buttons = [
+                ctk.CTkButton(self.dynamic_frame, text="Filesystem Backup\nMethod 1", command=lambda: self.switch_menu("RootFFS"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Filesystem Backup\nMethod 2", command=lambda: self.switch_menu("TarRootFFS"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Physical Backup", command=lambda: self.switch_menu("Physical"), fg_color="#8c2c27", text_color="#DCE4EE", width=200, height=70, font=self.stfont),
+            ]
+            self.menu_text = ["Creates a FFS Backup of an already\nrooted Device. (As Zip - more reliable)",
+                              "Creates a FFS Backup of an already\nrooted Device. (As Tar - faster)",
+                              "Creates a physical Backup of a rooted Device.\n(Device may be encrypted)",]
         self.menu_textbox = []
         for btn in self.menu_buttons:
             self.menu_textbox.append(ctk.CTkLabel(self.dynamic_frame, width=right_content, height=70, font=self.stfont, anchor="w", justify="left"))
@@ -570,7 +615,6 @@ class MyApp(ctk.CTk):
             self.menu_textbox[i].configure(text=self.menu_text[i])
             r+=1
             i+=1
-
         ctk.CTkButton(self.dynamic_frame, text="Back", command=self.show_main_menu).grid(row=r, column=1, padx=10, pady=10, sticky="e" )
 
     #Show the Logcat-Dump Menu
@@ -647,7 +691,7 @@ class MyApp(ctk.CTk):
         self.text.configure(text=f"The Content Provider entries were saved under:\ncontent_provider_{snr}")
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AdvMenu")).pack(pady=40))
 
-    #Show the Root FFS Screen
+    #Show the Root FFS Screen (Zip)
     def show_root_ffs(self):
         ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
         ctk.CTkLabel(self.dynamic_frame, text="Filesystem Backup", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
@@ -668,6 +712,29 @@ class MyApp(ctk.CTk):
         self.prog_text.pack_forget()
         self.progress.pack_forget()
         log(f"FFS Backup complete: {zip_path}")
+        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
+
+    #Show the Root FFS Screen (Tar)
+    def show_root_tar_ffs(self):
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
+        ctk.CTkLabel(self.dynamic_frame, text="Filesystem Backup", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
+        self.text = ctk.CTkLabel(self.dynamic_frame, text="Extracting available files from the device filesystem.", width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        self.text.pack(anchor="center", pady=25)
+        self.change = ctk.IntVar(self, 0)
+        log("Started FFS Backup")
+        tar_path = f'FFS_{snr}_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}.tar'
+        self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="", width=585, height=20, font=self.stfont, anchor="w", justify="left")
+        self.prog_text.pack()
+        self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
+        self.progress.pack()
+        self.progress.start()
+        self.do_root_ffs = threading.Thread(target=lambda: tar_root_ffs(outtar=tar_path, prog_text=self.prog_text, change=self.change))
+        self.do_root_ffs.start()
+        self.wait_variable(self.change)
+        self.text.configure(text="Data Extraction complete.")
+        self.prog_text.pack_forget()
+        self.progress.pack_forget()
+        log(f"FFS Backup complete: {tar_path}")
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
 
     #Show the "Pull sdcard" screen
@@ -1043,8 +1110,8 @@ class MyApp(ctk.CTk):
 
     ## Ubuntu Touch visible Options ##
 
-    #Show UT-Physical
-    def show_ut_physical(self):
+    #Show Physical
+    def show_physical(self):
         ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
         ctk.CTkLabel(self.dynamic_frame, text="Physical Extraction", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
         if ut == True:
@@ -1058,16 +1125,19 @@ class MyApp(ctk.CTk):
         self.progress.set(0)
         self.prog_text.configure(text="0%")
         if aos == True:
-            self.aosphysical = threading.Thread(target=lambda: ut_physical(change=self.change, text=self.text, progress=self.progress, prog_text=self.prog_text))
+            self.aosphysical = threading.Thread(target=lambda: physical(change=self.change, text=self.text, progress=self.progress, prog_text=self.prog_text))
             self.aosphysical.start()            
         elif rec_root == True:
-            self.recphysical = threading.Thread(target=lambda: ut_physical(change=self.change, text=self.text, progress=self.progress, prog_text=self.prog_text))
-            self.recphysical.start()   
+            self.recphysical = threading.Thread(target=lambda: physical(change=self.change, text=self.text, progress=self.progress, prog_text=self.prog_text))
+            self.recphysical.start()
+        elif show_root == True:
+            self.livephysical = threading.Thread(target=lambda: physical(change=self.change, text=self.text, progress=self.progress, prog_text=self.prog_text))
+            self.livephysical.start()   
         else:
             self.passwordbox = ctk.CTkEntry(self.dynamic_frame, width=200, height=20, corner_radius=0, show="*")
-            self.passwordbox.bind(sequence="<Return>", command=lambda x: ut_physical(change=self.change, text=self.text, progress=self.progress, prog_text=self.prog_text, pw_box=self.passwordbox, ok_button=self.okb, back_button=self.backb))
+            self.passwordbox.bind(sequence="<Return>", command=lambda x: physical(change=self.change, text=self.text, progress=self.progress, prog_text=self.prog_text, pw_box=self.passwordbox, ok_button=self.okb, back_button=self.backb))
             self.passwordbox.pack(pady = 15) 
-            self.okb = ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: ut_physical(change=self.change, text=self.text, progress=self.progress, prog_text=self.prog_text, pw_box=self.passwordbox, ok_button=self.okb, back_button=self.backb))
+            self.okb = ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: physical(change=self.change, text=self.text, progress=self.progress, prog_text=self.prog_text, pw_box=self.passwordbox, ok_button=self.okb, back_button=self.backb))
             self.okb.pack(pady=15) 
             self.backb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=lambda: self.switch_menu("AcqMenu"))
             self.backb.pack(pady=5)
@@ -2008,8 +2078,11 @@ def get_client(host=default_host, port=default_port, check=False):
                         "\n" + '{:13}'.format("Ad-ID: ") + "\t" + ad_id +
                         "\n" + '{:13}'.format("State: ") + "\t" + crypt_on + " " + crypt_type)
                 
-                if su_app != None:
-                    device_info = device_info + "\n" + '{:13}'.format("root: ") + "\t" + "su manager found"
+                if whoami == "root":
+                    device_info = device_info + "\n" + '{:13}'.format("root: ") + "\t" + "rooted"
+                else:
+                    if su_app != None:
+                        device_info = device_info + "\n" + '{:13}'.format("root: ") + "\t" + "potentially rooted"
 
 
     else:
@@ -2241,19 +2314,89 @@ def content_to_json(text: str):
         result.append(entry)
     return result
 
-#Physical Extraction for Ubuntu Touch
-def ut_physical(change, text, progress, prog_text, pw_box=None, ok_button=None, back_button=None):
+#FFS Tar extraction:
+def tar_root_ffs(outtar, prog_text, change):
+    tar_arch = getprop(device, "ro.product.cpu.abi")
+    localtar = False
+    if "armeabi" in tar_arch.lower():
+        tar_bin = os.path.join(os.path.dirname(__file__), "ressources" , "tar", "armhf", "tar")
+    else: 
+        localtar = True
+    if localtar == False:
+        remote_path = "/data/local/tmp/tar"
+        subprocess.run(["adb", "push", tar_bin, remote_path], check=True)
+        subprocess.run(["adb", "shell", "su", "-c", f"chmod 755 {remote_path}"], check=True)
+        tar_remote = remote_path
+    else:
+        tar_remote = "tar"
+    CHUNK_SIZE = 1024 * 64
+    cmd = [
+        "adb", "exec-out",
+        "su", "-c",
+        f"sh -c '{tar_remote} -cpO /data 2>/dev/null'"
+    ]
+
+    with open(outtar, "wb") as f:
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
+        total_bytes = 0
+        try:
+            while True:
+                chunk = proc.stdout.read(CHUNK_SIZE)
+                if not chunk:
+                    break
+                f.write(chunk)
+                total_bytes += len(chunk)
+                prog_text.configure(text=f"{total_bytes/1024/1024:.1f} MB written")
+                sys.stdout.flush()
+        finally:
+            proc.wait()
+
+    if localtar == False and total_bytes == 0:
+        cmd = [
+            "adb", "exec-out",
+            "su", "-c",
+            "sh -c 'tar -cpO /data 2>/dev/null'"
+        ]
+        with open(outtar, "wb") as f:
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
+            total_bytes = 0
+            try:
+                while True:
+                    chunk = proc.stdout.read(CHUNK_SIZE)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    total_bytes += len(chunk)
+                    prog_text.configure(text=f"{total_bytes/1024/1024:.1f} MB written")
+                    sys.stdout.flush()
+            finally:
+                proc.wait()
+
+    change.set(1)
+    
+
+
+#Physical Extraction for Android and Ubuntu Touch
+def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, back_button=None):
     if ut == True:
         sh_pwd = pw_box.get()
         pw_box.pack_forget()
         ok_button.pack_forget()
         back_button.pack_forget()
 
-    #live device
-    if recovery == True:
-        dev_cmd = device.shell("ls /dev/block")
+    #Find block device
+    block = ""
+    if show_root == True:
+        dev_cmd = device.shell("su -c ls /dev")
+        amiroot = "root"
     else:
         dev_cmd = device.shell("ls /dev")
+    if "block" in dev_cmd:
+        if show_root == True:
+            dev_cmd = device.shell("su -c ls /dev/block")
+        else:
+            dev_cmd = device.shell("ls /dev/block")
+        block = "block/"
     if "mmcblk0" in dev_cmd:
         target = "mmcblk0"
     elif "sda" in dev_cmd:
@@ -2267,26 +2410,35 @@ def ut_physical(change, text, progress, prog_text, pw_box=None, ok_button=None, 
         return
 
     else:
-        size = int(device.shell(f"cat /sys/block/{target}/size"))*512
+        if show_root == True:
+            size = int(device.shell(f"su -c cat /sys/block/{target}/size"))*512
+        else:
+            size = int(device.shell(f"cat /sys/block/{target}/size"))*512
         if ut == True:
             amiroot = device.shell(f"echo {sh_pwd} | sudo -S whoami 2>/dev/null")
         if aos == True:
             amiroot = device.shell("whoami 2>/dev/null")
         else:
-            amiroot = device.shell("whoami 2>/dev/null")
+            if show_root == True:
+                amiroot = "root"
+            else:
+                amiroot = device.shell("whoami 2>/dev/null")
         if amiroot == "root":
             prog_text.pack()
             progress.pack()
             current = 0
             out_file = f"{snr}_{target}.bin"
-            if recovery == True:
-                target = f"block/{target}"
+            #if recovery == True:
+            #    target = f"block/{target}"
             with open(out_file, "wb") as f:
                 if ut == True:
-                    proc = subprocess.Popen(["adb", "exec-out", f"echo {sh_pwd}| sudo -S cat /dev/{target} 2>/dev/null"], stdout=subprocess.PIPE)
+                    proc = subprocess.Popen(["adb", "exec-out", f"echo {sh_pwd}| sudo -S cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
                     stream = proc.stdout
                 else:
-                    proc = subprocess.Popen(["adb", "exec-out", f"cat /dev/{target} 2>/dev/null"], stdout=subprocess.PIPE)
+                    if show_root == True:
+                        proc = subprocess.Popen(["adb", "exec-out", f"su -c cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
+                    else:
+                        proc = subprocess.Popen(["adb", "exec-out", f"cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
                     stream = proc.stdout
                 while True:
                     chunk = stream.read(65536)
@@ -2995,6 +3147,7 @@ all_apps = []
 apps_path=[]
 adb = None
 state = None
+show_root = False
 case_number = ""
 case_name = ""
 evidence_number = ""
