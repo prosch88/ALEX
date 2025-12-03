@@ -699,7 +699,7 @@ class MyApp(ctk.CTk):
         self.text.pack(anchor="center", pady=25)
         self.change = ctk.IntVar(self, 0)
         log("Started FFS Backup")
-        zip_path = f'FFS_{snr}_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}'
+        zip_path = f'FFS_{snr}_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}.zip'
         self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="", width=585, height=20, font=self.stfont, anchor="w", justify="left")
         self.prog_text.pack()
         self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
@@ -2325,16 +2325,25 @@ def tar_root_ffs(outtar, prog_text, change):
     if localtar == False:
         remote_path = "/data/local/tmp/tar"
         subprocess.run(["adb", "push", tar_bin, remote_path], check=True)
-        subprocess.run(["adb", "shell", "su", "-c", f"chmod 755 {remote_path}"], check=True)
+        if device_has_su():
+            subprocess.run(["adb", "shell", "su", "-c", f"chmod 755 {remote_path}"], check=True)
+        else:
+            subprocess.run(["adb", "shell", f"chmod 755 {remote_path}"], check=True)
         tar_remote = remote_path
     else:
         tar_remote = "tar"
     CHUNK_SIZE = 1024 * 64
-    cmd = [
-        "adb", "exec-out",
-        "su", "-c",
-        f"sh -c '{tar_remote} -cpO /data 2>/dev/null'"
-    ]
+    if device_has_su():
+        cmd = [
+            "adb", "exec-out",
+            "su", "-c",
+            f"sh -c '{tar_remote} -cpO /data 2>/dev/null'"
+        ]
+    else:
+        cmd = [
+            "adb", "exec-out",
+            f"sh -c '{tar_remote} -cpO /data 2>/dev/null'"
+        ]
 
     with open(outtar, "wb") as f:
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
@@ -2352,11 +2361,17 @@ def tar_root_ffs(outtar, prog_text, change):
             proc.wait()
 
     if localtar == False and total_bytes == 0:
-        cmd = [
-            "adb", "exec-out",
-            "su", "-c",
-            "sh -c 'tar -cpO /data 2>/dev/null'"
-        ]
+        if device_has_su():
+            cmd = [
+                "adb", "exec-out",
+                "su", "-c",
+                "sh -c 'tar -cpO /data 2>/dev/null'"
+            ]
+        else:
+            cmd = [
+                "adb", "exec-out",
+                "sh -c 'tar -cpO /data 2>/dev/null'"
+            ]
         with open(outtar, "wb") as f:
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
             total_bytes = 0
@@ -2387,13 +2402,19 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
     #Find block device
     block = ""
     if show_root == True:
-        dev_cmd = device.shell("su -c ls /dev")
+        if device_has_su():
+            dev_cmd = device.shell("su -c ls /dev")
+        else:
+            dev_cmd = device.shell("ls /dev")
         amiroot = "root"
     else:
         dev_cmd = device.shell("ls /dev")
     if "block" in dev_cmd:
         if show_root == True:
-            dev_cmd = device.shell("su -c ls /dev/block")
+            if device_has_su():
+                dev_cmd = device.shell("su -c ls /dev/block")
+            else:
+                dev_cmd = device.shell("ls /dev/block")
         else:
             dev_cmd = device.shell("ls /dev/block")
         block = "block/"
@@ -2411,7 +2432,10 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
 
     else:
         if show_root == True:
-            size = int(device.shell(f"su -c cat /sys/block/{target}/size"))*512
+            if device_has_su():
+                size = int(device.shell(f"su -c cat /sys/block/{target}/size"))*512
+            else:
+                size = int(device.shell(f"cat /sys/block/{target}/size"))*512
         else:
             size = int(device.shell(f"cat /sys/block/{target}/size"))*512
         if ut == True:
@@ -2436,7 +2460,10 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                     stream = proc.stdout
                 else:
                     if show_root == True:
-                        proc = subprocess.Popen(["adb", "exec-out", f"su -c cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
+                        if device_has_su():
+                            proc = subprocess.Popen(["adb", "exec-out", f"su -c cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
+                        else:
+                            proc = subprocess.Popen(["adb", "exec-out", f"cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
                     else:
                         proc = subprocess.Popen(["adb", "exec-out", f"cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
                     stream = proc.stdout
@@ -3132,6 +3159,16 @@ def has_root(change, timeout=30):
     else:
         change.set(2)
         return True
+
+def device_has_su() -> bool:
+    try:
+        result = subprocess.run(
+            ["adb", "shell", "which", "su"],
+            capture_output=True, text=True
+        )
+        return result.stdout.strip() != ""
+    except Exception:
+        return False
 
 #ALEX "logging"
 def log(text):

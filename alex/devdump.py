@@ -76,6 +76,16 @@ def read_exact(proc, n):
         remaining -= len(chunk)
     return bytes(buf)
 
+def device_has_su() -> bool:
+    try:
+        result = subprocess.run(
+            ["adb", "shell", "which", "su"],
+            capture_output=True, text=True
+        )
+        return result.stdout.strip() != ""
+    except Exception:
+        return False
+
 def push_temp_script(script_text):
     with tempfile.NamedTemporaryFile("w", delete=False) as f:
         f.write(script_text)
@@ -83,7 +93,10 @@ def push_temp_script(script_text):
     remote_path = "/data/local/tmp/devicedump.sh"
     # push script to device
     subprocess.run(["adb", "push", local_path, remote_path], check=True)
-    subprocess.run(["adb", "shell", "su", "-c", f"chmod 700 {remote_path}"], check=True)
+    if device_has_su():
+        subprocess.run(["adb", "shell", "su", "-c", f"chmod 700 {remote_path}"], check=True)
+    else:
+        subprocess.run(["adb", "shell", f"chmod 700 {remote_path}"], check=True)
     os.unlink(local_path)
     return remote_path
 
@@ -104,7 +117,10 @@ def su_root_ffs(outzip=None, filetext=None, prog_text=None, log=None, change=Non
     remote_script_text = build_remote_script(root, excludes)
     remote_script_path = push_temp_script(remote_script_text)
 
-    cmd = ["adb", "exec-out", "su", "-c", f"sh {remote_script_path}"]
+    if device_has_su():
+        cmd = ["adb", "exec-out", "su", "-c", f"sh {remote_script_path}"]
+    else:
+        cmd = ["adb", "exec-out", f"sh {remote_script_path}"]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
 
     zf = zipfile.ZipFile(outzip, "w", allowZip64=True)
@@ -193,8 +209,10 @@ def su_root_ffs(outzip=None, filetext=None, prog_text=None, log=None, change=Non
     try: proc.wait(timeout=2)
     except: proc.kill()
 
-    subprocess.run(["adb", "shell", "su", "-c", f"rm {remote_script_path}"])
-
+    if device_has_su():
+        subprocess.run(["adb", "shell", "su", "-c", f"rm {remote_script_path}"])
+    else:
+        subprocess.run(["adb", "shell", f"rm {remote_script_path}"])
     elapsed = time.time() - start_time
     if change != None:
         change.set(1)
