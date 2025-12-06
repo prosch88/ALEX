@@ -87,7 +87,7 @@ def device_has_su() -> bool:
         return False
 
 def push_temp_script(script_text):
-    with tempfile.NamedTemporaryFile("w", delete=False) as f:
+    with tempfile.NamedTemporaryFile("w", delete=False, newline="\n") as f:
         f.write(script_text)
         local_path = f.name
     remote_path = "/data/local/tmp/devicedump.sh"
