@@ -93,5 +93,8 @@ This script utilizes the following projects:
 
 [crossfiledialog](https://github.com/maikelwever/crossfiledialog) by [maikelwever](https://github.com/maikelwever)
 
+[mtk-su](https://xdaforums.com/t/amazing-temp-root-for-mediatek-armv8-2020-08-24.3922213/) by [diplomatic](
+https://xdaforums.com/m/diplomatic.8132642/)
+
 [simpleaudio](https://github.com/hamiltron/py-simple-audio), [pdfme](https://github.com/aFelipeSP/pdfme)
 
