@@ -86,7 +86,7 @@ def device_has_su() -> bool:
     except Exception:
         return False
 
-def push_temp_script(script_text):
+def push_temp_script(script_text, mtk_su=False):
     with tempfile.NamedTemporaryFile("w", delete=False, newline="\n") as f:
         f.write(script_text)
         local_path = f.name
@@ -95,12 +95,14 @@ def push_temp_script(script_text):
     subprocess.run(["adb", "push", local_path, remote_path], check=True)
     if device_has_su():
         subprocess.run(["adb", "shell", "su", "-c", f"chmod 700 {remote_path}"], check=True)
+    elif mtk_su == True:
+        subprocess.run(["adb", "shell", "/data/local/tmp/mtk-su", "-c", f"chmod 700 {remote_path}"], check=True)
     else:
         subprocess.run(["adb", "shell", f"chmod 700 {remote_path}"], check=True)
     os.unlink(local_path)
     return remote_path
 
-def su_root_ffs(outzip=None, filetext=None, prog_text=None, log=None, change=None):
+def su_root_ffs(outzip=None, filetext=None, prog_text=None, log=None, change=None, mtk_su=False):
     if outzip == None:
         outzip = "FFS.zip"
     root = "/"
@@ -115,10 +117,12 @@ def su_root_ffs(outzip=None, filetext=None, prog_text=None, log=None, change=Non
         pass
 
     remote_script_text = build_remote_script(root, excludes)
-    remote_script_path = push_temp_script(remote_script_text)
+    remote_script_path = push_temp_script(remote_script_text, mtk_su)
 
     if device_has_su():
         cmd = ["adb", "exec-out", "su", "-c", f"sh {remote_script_path}"]
+    elif mtk_su == True:
+        cmd = ["adb", "exec-out", "/data/local/tmp/mtk-su", "-c", f"{remote_script_path}"]
     else:
         cmd = ["adb", "exec-out", f"sh {remote_script_path}"]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)

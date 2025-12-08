@@ -548,21 +548,37 @@ class MyApp(ctk.CTk):
         ctk.CTkLabel(self.dynamic_frame, text="", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
         self.text = ctk.CTkLabel(self.dynamic_frame, text="Checking the root state ...", width=585, height=60, font=self.stfont, anchor="w", justify="left")
         self.text.pack(anchor="center", pady=25)
+        mtk_vers = ("MT67", "MT816", "MT817", "MT6580")
         global show_root
         show_root = False
+        global mtk_su
+        mtk_su = False
         self.change = ctk.IntVar(self, 0)
         if whoami == "root":
             show_root = True
-        else:
-            if su_app != None:
-                self.text.configure(text="Please allow the following superuser request on the device.")
-                check_su = threading.Thread(target=lambda:has_root(self.change))
+        elif su_app != None:
+            self.text.configure(text="Please allow the following superuser request on the device.")
+            check_su = threading.Thread(target=lambda:has_root(self.change))
+            check_su.start()
+            self.wait_variable(self.change)
+            if self.change.get() == 1:
+                show_root = True
+            else:
+                self.text.configure(text="Root access has not been confirmed.")
+                self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
+                return
+        elif d_platform.upper().startswith(mtk_vers):
+            if int(software.split(".")[0]) < 10 and spl < "2020-03-01":
+                self.text.configure(text="Attempts to gain temp-root via CVE-2020-0069 (mtk-su).\nPlease Wait ...")
+                check_su = threading.Thread(target=lambda:temp_mtk_su(self.change))
                 check_su.start()
+                print("mtk-su tried")
                 self.wait_variable(self.change)
                 if self.change.get() == 1:
                     show_root = True
+                    mtk_su = True
                 else:
-                    self.text.configure(text="Root access has not been confirmed.")
+                    self.text.configure(text="Root access has not been gained.\nDue to the nature of this process, another attempt may be successful.")
                     self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
                     return
         if show_root == True:
@@ -705,7 +721,7 @@ class MyApp(ctk.CTk):
         self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
         self.progress.pack()
         self.progress.start()
-        self.do_root_ffs = threading.Thread(target=lambda: devdump.su_root_ffs(outzip=zip_path, filetext=self.text, prog_text=self.prog_text, log=log, change=self.change))
+        self.do_root_ffs = threading.Thread(target=lambda: devdump.su_root_ffs(outzip=zip_path, filetext=self.text, prog_text=self.prog_text, log=log, change=self.change, mtk_su=mtk_su))
         self.do_root_ffs.start()
         self.wait_variable(self.change)
         self.text.configure(text="Data Extraction complete.")
@@ -1837,6 +1853,8 @@ def get_client(host=default_host, port=default_port, check=False):
             build = getprop(device, "ro.build.display.id").split(" ")[0]
             global spl
             spl = getprop(device, "ro.build.version.security_patch")
+            global abi
+            abi = getprop(device, "ro.product.cpu.abi")
             global locale
             locale = getprop(device, "persist.sys.locale")
             if locale == "-" and whoami == "phablet":
@@ -2066,6 +2084,7 @@ def get_client(host=default_host, port=default_port, check=False):
                         "\n" + '{:13}'.format("Software: ") + "\t" + software +
                         "\n" + '{:13}'.format("Build-Nr: ") + "\t" + build_s +
                         "\n" + '{:13}'.format("SPL: ") + "\t" + spl +
+                        "\n" + '{:13}'.format("ABI: ") + "\t" + abi +
                         "\n" + '{:13}'.format("Language: ") + "\t" + locale +
                         "\n" + '{:13}'.format("Serialnr: ") + "\t" + snr +
                         "\n" + '{:13}'.format("IMEI: ") + "\t" + imei +
@@ -2337,12 +2356,20 @@ def tar_root_ffs(outtar, prog_text, change):
         cmd = [
             "adb", "exec-out",
             "su", "-c",
-            f"sh -c '{tar_remote} -cpO /data 2>/dev/null'"
+            f"sh -c '{tar_remote} -cO /data 2>/dev/null'"
         ]
+
+    elif mtk_su == True:
+        cmd = [
+            "adb", "exec-out",
+            "/data/local/tmp/mtk-su", "-c",
+            f"{tar_remote}", "-cO", "/data", "2>/dev/null"
+        ]
+
     else:
         cmd = [
             "adb", "exec-out",
-            f"sh -c '{tar_remote} -cpO /data 2>/dev/null'"
+            f"sh -c '{tar_remote} -cO /data 2>/dev/null'"
         ]
 
     with open(outtar, "wb") as f:
@@ -2365,12 +2392,18 @@ def tar_root_ffs(outtar, prog_text, change):
             cmd = [
                 "adb", "exec-out",
                 "su", "-c",
-                "sh -c 'tar -cpO /data 2>/dev/null'"
+                "sh -c 'tar -cO /data 2>/dev/null'"
+            ]
+        elif mtk_su == True:
+            cmd = [
+                "adb", "exec-out",
+                "/data/local/tmp/mtk-su", "-c",
+                "tar", "-cO", "/data", "2>/dev/null"
             ]
         else:
             cmd = [
                 "adb", "exec-out",
-                "sh -c 'tar -cpO /data 2>/dev/null'"
+                "sh -c 'tar -cO /data 2>/dev/null'"
             ]
         with open(outtar, "wb") as f:
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
@@ -2404,6 +2437,8 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
     if show_root == True:
         if device_has_su():
             dev_cmd = device.shell("su -c ls /dev")
+        elif mtk_su == True:
+            dev_cmd = device.shell("/data/local/tmp/mtk-su -c ls /dev")
         else:
             dev_cmd = device.shell("ls /dev")
         amiroot = "root"
@@ -2413,6 +2448,8 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
         if show_root == True:
             if device_has_su():
                 dev_cmd = device.shell("su -c ls /dev/block")
+            elif mtk_su == True: 
+                dev_cmd = device.shell("/data/local/tmp/mtk-su -c ls /dev/block")
             else:
                 dev_cmd = device.shell("ls /dev/block")
         else:
@@ -2434,6 +2471,8 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
         if show_root == True:
             if device_has_su():
                 size = int(device.shell(f"su -c cat /sys/block/{target}/size"))*512
+            elif mtk_su == True:
+                size = int(device.shell(f"/data/local/tmp/mtk-su -c cat /sys/block/{target}/size"))*512
             else:
                 size = int(device.shell(f"cat /sys/block/{target}/size"))*512
         else:
@@ -2462,6 +2501,9 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                     if show_root == True:
                         if device_has_su():
                             proc = subprocess.Popen(["adb", "exec-out", f"su -c cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
+                        elif mtk_su == True:
+                            proc = subprocess.Popen(["adb", "exec-out", "/data/local/tmp/mtk-su", "-c", "cat", f"/dev/{block + target}", "2>/dev/null"], stdout=subprocess.PIPE)
+                            print(proc)
                         else:
                             proc = subprocess.Popen(["adb", "exec-out", f"cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
                     else:
@@ -3170,6 +3212,29 @@ def device_has_su() -> bool:
     except Exception:
         return False
 
+def temp_mtk_su(change, timeout=30):
+    result_holder = {"value": None}
+    if "armeabi" in abi:
+        mtk_su_bin = os.path.join(os.path.dirname(__file__), "ressources" , "cve", "2020-0069", "arm", "mtk-su")
+    else:
+        mtk_su_bin = os.path.join(os.path.dirname(__file__), "ressources" , "cve", "2020-0069", "arm64", "mtk-su")
+    remote_path = "/data/local/tmp/mtk-su"
+    try:
+        subprocess.run(["adb", "push", mtk_su_bin, remote_path], check=True)
+    except:
+        pass
+    subprocess.run(["adb", "shell", f"chmod 755 {remote_path}"], check=True)
+    try:
+        result_holder["value"] = device.shell(f"{remote_path} -c whoami").strip() == "root"
+    except Exception:
+        result_holder["value"] = False
+    if result_holder["value"] == True:
+        change.set(1)
+        return True
+    else:
+        change.set(2)
+        return True
+
 #ALEX "logging"
 def log(text):
     with open(f"ALEX_log_{snr}.log", 'a', encoding="utf-8") as logfile:
@@ -3185,6 +3250,7 @@ apps_path=[]
 adb = None
 state = None
 show_root = False
+mtk_su = False
 case_number = ""
 case_name = ""
 evidence_number = ""
