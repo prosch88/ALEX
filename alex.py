@@ -2375,8 +2375,7 @@ def tar_root_ffs(outtar, prog_text, change):
     elif mtk_su == True:
         cmd = [
             "adb", "exec-out",
-            "/data/local/tmp/mtk-su", "-c",
-            f"{tar_remote}", "-cO", "/data", "2>/dev/null"
+            f"/data/local/tmp/mtk-su -c {tar_remote} -cO /data 2>/dev/null"
         ]
 
     else:
@@ -2410,8 +2409,7 @@ def tar_root_ffs(outtar, prog_text, change):
         elif mtk_su == True:
             cmd = [
                 "adb", "exec-out",
-                "/data/local/tmp/mtk-su", "-c",
-                "tar", "-cO", "/data", "2>/dev/null"
+                "/data/local/tmp/mtk-su -c tar -cO /data 2>/dev/null"
             ]
         else:
             cmd = [
