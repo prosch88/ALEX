@@ -2357,6 +2357,7 @@ def tar_root_ffs(outtar, prog_text, change):
     if localtar == False:
         remote_path = "/data/local/tmp/tar"
         subprocess.run(["adb", "push", tar_bin, remote_path], check=True)
+        log("Pushed tar binary to /data/local/tmp")
         if device_has_su():
             subprocess.run(["adb", "shell", "su", "-c", f"chmod 755 {remote_path}"], check=True)
         else:
@@ -3231,6 +3232,7 @@ def temp_mtk_su(change, timeout=30):
     remote_path = "/data/local/tmp/mtk-su"
     try:
         subprocess.run(["adb", "push", mtk_su_bin, remote_path], check=True)
+         log("Pushed mtk-su binary to /data/local/tmp")
     except:
         pass
     subprocess.run(["adb", "shell", f"chmod 755 {remote_path}"], check=True)
