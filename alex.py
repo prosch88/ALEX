@@ -3232,7 +3232,7 @@ def temp_mtk_su(change, timeout=30):
     remote_path = "/data/local/tmp/mtk-su"
     try:
         subprocess.run(["adb", "push", mtk_su_bin, remote_path], check=True)
-         log("Pushed mtk-su binary to /data/local/tmp")
+        log("Pushed mtk-su binary to /data/local/tmp")
     except:
         pass
     subprocess.run(["adb", "shell", f"chmod 755 {remote_path}"], check=True)
