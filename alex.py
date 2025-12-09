@@ -1676,7 +1676,7 @@ class MyApp(ctk.CTk):
                                     [{"style": {"cell_fill": u_grey}, ".": [{".b": "Build Nr:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": build[:22]}]}, {"style": {"cell_fill": u_grey}, ".": [{".b": "Data:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": data_s}]}],
                                     [{".": [{".b": "SPL:"}]}, {".": [{".": spl}]}, {".": [{".b": "Free Space:"}]}, {".": [{".": free}]}],
                                     [{"style": {"cell_fill": u_grey}, ".": [{".b": "Language:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": locale}]}, {"style": {"cell_fill": u_grey}, ".": [{".b": "Used:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": used_s}]}],
-                                    [{".": [{".b": "AD-ID:"}]}, {".": [{".": ad_id}]}, {".": [{".b": "Used %:"}]}, {".": [{".": use_percent}]}],
+                                    [{".": [{".b": "AD-ID:"}]}, {".": [{".": ad_id}]}, {".": [{".b": "Serial Nr:"}]}, {".": [{".": snr}]}],
                                     [{"style": {"cell_fill": u_grey}, ".": [{".b": "Encryption:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": f"{crypt_on} {crypt_type}"}]}, {"style": {"cell_fill": u_grey}, ".": [{".b": "IMEI:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": imei}]}]
                                 ]
 
