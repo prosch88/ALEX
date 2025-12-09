@@ -459,13 +459,13 @@ class MyApp(ctk.CTk):
                 ctk.CTkButton(self.dynamic_frame, text="ADB Backup", command=lambda: self.switch_menu("ADBBU"), width=200, height=70, font=self.stfont),
                 ctk.CTkButton(self.dynamic_frame, text="Logical+ Backup\n(UFED-Style)", command=lambda: self.switch_menu("AdvUFED"), width=200, height=70, font=self.stfont),
                 ctk.CTkButton(self.dynamic_frame, text="Partially Restored\nFilesystem Backup", command=lambda: self.switch_menu("PRFS"), width=200, height=70, font=self.stfont),
-                ctk.CTkButton(self.dynamic_frame, text="Filesystem / Physical\nBackups (rooted)", command=lambda: self.switch_menu("CheckRoot"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Filesystem / Physical\nBackups", command=lambda: self.switch_menu("CheckRoot"), width=200, height=70, font=self.stfont),
             ]
             self.menu_text = ["Extract the content of \"sdcard\" as a folder.",
                             "Perform an ADB-Backup.",
                             "Creates an advanced Logical Backup as ZIP\nwith an UFD File for PA.",
                             "Try to reconstruct parts of the device-filesystem",
-                            "Show backup options for rooted devices."]            
+                            "Show backup options for rooted or vulnerable\n(temporarily rootable) devices."]            
 
         self.menu_textbox = []
         for btn in self.menu_buttons:
@@ -569,17 +569,30 @@ class MyApp(ctk.CTk):
                 return
         elif d_platform.upper().startswith(mtk_vers):
             if int(software.split(".")[0]) < 10 and spl < "2020-03-01":
-                self.text.configure(text="Attempts to gain temp-root via CVE-2020-0069 (mtk-su).\nPlease Wait ...")
-                check_su = threading.Thread(target=lambda:temp_mtk_su(self.change))
-                check_su.start()
-                print("mtk-su tried")
-                self.wait_variable(self.change)
-                if self.change.get() == 1:
-                    show_root = True
-                    mtk_su = True
+                self.choose = ctk.BooleanVar(self, False)
+                self.text.configure(text="This device may be vulnerable to CVE-2020-0069 (mtk-su).\nFor temporary root access, mtk-su can be copied to the device's\ntmp directory and executed.\n\nDo you want to continue?")
+                self.yesb = ctk.CTkButton(self.dynamic_frame, text="YES", font=self.stfont, command=lambda: self.choose.set(True))
+                self.yesb.pack(side="left", pady=(20,330), padx=140)
+                self.nob = ctk.CTkButton(self.dynamic_frame, text="NO", font=self.stfont, command=lambda: self.choose.set(False))
+                self.nob.pack(side="left", pady=(20,330))    
+                self.wait_variable(self.choose)  
+                self.yesb.pack_forget()
+                self.nob.pack_forget()
+                if self.choose.get() == True:     
+                    self.text.configure(text="Attempt to gain temp-root via CVE-2020-0069 (mtk-su).\nPlease Wait ...")
+                    check_su = threading.Thread(target=lambda:temp_mtk_su(self.change))
+                    check_su.start()
+                    print("mtk-su tried")
+                    self.wait_variable(self.change)
+                    if self.change.get() == 1:
+                        show_root = True
+                        mtk_su = True
+                    else:
+                        self.text.configure(text="Root access has not been gained.\nDue to the nature of this process, another attempt may be successful.")
+                        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
+                        return
                 else:
-                    self.text.configure(text="Root access has not been gained.\nDue to the nature of this process, another attempt may be successful.")
-                    self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
+                    self.switch_menu("AcqMenu")
                     return
         if show_root == True:
             self.after(100, lambda: self.switch_menu("RootAcq"))
@@ -2335,7 +2348,7 @@ def content_to_json(text: str):
 
 #FFS Tar extraction:
 def tar_root_ffs(outtar, prog_text, change):
-    tar_arch = getprop(device, "ro.product.cpu.abi")
+    tar_arch = getprop(device, "ro.product.cpu.abilist")
     localtar = False
     if "armeabi" in tar_arch.lower():
         tar_bin = os.path.join(os.path.dirname(__file__), "ressources" , "tar", "armhf", "tar")
