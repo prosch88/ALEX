@@ -2513,8 +2513,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                         if device_has_su():
                             proc = subprocess.Popen(["adb", "exec-out", f"su -c cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
                         elif mtk_su == True:
-                            proc = subprocess.Popen(["adb", "exec-out", "/data/local/tmp/mtk-su", "-c", "cat", f"/dev/{block + target}", "2>/dev/null"], stdout=subprocess.PIPE)
-                            print(proc)
+                            proc = subprocess.Popen(["adb", "exec-out", f"/data/local/tmp/mtk-su -c cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
                         else:
                             proc = subprocess.Popen(["adb", "exec-out", f"cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
                     else:
