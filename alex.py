@@ -1941,7 +1941,7 @@ def get_client(host=default_host, port=default_port, check=False):
                 d_name = "-"
                 name_s = d_name
             if "not found" in d_name or "permission denied" in d_name:
-                d_name = "-"
+                d_name = "NoName"
                 name_s = d_name
             if d_name == "-":
                 if whoami == "phablet" or aos == True:
