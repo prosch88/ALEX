@@ -1905,7 +1905,7 @@ def get_client(host=default_host, port=default_port, check=False):
             b_mac = device.shell("settings get secure bluetooth_address")
             if b_mac == "":
                 b_mac = "-"
-            if "not found" in b_mac:
+            if "not found" in b_mac or "permission denied" in b_mac:
                 b_mac = "-"
             if b_mac == "-":
                 if whoami == "phablet" or aos == True:
@@ -1940,7 +1940,7 @@ def get_client(host=default_host, port=default_port, check=False):
             if d_name == "":
                 d_name = "-"
                 name_s = d_name
-            if "not found" in d_name:
+            if "not found" in d_name or "permission denied" in d_name:
                 d_name = "-"
                 name_s = d_name
             if d_name == "-":
@@ -2008,7 +2008,7 @@ def get_client(host=default_host, port=default_port, check=False):
                 graph_progress = "-"
             global ad_id
             ad_id = device.shell("settings get secure android_id")
-            if "not found" in ad_id:
+            if "not found" in ad_id or "permission denied" in ad_id:
                 ad_id = "-"
             if ad_id == "":
                 ad_id = "-"
