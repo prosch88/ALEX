@@ -550,50 +550,50 @@ class MyApp(ctk.CTk):
         self.text.pack(anchor="center", pady=25)
         mtk_vers = ("MT67", "MT816", "MT817", "MT6580")
         global show_root
-        show_root = False
         global mtk_su
         mtk_su = False
         self.change = ctk.IntVar(self, 0)
-        if whoami == "root":
-            show_root = True
-        elif su_app != None:
-            self.text.configure(text="Please allow the following superuser request on the device.")
-            check_su = threading.Thread(target=lambda:has_root(self.change))
-            check_su.start()
-            self.wait_variable(self.change)
-            if self.change.get() == 1:
+        if show_root == False:
+            if whoami == "root":
                 show_root = True
-            else:
-                self.text.configure(text="Root access has not been confirmed.")
-                self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
-                return
-        elif d_platform.upper().startswith(mtk_vers):
-            if int(software.split(".")[0]) < 10 and spl < "2020-03-01":
-                self.choose = ctk.BooleanVar(self, False)
-                self.text.configure(text="This device may be vulnerable to CVE-2020-0069 (mtk-su).\nFor temporary root access, mtk-su can be copied to the device's\ntmp directory and executed.\n\nDo you want to continue?")
-                self.yesb = ctk.CTkButton(self.dynamic_frame, text="YES", font=self.stfont, command=lambda: self.choose.set(True))
-                self.yesb.pack(side="left", pady=(20,330), padx=140)
-                self.nob = ctk.CTkButton(self.dynamic_frame, text="NO", font=self.stfont, command=lambda: self.choose.set(False))
-                self.nob.pack(side="left", pady=(20,330))    
-                self.wait_variable(self.choose)  
-                self.yesb.pack_forget()
-                self.nob.pack_forget()
-                if self.choose.get() == True:     
-                    self.text.configure(text="Attempt to gain temp-root via CVE-2020-0069 (mtk-su).\nPlease Wait ...")
-                    check_su = threading.Thread(target=lambda:temp_mtk_su(self.change))
-                    check_su.start()
-                    print("mtk-su tried")
-                    self.wait_variable(self.change)
-                    if self.change.get() == 1:
-                        show_root = True
-                        mtk_su = True
-                    else:
-                        self.text.configure(text="Root access has not been gained.\nDue to the nature of this process, another attempt may be successful.")
-                        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
-                        return
+            elif su_app != None:
+                self.text.configure(text="Please allow the following superuser request on the device.")
+                check_su = threading.Thread(target=lambda:has_root(self.change))
+                check_su.start()
+                self.wait_variable(self.change)
+                if self.change.get() == 1:
+                    show_root = True
                 else:
-                    self.switch_menu("AcqMenu")
+                    self.text.configure(text="Root access has not been confirmed.")
+                    self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
                     return
+            elif d_platform.upper().startswith(mtk_vers):
+                if int(software.split(".")[0]) < 10 and spl < "2020-03-01":
+                    self.choose = ctk.BooleanVar(self, False)
+                    self.text.configure(text="This device may be vulnerable to CVE-2020-0069 (mtk-su).\nFor temporary root access, mtk-su can be copied to the device's\ntmp directory and executed.\n\nDo you want to continue?")
+                    self.yesb = ctk.CTkButton(self.dynamic_frame, text="YES", font=self.stfont, command=lambda: self.choose.set(True))
+                    self.yesb.pack(side="left", pady=(20,330), padx=140)
+                    self.nob = ctk.CTkButton(self.dynamic_frame, text="NO", font=self.stfont, command=lambda: self.choose.set(False))
+                    self.nob.pack(side="left", pady=(20,330))    
+                    self.wait_variable(self.choose)  
+                    self.yesb.pack_forget()
+                    self.nob.pack_forget()
+                    if self.choose.get() == True:     
+                        self.text.configure(text="Attempt to gain temp-root via CVE-2020-0069 (mtk-su).\nPlease Wait ...")
+                        check_su = threading.Thread(target=lambda:temp_mtk_su(self.change))
+                        check_su.start()
+                        print("mtk-su tried")
+                        self.wait_variable(self.change)
+                        if self.change.get() == 1:
+                            show_root = True
+                            mtk_su = True
+                        else:
+                            self.text.configure(text="Root access has not been gained.\nDue to the nature of this process, another attempt may be successful.")
+                            self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
+                            return
+                    else:
+                        self.switch_menu("AcqMenu")
+                        return
         if show_root == True:
             self.after(100, lambda: self.switch_menu("RootAcq"))
             return
