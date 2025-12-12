@@ -1905,7 +1905,7 @@ def get_client(host=default_host, port=default_port, check=False):
             b_mac = device.shell("settings get secure bluetooth_address")
             if b_mac == "":
                 b_mac = "-"
-            if "not found" in b_mac or "permission denied" in b_mac:
+            if "not found" in b_mac or "permission denied" in b_mac or "not allowed" in b_mac:
                 b_mac = "-"
             if b_mac == "-":
                 if whoami == "phablet" or aos == True:
