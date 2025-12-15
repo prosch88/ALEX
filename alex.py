@@ -1682,6 +1682,20 @@ class MyApp(ctk.CTk):
 
                             },
                             {".": "",},
+
+                            {
+                                ".": "SIM Info:", "style": "title", "label": "title1",
+                                "outline": {}
+                            },
+                            {
+                                "widths": [1.5, 2.7, 1.5, 2.5],
+                                "style": {"s": 10, "border_color": "lightgrey"},
+                                "table": [
+                                    [{".": [{".b": "ICCID:"}]}, {"colspan": 3, ".": [{".": iccid}]}, None, None],
+                                    [{"style": {"cell_fill": u_grey}, ".": [{".b": "IMSI:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": imsi}]}, { "style": {"cell_fill": u_grey}, ".": [{".b": "Number:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": phone_number}]}],
+                                    ]
+                            },  
+                            {".": "",},
                 
                             {
                                 ".": "Applications:", "style": "title", "label": "title1", "outline": {}
@@ -2021,6 +2035,32 @@ def get_client(host=default_host, port=default_port, check=False):
             else:
                 crypt_type = ""
 
+            # SIM-Info
+            global iccid
+            iccid = "-"
+            global imsi
+            imsi = "-"
+            global phone_number
+            phone_number = "-"
+            for i in range(8,16):
+                val = device.shell(f"service call iphonesubinfo {i} s16 com.android.shell | cut -c 52-66 | tr -d '.[:space:]'").replace("'","")
+                print(val)
+                if re.fullmatch(r'\+?[0-9]+', val):
+                    if phone_number == "-" and val.startswith("+"):
+                        phone_number = val
+                    elif iccid == "-" and val.startswith("89") and len(val) > 17:
+                        iccid = val
+                    elif imsi == "-" and len(val) in range(13,16):
+                        imsi = val
+                    elif phone_number == "-" and len(val) in range(3,13):
+                        phone_number = val
+                    else:
+                        pass
+
+            print(f"phone_number: {phone_number}")
+            print(f"iccid: {iccid}")
+            print(f"imsi: {imsi}")
+
             global apps
             global all_apps
             global su_app
@@ -2174,6 +2214,10 @@ def save_info():
         "\nWifi MAC:   " + w_mac + "\nBT-MAC:     " + b_mac + "\nData:       " + data_s + "\nFree Space: " + free + 
         "\nAD-ID :     " + ad_id + "\nIMEI :      " + imei)    
     
+    file.write("\n\n## SIM-Info ##\n\nICCID:  " + iccid + 
+                                    "\nIMSI:   " + imsi + 
+                                    "\nNMBR:   " + phone_number)
+
     #Save user-installed Apps to txt
     try: al = str(len(max([app[0] for app in apps], key=len)))  
     except: al = 40 
