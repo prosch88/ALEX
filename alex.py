@@ -1593,6 +1593,8 @@ class MyApp(ctk.CTk):
             d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "ut_generic.jpg")
         elif aos == True:
             d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "asteroidos.jpg")
+        elif d_class == "tablet":
+            d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "tablet.jpg")
         else:
             d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "generic.jpg")
  
@@ -1966,13 +1968,13 @@ def get_client(host=default_host, port=default_port, check=False):
                     pass
                 else:
                     imei = device.shell("service call iphonesubinfo 1 s16 com.android.shell | cut -c 52-66 | tr -d '.[:space:]'").replace("'","")
-            if "not found" in imei or "service" in imei or "000000" in imei:
+            if "not found" in imei or "service" in imei or "000000" in imei or imei == "":
                 imei = "-"
             global b_mac
             b_mac = device.shell("settings get secure bluetooth_address")
             if b_mac == "":
                 b_mac = "-"
-            if "not found" in b_mac or "permission denied" in b_mac or "not allowed" in b_mac:
+            if "not found" in b_mac or "permission denied" in b_mac or "not allowed" in b_mac or "null" in b_mac:
                 b_mac = "-"
             if b_mac == "-":
                 if whoami == "phablet" or aos == True:
@@ -2079,6 +2081,8 @@ def get_client(host=default_host, port=default_port, check=False):
                 ad_id = "-"
             if ad_id == "":
                 ad_id = "-"
+            global d_class
+            d_class = getprop(device, "ro.build.characteristics")
             global crypt_on
             global crypt_type
             crypt_on = getprop(device, "ro.crypto.state")
