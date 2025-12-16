@@ -260,8 +260,10 @@ class MyApp(ctk.CTk):
         ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="center")
         self.text = ctk.CTkLabel(self.dynamic_frame, width=400, height=250, font=self.stfont, anchor="w", justify="left")
         start_error = False
-        self.text.configure(text="Device information is being retrieved. Please wait ...")
-        if itext == "":
+        global device
+        global adb
+        global paired
+        if device == None:
             itext = ("Please wait ...\n" +
                         "\n" + '{:13}'.format("Python: ") + "\t" + platform.python_version() +
                         "\n" + '{:13}'.format("adbutils: ") + "\t" + version('adbutils') +
@@ -278,18 +280,14 @@ class MyApp(ctk.CTk):
                         "   64 20 49 20 6d 75 73 74 20 66 6f \n" +
                         "   6c 6c 6f 77 2c 20 69 66 20 49 20 \n" +
                         "   63 61 6e 2e")
-        self.info_text.configure(state="normal")
-        self.info_text.delete("0.0", "end")
-        self.info_text.configure(text_color="#4d4d4d")
-        self.info_text.insert("0.0", itext)
-        self.info_text.configure(state="disabled")
+            self.info_text.configure(state="normal")
+            self.info_text.delete("0.0", "end")
+            self.info_text.configure(text_color="#4d4d4d")
+            self.info_text.insert("0.0", itext)
+            self.info_text.configure(state="disabled")
+        self.text.configure(text="Device information is being retrieved. Please wait ...")
         self.text.pack(pady=50)
         self.text.update()
-        global device
-        global adb
-        global paired
-        self.change = ctk.IntVar(self, 0)
-        self.after(50, self.change.set(1))
 
         try:
             get_client()
