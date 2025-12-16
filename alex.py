@@ -261,22 +261,23 @@ class MyApp(ctk.CTk):
         self.text = ctk.CTkLabel(self.dynamic_frame, width=400, height=250, font=self.stfont, anchor="w", justify="left")
         start_error = False
         self.text.configure(text="Device information is being retrieved. Please wait ...")
-        itext = ("Please wait ...\n" +
-                    "\n" + '{:13}'.format("Python: ") + "\t" + platform.python_version() +
-                    "\n" + '{:13}'.format("adbutils: ") + "\t" + version('adbutils') +
-                    "\n\n" + 
-                    "   54 68 65 20 52 6f 61 64 20 67 6f \n" +
-                    "   65 73 20 65 76 65 72 20 6f 6e 20 \n" +
-                    "   61 6e 64 20 6f 6e 0a 44 6f 77 6e \n" +
-                    "   20 66 72 6f 6d 20 74 68 65 20 64 \n" +
-                    "   6f 6f 72 20 77 68 65 72 65 20 69 \n" + 
-                    "   74 20 62 65 67 61 6e 2e 0a 4e 6f \n" +
-                    "   77 20 66 61 72 20 61 68 65 61 64 \n" + 
-                    "   20 74 68 65 20 52 6f 61 64 20 68 \n" +
-                    "   61 73 20 67 6f 6e 65 2c 0a 41 6e \n" +
-                    "   64 20 49 20 6d 75 73 74 20 66 6f \n" +
-                    "   6c 6c 6f 77 2c 20 69 66 20 49 20 \n" +
-                    "   63 61 6e 2e")
+        if itext == "":
+            itext = ("Please wait ...\n" +
+                        "\n" + '{:13}'.format("Python: ") + "\t" + platform.python_version() +
+                        "\n" + '{:13}'.format("adbutils: ") + "\t" + version('adbutils') +
+                        "\n\n" + 
+                        "   54 68 65 20 52 6f 61 64 20 67 6f \n" +
+                        "   65 73 20 65 76 65 72 20 6f 6e 20 \n" +
+                        "   61 6e 64 20 6f 6e 0a 44 6f 77 6e \n" +
+                        "   20 66 72 6f 6d 20 74 68 65 20 64 \n" +
+                        "   6f 6f 72 20 77 68 65 72 65 20 69 \n" + 
+                        "   74 20 62 65 67 61 6e 2e 0a 4e 6f \n" +
+                        "   77 20 66 61 72 20 61 68 65 61 64 \n" + 
+                        "   20 74 68 65 20 52 6f 61 64 20 68 \n" +
+                        "   61 73 20 67 6f 6e 65 2c 0a 41 6e \n" +
+                        "   64 20 49 20 6d 75 73 74 20 66 6f \n" +
+                        "   6c 6c 6f 77 2c 20 69 66 20 49 20 \n" +
+                        "   63 61 6e 2e")
         self.info_text.configure(state="normal")
         self.info_text.delete("0.0", "end")
         self.info_text.configure(text_color="#4d4d4d")
