@@ -1551,7 +1551,7 @@ class MyApp(ctk.CTk):
                 for d_app in apps:
                     i+=1
                     progr = 100/len(apps)*i
-                    app_name = d_app[0][:42]
+                    app_name = d_app[0][:40]
                     app_version = device.app_info(d_app[0]).version_name[:28]
                     app_installer = "packageinstaller" if "packageinstaller" in d_app[1] else d_app[1][:25]
                     apps_info.append([app_name, app_version, app_installer])
@@ -1593,8 +1593,12 @@ class MyApp(ctk.CTk):
             d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "ut_generic.jpg")
         elif aos == True:
             d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "asteroidos.jpg")
+        elif d_class == "phone":
+            d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "phone.jpg")
         elif d_class == "tablet":
             d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "tablet.jpg")
+        elif d_class == "default" or d_class == "nosdcard" and "android.hardware.telephony" in d_features:
+            d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "phone.jpg")
         else:
             d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "generic.jpg")
  
@@ -2083,6 +2087,8 @@ def get_client(host=default_host, port=default_port, check=False):
                 ad_id = "-"
             global d_class
             d_class = getprop(device, "ro.build.characteristics")
+            global d_features
+            d_features = device.shell("pm list features")
             global crypt_on
             global crypt_type
             crypt_on = getprop(device, "ro.crypto.state")
