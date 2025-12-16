@@ -1509,7 +1509,19 @@ class MyApp(ctk.CTk):
             self.progress.pack()
             apps_info = []
             i = 0
+            accounts = []
+            acc_pattern = re.compile(
+                r'Account\s*\{\s*name=([^,}]+)\s*,\s*type=([^}]+)\s*\}'
+            )
             if ut == False:
+                for line in device.shell("dumpsys account").splitlines():
+                    m = acc_pattern.search(line)
+                    if m:
+                        accounts.append({
+                            "name": m.group(1),
+                            "type": m.group(2)
+                        })
+
                 for d_app in apps:
                     i+=1
                     progr = 100/len(apps)*i
@@ -1520,7 +1532,9 @@ class MyApp(ctk.CTk):
                     self.prog_text.configure(text=f"{int(100/len(apps)*i)}%")
                     self.progress.set(progr/100) 
             else:
-                apps_info = apps       
+                apps_info = apps 
+
+                  
 
         u_grey = [0.970, 0.970, 0.970]
         #background_color = tuple(int(c * 255) for c in u_grey)
@@ -1682,7 +1696,6 @@ class MyApp(ctk.CTk):
 
                             },
                             {".": "",},
-
                             {
                                 ".": "SIM Info:", "style": "title", "label": "title1",
                                 "outline": {}
@@ -1691,10 +1704,24 @@ class MyApp(ctk.CTk):
                                 "widths": [1.5, 2.7, 1.5, 2.5],
                                 "style": {"s": 10, "border_color": "lightgrey"},
                                 "table": [
-                                    [{".": [{".b": "ICCID:"}]}, {"colspan": 3, ".": [{".": iccid}]}, None, None],
+                                    [{".": [{".b": "ICCID:"}]}, {".": [{".": iccid}]}, {".": [{".b": "Operator:"}]}, {".": [{".": sim_op}]}],
                                     [{"style": {"cell_fill": u_grey}, ".": [{".b": "IMSI:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": imsi}]}, { "style": {"cell_fill": u_grey}, ".": [{".b": "Number:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": phone_number}]}],
                                     ]
                             },  
+                            {".": "",},
+                            {
+                                ".": "Accounts:", "style": "title", "label": "title1", "outline": {}
+                            },
+                            *[
+                                {
+                                "keepTogether": True,
+                                "widths": [2.2, 2.7],
+                                "style": {"s": 9, "border_color": "lightgrey"},
+                                "table": [
+                                    [{"style": {"cell_fill": u_grey if (accounts.index(account) % 2) != 0 else "white"},".": account.get("type")}, 
+                                    {"style": {"cell_fill": u_grey if (accounts.index(account) % 2) != 0 else "white"},".": account.get("name")}] for account in accounts]
+                                } if len(accounts) > 0 else "None / Service may not be available",] + ([{".": "",}] if len(accounts) < 2 else []),               
+                            {".": "", "style": "title", "label": "title0", "outline": {}},
                             {".": "",},
                 
                             {
@@ -2044,7 +2071,6 @@ def get_client(host=default_host, port=default_port, check=False):
             phone_number = "-"
             for i in range(8,16):
                 val = device.shell(f"service call iphonesubinfo {i} s16 com.android.shell | cut -c 52-66 | tr -d '.[:space:]'").replace("'","")
-                print(val)
                 if re.fullmatch(r'\+?[0-9]+', val):
                     if phone_number == "-" and val.startswith("+"):
                         phone_number = val
@@ -2056,10 +2082,11 @@ def get_client(host=default_host, port=default_port, check=False):
                         phone_number = val
                     else:
                         pass
-
-            print(f"phone_number: {phone_number}")
-            print(f"iccid: {iccid}")
-            print(f"imsi: {imsi}")
+            global sim_op
+            sim_op = "-"
+            sim_op = getprop(device, "gsm.sim.operator.alpha")
+            if 2 > len(sim_op) or len(sim_op) > 30:
+                sim_op = "-"
 
             global apps
             global all_apps
@@ -2216,7 +2243,8 @@ def save_info():
     
     file.write("\n\n## SIM-Info ##\n\nICCID:  " + iccid + 
                                     "\nIMSI:   " + imsi + 
-                                    "\nNMBR:   " + phone_number)
+                                    "\nNMBR:   " + phone_number +
+                                    "\nPROV:   " + sim_op)
 
     #Save user-installed Apps to txt
     try: al = str(len(max([app[0] for app in apps], key=len)))  
