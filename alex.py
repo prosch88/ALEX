@@ -1593,12 +1593,16 @@ class MyApp(ctk.CTk):
             d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "ut_generic.jpg")
         elif aos == True:
             d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "asteroidos.jpg")
-        elif d_class == "phone":
+        elif "phone" in d_class:
             d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "phone.jpg")
-        elif d_class == "tablet":
+        elif "tablet" in d_class:
             d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "tablet.jpg")
         elif d_class == "default" or d_class == "nosdcard" and "android.hardware.telephony" in d_features:
             d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "phone.jpg")
+        elif "watch" in d_class:
+            d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "wearos_round.jpg")
+            if "pixel" in model.lower():
+                d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "wearos_pixel.jpg")
         else:
             d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "generic.jpg")
  
