@@ -232,6 +232,8 @@ class MyApp(ctk.CTk):
             self.show_logcat_dump()
         elif menu_name == "Dumpsys":
             self.show_dumpsys_dump()
+        elif menu_name == "AppOps":
+            self.show_app_ops()
         elif menu_name == "ScreenDevice":
             self.screen_device()
         elif menu_name == "ShotLoop":
@@ -515,10 +517,12 @@ class MyApp(ctk.CTk):
             ctk.CTkButton(self.dynamic_frame, text="Logcat (Dump)", command=lambda: self.switch_menu("LogDump"), width=200, height=70, font=self.stfont),
             ctk.CTkButton(self.dynamic_frame, text="Dumpsys", command=lambda: self.switch_menu("Dumpsys"), width=200, height=70, font=self.stfont),
             ctk.CTkButton(self.dynamic_frame, text="Bugreport", command=lambda: self.switch_menu("BugReport"), width=200, height=70, font=self.stfont),
+            ctk.CTkButton(self.dynamic_frame, text="App Ops", command=lambda: self.switch_menu("AppOps"), width=200, height=70, font=self.stfont),
         ]
         self.menu_text = ["Dump the saved logcat entries.\nData usually goes back to the last reboot.",
                           "Extract Dumpsys informations.",
-                          "Collect the Bugreport (Dumpstate)"]
+                          "Collect the Bugreport (Dumpstate)",
+                          "Extract App Ops (App Permissions)"]
         self.menu_textbox = []
         for btn in self.menu_buttons:
             self.menu_textbox.append(ctk.CTkLabel(self.dynamic_frame, width=right_content, height=70, font=self.stfont, anchor="w", justify="left"))
@@ -1159,6 +1163,26 @@ class MyApp(ctk.CTk):
         self.get_bugreport.start()
         self.wait_variable(self.change)
         self.text.configure(text=f"Bugreport saved as: {snr}_dumpstate.zip")
+        self.prog_text.pack_forget()
+        self.progress.pack_forget()
+        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("LogMenu")).pack(pady=40)) 
+
+    #Show App-Ops-Screen (Dumpsys)
+    def show_app_ops(self):
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
+        ctk.CTkLabel(self.dynamic_frame, text="Query App-Ops", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
+        self.text = ctk.CTkLabel(self.dynamic_frame, text="Extracting the App Ops.", width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        self.text.pack(pady=15)
+        self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0)
+        self.progress.set(0)
+        self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="0%", width=585, height=20, font=self.stfont, anchor="w", justify="left")
+        self.prog_text.pack()
+        self.progress.pack()
+        self.change = ctk.IntVar(self, 0)
+        self.get_appops = threading.Thread(target=lambda: dump_appops(self.change, self.text, self.progress, self.prog_text))
+        self.get_appops.start()
+        self.wait_variable(self.change)
+        self.text.configure(text=f"App-Ops saved in folder: {snr}_appops")
         self.prog_text.pack_forget()
         self.progress.pack_forget()
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("LogMenu")).pack(pady=40)) 
@@ -2335,6 +2359,7 @@ def dump_dumpsys(change):
     log("Extracted Dumpsys")
     change.set(1)
 
+# Actually Dumping the Bugreport
 def dump_bugreport(change, progress, prog_text):
     brpath = ""
     output = device.shell("bugreportz -p", stream=True)
@@ -2352,6 +2377,81 @@ def dump_bugreport(change, progress, prog_text):
         log("Error extracting Bugreport")
         pass
     change.set(1)
+
+# Actually Dumping the App Opss
+def dump_appops(change, text, progress, prog_text, folder=None):
+    
+    apps_len = len(all_apps)
+
+    AGO_RE = re.compile(
+    r"\+"
+    r"(?:(\d+)d)?"
+    r"(?:(\d+)h)?"
+    r"(?:(\d+)m)?"
+    r"(?:(\d+)s)?"
+    r"(?:(\d+)ms)?"
+    r"\s+ago"
+    )
+
+    RELATIVE_TIME_RE = re.compile(
+    r"(?P<key>[A-Za-z]+ime)\s*=\s*(?P<value>\+\S+?\s+ago)",
+    re.IGNORECASE
+    )
+
+    #Convert Time to seconds
+    def duration_to_seconds(s: str) -> float:
+        m = AGO_RE.search(s)
+        if not m:
+            raise ValueError(f"Unknown format: {s}")
+
+        d, h, m_, s_, ms = (int(x) if x else 0 for x in m.groups())
+
+        return (
+            d * 86400 +
+            h * 3600 +
+            m_ * 60 +
+            s_ +
+            ms / 1000
+        )
+    #Replace the duration with a timestamp
+    def replace_relative_times(text: str, d_date: int) -> str:
+        def repl(match):
+            duration = duration_to_seconds(match.group("value"))
+            timestamp = int(d_date - duration)
+            return f"{match.group('key')}={timestamp}"
+
+        return RELATIVE_TIME_RE.sub(repl, text)
+
+    if folder == None:
+        folder = f"{snr}_appops"
+    try: os.mkdir(folder)
+    except: pass
+    i=0
+    for app in all_apps:
+        text.configure(text=f"Extracting the App Ops.\nCurrent package: {app}")
+        i += 1
+        current = i/apps_len
+        progress.set(current)
+        prog_text.configure(text=f"{int(current*100)}%")
+
+        d_date = device.shell("date +%s")
+        app_ops_input = device.shell(f"appops get {app}")
+        try:
+            app_ops_unix = replace_relative_times(app_ops_input, int(d_date))
+            app_ops = app_ops_unix
+        except Exception as e:
+            print(e)
+            app_ops = app_ops_input
+        if platform.uname().system == 'Windows':
+                app = re.sub(r"[?%*:|\"<>\x7F\x00-\x1F]", "-", app)
+        if "No operations" in app_ops or app_ops == "":
+            pass
+        else:
+            with open(os.path.join(folder, f"{app}.txt"), "w", encoding="utf-8", errors="ignore") as f:
+                f.write(app_ops) 
+    
+    change.set(1)
+
 
 #Query Content Providers (from the dict: content_provider.json)
 def query_content(change, text, progress, prog_text, json_out=False):
