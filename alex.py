@@ -1999,7 +1999,7 @@ def get_client(host=default_host, port=default_port, check=False):
                 if major_ver < 5:
                     pass
                 else:
-                    imei = device.shell("service call iphonesubinfo 1 s16 com.android.shell | cut -c 52-66 | tr -d '.[:space:]'").replace("'","")
+                    imei = device.shell("service call iphonesubinfo 1 s16 com.android.shell | cut -c 50-66 | tr -d '.[:space:]'").replace("'","")
             if "not found" in imei or "service" in imei or "000000" in imei or imei == "":
                 imei = "-"
             global b_mac
@@ -2134,7 +2134,7 @@ def get_client(host=default_host, port=default_port, check=False):
             global phone_number
             phone_number = "-"
             for i in range(8,16):
-                val = device.shell(f"service call iphonesubinfo {i} s16 com.android.shell | cut -c 52-66 | tr -d '.[:space:]'").replace("'","")
+                val = device.shell(f"service call iphonesubinfo {i} s16 com.android.shell | cut -c 50-66 | tr -d '.[:space:]'").replace("'","")
                 if re.fullmatch(r'\+?[0-9]+', val):
                     if phone_number == "-" and val.startswith("+"):
                         phone_number = val
