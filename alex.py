@@ -3103,6 +3103,16 @@ def ufed_style_files(change, ufed_folder, zip, zipname, starttime, text):
     text.configure(text="Creating UFED-Style Report files.\nQuery: content://sms")
     sms_query = device.shell("content query --uri content://sms")
     sms_json = content_to_json(sms_query)
+    #MMS
+    text.configure(text="Creating UFED-Style Report files.\nQuery: content://mms")
+    mms_query = device.shell("content query --uri content://mms")
+    mms_json = content_to_json(mms_query)
+    text.configure(text="Creating UFED-Style Report files.\nQuery: content://mms/part")
+    mms_part_query = device.shell("content query --uri content://mms/part")
+    mms_part_json = content_to_json(mms_part_query)
+    text.configure(text="Creating UFED-Style Report files.\nQuery: content://mms/addr")
+    mms_addr_query = device.shell("content query --uri content://mms/addr")
+    mms_addr_json = content_to_json(mms_addr_query)
 
     end = datetime.now()
     local_timezone = datetime.now(timezone.utc).astimezone().tzinfo
@@ -3118,7 +3128,7 @@ def ufed_style_files(change, ufed_folder, zip, zipname, starttime, text):
     #Report.xml   
     text.configure(text="Creating UFED-Style Report files.\nCreating Report.xml")
     xml_path = os.path.join(ufed_folder, "report.xml")
-    reportxml = ufed_style.ufd_report_xml(contact_json, calls_json, calendar_json, sms_json, brand, model, software, build, imei, ad_id, starttime, endtime, a_version, f"{zipname}.zip")
+    reportxml = ufed_style.ufd_report_xml(contact_json, calls_json, calendar_json, sms_json, mms_json, mms_part_json, mms_addr_json, brand, model, software, build, imei, ad_id, starttime, endtime, a_version, f"{zipname}.zip")
     with open(xml_path, "w", encoding="utf-8", errors="ignore") as xml_file:
         xml_file.write(reportxml)
     with zipfile.ZipFile(f'{os.path.join(ufed_folder, zipname)}.zip', mode="a") as zf:

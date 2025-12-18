@@ -26,7 +26,7 @@ def random_sha256():
     random256 = sha256_hash.hexdigest()
     return random256
 
-def ufd_report_xml(contact_dict, call_dict, calendar_dict, sms_dict, brand="Unknown", model="Unknown", sw= "", revision="-", imei="-", adid="-", estarttime="", endtime="", aversion="0", zipname=""):
+def ufd_report_xml(contact_dict, call_dict, calendar_dict, sms_dict, mms_dict, mms_part_dict, mms_addr_dict, brand="Unknown", model="Unknown", sw= "", revision="-", imei="-", adid="-", estarttime="", endtime="", aversion="0", zipname=""):
     contacts = {}
     for entry in contact_dict:
         cid = entry.get("contact_id")
@@ -268,7 +268,7 @@ def ufd_report_xml(contact_dict, call_dict, calendar_dict, sms_dict, brand="Unkn
         ts_key = "date_sent" if sms.get("type") == "2" and sms.get("date_sent") and sms.get("date_sent") != "0" else "date"
         timestamp = sms.get(ts_key)
         if timestamp:
-            dt = datetime.fromtimestamp(int(timestamp) / 1000, tz=timezone.utc)
+            dt = datetime.fromtimestamp(int(timestamp) / 1000 , tz=timezone.utc)
             ET.SubElement(sms_entry, "timestamp").text = dt.strftime("%Y-%m-%dT%H:%M:%S+00:00")
         else:
             ET.SubElement(sms_entry, "timestamp").text = ""
@@ -298,14 +298,128 @@ def ufd_report_xml(contact_dict, call_dict, calendar_dict, sms_dict, brand="Unkn
         ET.SubElement(sms_entry, "text").text = html.escape(text_value)
         ET.SubElement(sms_entry, "smsc").text = sms.get("service_center", "") or ""
 
-    """
+    
     #MMS
     add_separator_centered(report_el, "MMS Messages")
     mms_el = ET.SubElement(report_el, "mms_messages")
     mms_sha = random_sha256()
     ET.SubElement(mms_el, "sha256").text = mms_sha
-    
 
+    mms_messages = []
+    mms_map = {m["_id"]: m for m in mms_dict}
+
+    addr_map = {}
+    for a in mms_addr_dict:
+        msg_id = a.get("msg_id")
+        if msg_id:
+            addr_map.setdefault(msg_id, []).append(a)
+
+    for part in mms_part_dict:
+        if part.get("ct") != "text/plain":
+            continue
+
+        msg_id = part.get("mid")
+        if not msg_id or msg_id not in mms_map:
+            continue
+
+        mms = mms_map[msg_id]
+
+        # Folder & Type
+        msg_box = mms.get("msg_box")
+        if msg_box == "1":
+            folder = "Inbox"
+            msg_type = "Incoming"
+            timestamp_raw = mms.get("date")
+        elif msg_box == "2":
+            folder = "Sent"
+            msg_type = "Outgoing"
+            timestamp_raw = mms.get("date")
+        else:
+            continue
+
+        # Timestamp
+        try:
+            dt = datetime.fromtimestamp(
+                int(timestamp_raw),
+                tz=timezone.utc
+            )
+            timestamp = dt.strftime("%Y-%m-%dT%H:%M:%S+02:00")
+        except (TypeError, ValueError):
+            timestamp = ""
+
+        # Status
+        if msg_type == "Incoming":
+            status = "Read" if mms.get("read") == "1" else "Unread"
+            if status == "Unread":
+                timestamp = ""
+        else:
+            if "1970" in timestamp:
+                status = "Unsent"
+                timestamp = ""
+            else:
+                status = "Sent"
+
+        # From / To
+        number_value = ""
+        name_value = "N/A"
+
+        for addr in addr_map.get(msg_id, []):
+            addr_type = addr.get("type")
+            address = (addr.get("address") or "").strip()
+
+            if addr_type == "137":  # From
+                if re.match(r"^[+0-9]+$", address):
+                    from_number = address
+                    from_name = "N/A"
+                elif address:
+                    from_name = address
+                    from_number = ""
+
+            elif addr_type == "151":  # To
+                if re.match(r"^[+0-9]+$", address):
+                    to_number = address
+                    to_name = "N/A"
+                elif address:
+                    to_name = address
+                    to_number = ""
+
+        text = html.escape(part.get("text") or "")
+        mms_entry = ET.SubElement(mms_el, "mms_message")
+        ET.SubElement(mms_entry, "id").text = msg_id
+        ET.SubElement(mms_entry, "timestamp").text = timestamp
+        ET.SubElement(mms_entry, "folder").text = folder
+        ET.SubElement(mms_entry, "status").text = status
+        ET.SubElement(mms_entry, "priority").text = "Unknown"
+        mms_from_entry = ET.SubElement(mms_entry, "from")
+        if from_number != "":
+            ET.SubElement(mms_from_entry, "number").text = from_number
+        elif "@" in from_name:
+            ET.SubElement(mms_from_entry, "email").text = from_name
+        else:
+            ET.SubElement(mms_from_entry, "name").text = from_name
+        mms_to_entry = ET.SubElement(mms_entry, "to")
+        if to_number != "":
+            ET.SubElement(mms_to_entry, "number").text = to_number
+        elif "@" in from_name:
+            ET.SubElement(mms_to_entry, "email").text = to_name
+        else:
+            ET.SubElement(mms_to_entry, "name").text = to_name
+        mms_body_entry = ET.SubElement(mms_entry, "body")
+        ET.SubElement(mms_body_entry, "preview").text = text
+
+        """
+        mms_messages.append({
+            "id": msg_id,
+            "folder": folder,
+            "type": msg_type,
+            "status": status,
+            "timestamp": timestamp,
+            "number": number_value,
+            "name": name_value,
+            "text": text
+        })
+        """
+    """
     #Images
     add_separator_centered(report_el, "Images")
     images_el = ET.SubElement(report_el, "image_files").text = ""
@@ -368,7 +482,7 @@ def ufd_report_xml(contact_dict, call_dict, calendar_dict, sms_dict, brand="Unkn
     ET.SubElement(selection_el, "contacts").text = "Selected"
     ET.SubElement(selection_el, "sms").text = "Selected"
     ET.SubElement(selection_el, "call_logs").text = "Selected"
-    ET.SubElement(selection_el, "mms").text = "Not Supported"
+    ET.SubElement(selection_el, "mms").text = "Selected"
     ET.SubElement(selection_el, "email").text = "Not Supported"
     ET.SubElement(selection_el, "im_messages").text = "Not Supported"
     ET.SubElement(selection_el, "calendar").text = "Selected"
