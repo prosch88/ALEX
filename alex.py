@@ -2390,7 +2390,7 @@ def dump_appops(change, text, progress, prog_text, folder=None):
     r"(?:(\d+)m)?"
     r"(?:(\d+)s)?"
     r"(?:(\d+)ms)?"
-    r"\s+ago"
+    r"(?:\s+ago)?"
     )
 
     RELATIVE_TIME_RE = re.compile(
@@ -2398,8 +2398,14 @@ def dump_appops(change, text, progress, prog_text, folder=None):
     re.IGNORECASE
     )
 
+    DURATION_FIELD_RE = re.compile(
+    r"(?P<key>duration)\s*=\s*(?P<value>\+\S+)",
+    re.IGNORECASE
+    )
+
     #Convert Time to seconds
     def duration_to_seconds(s: str) -> float:
+        log("Started App Ops extraction")
         m = AGO_RE.search(s)
         if not m:
             raise ValueError(f"Unknown format: {s}")
@@ -2420,7 +2426,15 @@ def dump_appops(change, text, progress, prog_text, folder=None):
             timestamp = int(d_date - duration)
             return f"{match.group('key')}={timestamp}"
 
-        return RELATIVE_TIME_RE.sub(repl, text)
+        text = RELATIVE_TIME_RE.sub(repl, text)
+
+        def repl_duration(match):
+            seconds = duration_to_seconds(match.group("value"))
+            return f"{match.group('key')}={int(seconds)}"
+
+        text = DURATION_FIELD_RE.sub(repl_duration, text)
+
+        return text
 
     if folder == None:
         folder = f"{snr}_appops"
@@ -2428,7 +2442,7 @@ def dump_appops(change, text, progress, prog_text, folder=None):
     except: pass
     i=0
     for app in all_apps:
-        text.configure(text=f"Extracting the App Ops.\nCurrent package: {app}")
+        text.configure(text=f"Extracting the App Ops.\nCurrent package: {app[:56]}")
         i += 1
         current = i/apps_len
         progress.set(current)
@@ -2449,7 +2463,7 @@ def dump_appops(change, text, progress, prog_text, folder=None):
         else:
             with open(os.path.join(folder, f"{app}.txt"), "w", encoding="utf-8", errors="ignore") as f:
                 f.write(app_ops) 
-    
+    log("Extracted App Ops")
     change.set(1)
 
 
