@@ -1635,6 +1635,8 @@ class MyApp(ctk.CTk):
             d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "asteroidos.jpg")
         elif "phone" in d_class:
             d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "phone.jpg")
+        elif "tv" in d_class:
+            d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "tv.jpg")
         elif "tablet" in d_class:
             d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "tablet.jpg")
         elif d_class == "default" or d_class == "nosdcard" and "android.hardware.telephony" in d_features:
