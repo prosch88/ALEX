@@ -1565,6 +1565,7 @@ class MyApp(ctk.CTk):
 
     #PDF Device Report with pdfme
     def pdf_report(self, case_number="", case_name="", evidence_number="", examiner="", pdf_type="default", shot="none", sha256="none", shot_png="none", app_name=None, chat_name=None, w=None, h=None, change=None,):
+        u_grey = [0.970, 0.970, 0.970]
         if change != None:
             self.text.configure(text="Creating PDF-Report. Please wait.")
             self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="0%", width=585, height=20, font=self.stfont, anchor="w", justify="left")
@@ -1600,9 +1601,57 @@ class MyApp(ctk.CTk):
             else:
                 apps_info = apps 
 
-                  
+            accounts_content = []
+            if len(accounts) > 0:
+                for i, account in enumerate(accounts):
+                    row_bg = u_grey if (i % 2) != 0 else "white"
+                    
+                    accounts_content.append({
+                        "keepTogether": True, 
+                        "widths": [2.2, 2.7],
+                        "style": {
+                            "s": 9, 
+                            "border_color": "lightgrey", 
+                            "margin_bottom": 0
+                        },
+                        "table": [
+                            [
+                                {
+                                    "style": {"cell_fill": row_bg}, 
+                                    ".": account.get("type")
+                                }, 
+                                {
+                                    "style": {"cell_fill": row_bg}, 
+                                    ".": account.get("name")
+                                }
+                            ]
+                        ]
+                    })
+            else:
+                accounts_content = [{".": "None / Service may not be available", "style": {"s": 9}}]
 
-        u_grey = [0.970, 0.970, 0.970]
+            apps_content = []
+            for i, d_app in enumerate(apps_info):
+                row_bg = u_grey if (i % 2) != 0 else "white"
+                mini_table = {
+                    "keepTogether": True, 
+                    "widths": [3.9, 2.8, 2.5],
+                    "style": {
+                        "s": 9,
+                        "border_color": "lightgrey", 
+                        "margin_bottom": 0 
+                    },
+                    "table": [
+                        [
+                            {"style": {"cell_fill": row_bg}, ".": d_app[0]},
+                            {"style": {"cell_fill": row_bg}, ".": d_app[1]},
+                            {"style": {"cell_fill": row_bg}, ".": d_app[2]}
+                        ]
+                    ]
+                }
+                apps_content.append(mini_table)
+
+                  
         #background_color = tuple(int(c * 255) for c in u_grey)
         font_size = 64
         font_path = os.path.join(os.path.dirname(__file__),"assets", "report", "texgyreheros-regular.otf")
@@ -1790,15 +1839,8 @@ class MyApp(ctk.CTk):
                             {
                                 ".": "Accounts:", "style": "title", "label": "title1", "outline": {}
                             },
-                            *[
-                                {
-                                "keepTogether": True,
-                                "widths": [2.2, 2.7],
-                                "style": {"s": 9, "border_color": "lightgrey"},
-                                "table": [
-                                    [{"style": {"cell_fill": u_grey if (accounts.index(account) % 2) != 0 else "white"},".": account.get("type")}, 
-                                    {"style": {"cell_fill": u_grey if (accounts.index(account) % 2) != 0 else "white"},".": account.get("name")}] for account in accounts]
-                                } if len(accounts) > 0 else "None / Service may not be available",] + ([{".": "",}] if len(accounts) < 2 else []),               
+                            *accounts_content,  # Entpackt die Liste der Mini-Tabellen direkt in den Content
+                            ([{".": "",}] if len(accounts) < 2 else []),               
                             {".": "", "style": "title", "label": "title0", "outline": {}},
                             {".": "",},
                 
@@ -1814,14 +1856,7 @@ class MyApp(ctk.CTk):
                                 ]
                             },
 
-                            *[
-                                {
-                                "widths": [3.9, 2.8, 2.5],
-                                "style": {"s": 9, "border_color": "lightgrey"},
-                                "table": [
-                                    [{"style": {"cell_fill": u_grey if (apps_info.index(d_app) % 2) != 0 else "white"},".": d_app[0]}, {"style": {"cell_fill": u_grey if (apps_info.index(d_app) % 2) != 0 else "white"},".": d_app[1]}, 
-                                    {"style": {"cell_fill": u_grey if (apps_info.index(d_app) % 2) != 0 else "white"},".": d_app[2]}] for d_app in apps_info]
-                                } if len(apps_info) > 0 else " "],              
+                            *apps_content,              
 
                             {".": "", "style": "title", "label": "title0", "outline": {}},
                         ] 
