@@ -1,6 +1,6 @@
 adbutils
 customtkinter
 crossfiledialog
-pdfme
+pdfme==0.4.12
 numpy
 imagehash
