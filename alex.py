@@ -23,6 +23,7 @@ import numpy as np
 import sqlite3
 import shutil
 import json
+import queue
 import zipfile
 import tarfile
 import hashlib
@@ -857,7 +858,10 @@ class MyApp(ctk.CTk):
         self.backb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=lambda: self.switch_menu("AcqMenu"))
         self.backb.pack(pady=5)
         self.wait_variable(self.change)
-        self.text.configure(text="ADB-Backup complete.")
+        if self.change.get() == 1:
+            self.text.configure(text="ADB-Backup complete.")
+        else:
+            self.text.configure(text="ADB-Backup failed.")
         self.prog_text.pack_forget()
         self.progress.pack_forget()
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
@@ -894,14 +898,22 @@ class MyApp(ctk.CTk):
         self.incl_apps = ctk.StringVar(value="on")
         self.incl_system = ctk.StringVar(value="on")
         self.change = ctk.IntVar(self, 0)
-        self.adbu = threading.Thread(target=lambda: self.adb_bu(self.change, incl_shared=self.incl_shared.get(), incl_apps=self.incl_apps.get(), incl_system=self.incl_system.get()))
-        self.adbu.start()
-        self.wait_variable(self.change)
-        self.prog_text.configure(text="")
-        self.change.set(0)
-        self.zip_backup = threading.Thread(target=lambda: self.zip_bu(zip, self.text, self.change))
-        self.zip_backup.start()
-        self.wait_variable(self.change)
+        if "watch" not in d_class:
+            self.adbu = threading.Thread(target=lambda: self.adb_bu(self.change, incl_shared=self.incl_shared.get(), incl_apps=self.incl_apps.get(), incl_system=self.incl_system.get()))
+            self.adbu.start()
+            self.wait_variable(self.change)
+            self.prog_text.configure(text="")
+            self.change.set(0)
+            self.zip_backup = threading.Thread(target=lambda: self.zip_bu(zip, self.text, self.change))
+            self.zip_backup.start()
+            self.wait_variable(self.change)
+        else:
+            self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="0%", width=585, height=20, font=self.stfont, anchor="w", justify="left")
+            self.prog_text.pack()
+            self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0)
+            self.progress.set(0)
+            self.prog_text.configure(text="0%")
+            self.progress.pack()
         data_path = "/sdcard/"
         
         self.get_dsize = threading.Thread(target=lambda: get_data_size(data_path, self.change))
@@ -1112,31 +1124,69 @@ class MyApp(ctk.CTk):
         self.call_bu = threading.Thread(target=lambda: self.call_backup(bu_file=bu_file, bu_change=self.bu_change, bu_options=bu_options))
         self.call_bu.start()
         self.wait_variable(self.bu_change)
-        change.set(1)
+        if self.bu_change.get() == 1:
+            change.set(1)
+        else:
+            change.set(2)
 
 
     def call_backup(self, bu_file, bu_change, bu_options):
+
+        def reader(pipe, q):
+            try:
+                while True:
+                    data = pipe.read(65536)
+                    if not data:
+                        break
+                    q.put(data)
+            finally:
+                q.put(None)
+
         total = 0
+
+        TIMEOUT = 60
+        q = queue.Queue()
         #print(bu_options)
         try:
             with open(bu_file, "wb") as f:
                 proc = subprocess.Popen(["adb", "exec-out", f"bu backup{bu_options}"], stdout=subprocess.PIPE)
-                stream = proc.stdout
+                stdout=subprocess.PIPE
+                #stream = proc.stdout
                 #stream = device.shell(f"bu backup{bu_options}", stream=True)
+                t = threading.Thread(target=reader, args=(proc.stdout, q))
+                t.daemon = True
+                t.start()
+                last_data = time.time()
+
                 while True:
-                    chunk = stream.read(65536)
-                    self.text.configure(text="ADB-Backup is running.\nThis may take some time.")
-                    if not chunk:
-                        break
-                    f.write(chunk)
-                    total += len(chunk)
-                    self.prog_text.configure(text=f"{total/1024/1024:.1f} MB written")
+                    
+                    try:
+                        chunk = q.get(timeout=1)
+                        if chunk is None:
+                            break
+                        self.text.configure(text="ADB-Backup is running.\nThis may take some time.")
+                        f.write(chunk)
+                        total += len(chunk)
+                        self.prog_text.configure(text=f"{total/1024/1024:.1f} MB written")
+                        last_data = time.time()
+
+                    except queue.Empty:
+                        if time.time() - last_data > TIMEOUT:
+                            proc.kill()
+                            raise TimeoutError("ADB backup timed out")
+
+                    #chunk = stream.read(65536)
+                    #self.text.configure(text="ADB-Backup is running.\nThis may take some time.")
+                    #if not chunk:
+                    #    break
+                    #f.write(chunk)
+                    #total += len(chunk)
+                    #self.prog_text.configure(text=f"{total/1024/1024:.1f} MB written")
             log(f"Created Backup: {bu_file}")
+            bu_change.set(1) 
         except Exception as e:
             log(f"Error creating backup: {e}")
-            pass
-
-        bu_change.set(1)    
+            bu_change.set(2)    
 
     def zip_bu(self, zip, text, change):
         text.configure(text="Including the backup to the Zip.")
