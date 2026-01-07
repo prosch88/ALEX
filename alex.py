@@ -2636,11 +2636,11 @@ def dump_appops(change, text, progress, prog_text, folder=None, jsonout=False):
             else:
                 result[entry_key] = [mode, *kv_items]
         return result
-
-    if folder == None:
-        folder = f"{snr}_appops"
-    try: os.mkdir(folder)
-    except: pass
+    if jsonout == False:
+        if folder == None:
+            folder = f"{snr}_appops"
+        try: os.mkdir(folder)
+        except: pass
     i=0
     ops_dict = {}
     for app in all_apps:
