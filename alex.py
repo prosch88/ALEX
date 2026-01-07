@@ -978,6 +978,9 @@ class MyApp(ctk.CTk):
         self.incl_dbfiles = ctk.StringVar(value="on")
         self.incl_dbfiles_box = ctk.CTkCheckBox(self.dynamic_frame, text="Include recreated Databases from Content Providers.", variable=self.incl_dbfiles, onvalue="on", offvalue="off")
         self.incl_dbfiles_box.pack(anchor="w", padx= 80, pady=5)
+        self.incl_logfiles = ctk.StringVar(value="on")
+        self.incl_logs_box = ctk.CTkCheckBox(self.dynamic_frame, text="Include Logs and queried Data.", variable=self.incl_logfiles, onvalue="on", offvalue="off")
+        self.incl_logs_box.pack(anchor="w", padx= 80, pady=5)
         self.startb = ctk.CTkButton(self.dynamic_frame, text="Start", font=self.stfont, command=lambda: self.change.set(1))
         self.startb.pack(pady=25) 
         self.backb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=lambda: self.switch_menu("AcqMenu"))
@@ -987,12 +990,14 @@ class MyApp(ctk.CTk):
         self.incl_system_box.pack_forget()
         self.incl_cve_box.pack_forget()
         self.incl_dbfiles_box.pack_forget()
+        self.incl_logs_box.pack_forget()
         self.startb.pack_forget()
         self.backb.pack_forget()
         incl_sdcard = self.incl_sdcard.get()
         incl_system = self.incl_system.get()
         incl_cve = self.incl_cve.get()
         incl_dbfiles = self.incl_dbfiles.get()
+        incl_logs = self.incl_logfiles.get()
         self.text.configure(height=60)
         self.after(50)
 
@@ -1023,7 +1028,7 @@ class MyApp(ctk.CTk):
         self.wait_variable(self.change)
 
         if incl_sdcard == "on":
-            self.pull_data = threading.Thread(target=lambda: pull_dir_mod(device.sync, data_path, folder, text=self.text, prog_text=self.prog_text, progress=self.progress, change=self.change, zip=zip))
+            self.pull_data = threading.Thread(target=lambda: pull_dir_mod(device.sync, data_path, folder, text=self.text, prog_text=self.prog_text, progress=self.progress, change=self.change, zip=zip, mode="prfs"))
             self.pull_data.start()
             self.wait_variable(self.change)
             try: shutil.rmtree(folder)
@@ -1045,7 +1050,7 @@ class MyApp(ctk.CTk):
                     self.change.set(0)
                     self.prog_text.configure(text="0%")
                     self.progress.set(0)
-                    self.pull_data = threading.Thread(target=lambda: pull_dir_mod(device.sync, data_path, folder, text=self.text, prog_text=self.prog_text, progress=self.progress, change=self.change, zip=zip))
+                    self.pull_data = threading.Thread(target=lambda: pull_dir_mod(device.sync, data_path, folder, text=self.text, prog_text=self.prog_text, progress=self.progress, change=self.change, zip=zip,mode="prfs"))
                     self.pull_data.start()
                     self.wait_variable(self.change)
                     try: shutil.rmtree(folder)
@@ -1065,7 +1070,7 @@ class MyApp(ctk.CTk):
                 self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
                 self.progress.pack()
                 self.progress.start()
-                self.pull_zygote = threading.Thread(target=lambda: exploit_zygote(zip_path=zip_path, text=self.text, prog_text=self.prog_text, change=self.change))
+                self.pull_zygote = threading.Thread(target=lambda: exploit_zygote(zip_path=zip_path, text=self.text, prog_text=self.prog_text, change=self.change, mode="prfs"))
                 self.pull_zygote.start()
                 self.wait_variable(self.change)
             else:
@@ -1083,6 +1088,53 @@ class MyApp(ctk.CTk):
             self.recreate_dbs = threading.Thread(target=lambda: recreate_dbs(change=self.change, text=self.text, zip_path=zip_path))
             self.recreate_dbs.start()
             self.wait_variable(self.change)
+
+        if incl_logs == "on":
+            self.prog_text.configure(text="")
+            self.progress.pack_forget()
+            self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
+            self.progress.pack()
+            self.progress.start()
+            self.change.set(0)
+            # Logcat
+            self.text.configure(text="Dumping Logcat Logs.")
+            self.prfs_logcat = threading.Thread(target=lambda: dump_logcat(self.change))
+            self.prfs_logcat.start()
+            self.wait_variable(self.change)
+            self.change.set(0)
+            self.text.configure(text="Adding Logcat logs to the backup.")
+            self.prfs_zip_logcat = threading.Thread(target=lambda: self.zip_prfs_extra(zip_path, "logcat.txt", f"logcat_{snr}.txt", self.change))
+            self.prfs_zip_logcat.start()
+            self.wait_variable(self.change)
+            self.change.set(0)
+            # Dumpsys
+            self.text.configure(text="Extracting Dumpsys Logs.")
+            self.prfs_dumpsys = threading.Thread(target=lambda: dump_dumpsys(self.change))
+            self.prfs_dumpsys.start()
+            self.wait_variable(self.change)
+            self.change.set(0)
+            self.text.configure(text="Adding Dumpsys logs to the backup.")
+            self.prfs_zip_dumpsys = threading.Thread(target=lambda: self.zip_prfs_extra(zip_path, "dumpsys.txt", f"dumpsys_{snr}.txt", self.change))
+            self.prfs_zip_dumpsys.start()
+            self.wait_variable(self.change)
+            # App-Opps
+            self.text.configure(text="Extracting App-Opps.")
+            self.progress.pack_forget()
+            self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0)
+            self.progress.set(0)
+            self.progress.pack()
+            self.prfs_dumpsys = threading.Thread(target=lambda: dump_appops(self.change, self.text, self.progress, self.prog_text, jsonout=True))
+            self.prfs_dumpsys.start()
+            self.wait_variable(self.change)
+            self.change.set(0)
+            self.text.configure(text="Adding App-Opps to the backup.")
+            self.prfs_zip_dumpsys = threading.Thread(target=lambda: self.zip_prfs_extra(zip_path, "app_ops.json", f"{snr}_apps_ops.json", self.change))
+            self.prfs_zip_dumpsys.start()
+            self.wait_variable(self.change)
+
+            
+
+
         self.text.configure(text="Data Extraction complete.")
         log(f"Created Backup: {zip_path}")
         self.prog_text.pack_forget()
@@ -1197,6 +1249,17 @@ class MyApp(ctk.CTk):
             pass
         change.set(1)
 
+    def zip_prfs_extra(self, zip_path, zname, extra_file, change):
+        try:
+            if zip_path != None:
+                with zipfile.ZipFile(zip_path, mode="a") as zf:
+                    if os.path.exists(extra_file):
+                        zf.write(extra_file, f"extra/{zname}")
+            os.remove(extra_file)
+        except:
+            pass
+        change.set(1)
+
     #Show Bugreport-Screen (Dumpsys)
     def show_bugreport(self):
         ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
@@ -1248,7 +1311,7 @@ class MyApp(ctk.CTk):
         if jsonout == True:
             self.text.configure(text=f"App-Ops saved in folder: {snr}_appops")
         else:
-            self.text.configure(text=f"App-Ops saved as: {snr}_appops.json")
+            self.text.configure(text=f"App-Ops saved as: {snr}_apps_ops.json")
         self.prog_text.pack_forget()
         self.progress.pack_forget()
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("LogMenu")).pack(pady=40)) 
@@ -2607,7 +2670,7 @@ def dump_appops(change, text, progress, prog_text, folder=None, jsonout=False):
                 with open(os.path.join(folder, f"{app}.txt"), "w", encoding="utf-8", errors="ignore") as f:
                     f.write(app_ops) 
     if ops_dict != {}:
-        with open(f"{snr}_apps_opps.json", "w", encoding="utf-8") as f:
+        with open(f"{snr}_apps_ops.json", "w", encoding="utf-8") as f:
             json.dump(ops_dict, f, indent=2, ensure_ascii=False)
     log("Extracted App Ops")
     change.set(1)
@@ -3221,15 +3284,15 @@ def recreate_dbs(change, text, zip_path=None):
     if zip_path != None:
         with zipfile.ZipFile(zip_path, mode="a") as zf:
             if os.path.exists(mmssms_db):
-                zf.write(mmssms_db, "data/data/com.android.providers.telephony/databases/mmssms.db")
+                zf.write(mmssms_db, "dump/data/data/com.android.providers.telephony/databases/mmssms.db")
             if os.path.exists(call_db):
-                zf.write(call_db, "data/data/com.android.providers.contacts/databases/calllog.db")
+                zf.write(call_db, "dump/data/data/com.android.providers.contacts/databases/calllog.db")
             if os.path.exists(contact_db):
-                zf.write(contact_db, "data/data/com.android.providers.contacts/databases/contacts2.db")
+                zf.write(contact_db, "dump/data/data/com.android.providers.contacts/databases/contacts2.db")
             if os.path.exists(calendar_db):
-                zf.write(calendar_db, "data/data/com.android.providers.calendar/databases/calendar.db")
+                zf.write(calendar_db, "dump/data/data/com.android.providers.calendar/databases/calendar.db")
             if os.path.exists(packages_list):
-                zf.write(packages_list, "data/system/packages.list")
+                zf.write(packages_list, "dump/data/system/packages.list")
     try: os.remove(mmssms_db)
     except: pass
     try: os.remove(call_db)
@@ -3362,6 +3425,8 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
             os.makedirs(new_dst, exist_ok=exist_ok)
             if mode == "ufed":
                 zip_dir_path = f'backup/{rootf.strip("/")}/{rel_in_zip}/{dir.path}/'.replace("//", "/")
+            if mode == "prfs":
+                zip_dir_path = f'dump/{rootf.strip("/")}/{rel_in_zip}/{dir.path}/'.replace("//", "/")
             else:
                 zip_dir_path = f'{rootf.strip("/")}/{rel_in_zip}/{dir.path}/'.replace("//", "/")
             #print(zip_dir_path)
@@ -3398,6 +3463,8 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
                     data = f.read()
                 if mode == "ufed":
                     zip_rel_path = f'backup/{rootf.strip("/")}/{rel_in_zip}/{file.path}'.replace("//", "/")
+                elif mode == "prfs":
+                    zip_rel_path = f'dump/{rootf.strip("/")}/{rel_in_zip}/{file.path}'.replace("//", "/")
                 else:
                     zip_rel_path = f'{rootf.strip("/")}/{rel_in_zip}/{file.path}'.replace("//", "/")
                 zip_info = zipfile.ZipInfo(zip_rel_path)
@@ -3433,7 +3500,7 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
     return func_size
 
 # Exploiting CVE-2024–31317 to get system-user files (Android 9-11)
-def exploit_zygote(zip_path, text, prog_text, change):
+def exploit_zygote(zip_path, text, prog_text, change, mode="default"):
 
     # Logic adjusted according to: https://github.com/Anonymous941/zygote-injection-toolkit
     command = None
@@ -3519,7 +3586,11 @@ def exploit_zygote(zip_path, text, prog_text, change):
                             continue
                         #data = f.read()
                         #zf.writestr(member.name, data)
-                        with zf.open(member.name, "w") as zf_out:
+                        z_path = member.name
+                        if mode == "prfs":
+                            z_path = os.path.join("dump", member.name)
+
+                        with zf.open(z_path, "w") as zf_out:
                             while True:
                                 chunk = f.read(CHUNK)
                                 if not chunk:
