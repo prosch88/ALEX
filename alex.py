@@ -1890,10 +1890,9 @@ class MyApp(ctk.CTk):
                                 ".": "Accounts:", "style": "title", "label": "title1", "outline": {}
                             },
                             *accounts_content,
-                            ([{".": "",}] if len(accounts) < 2 else []),               
+                            *([{".": ""}] * max(1, 5 - len(accounts))),          
                             {".": "", "style": "title", "label": "title0", "outline": {}},
-                            {".": "",},
-                
+
                             {
                                 ".": "Applications:", "style": "title", "label": "title1", "outline": {}
                             },
