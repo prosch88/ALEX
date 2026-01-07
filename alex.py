@@ -967,7 +967,7 @@ class MyApp(ctk.CTk):
         self.change = ctk.IntVar(self, 0)
 
         self.incl_sdcard = ctk.StringVar(value="on")
-        self.incl_sdcard_box = ctk.CTkCheckBox(self.dynamic_frame, text="Include the \"scdard\" folder.", variable=self.incl_sdcard, onvalue="on", offvalue="off")
+        self.incl_sdcard_box = ctk.CTkCheckBox(self.dynamic_frame, text="Include the \"sdcard\" folder.", variable=self.incl_sdcard, onvalue="on", offvalue="off")
         self.incl_sdcard_box.pack(anchor="w", padx= 80, pady=5)
         self.incl_system = ctk.StringVar(value="on")
         self.incl_system_box = ctk.CTkCheckBox(self.dynamic_frame, text="Include available \"System\" folders", variable=self.incl_system, onvalue="on", offvalue="off")
