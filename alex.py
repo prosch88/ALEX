@@ -1889,7 +1889,7 @@ class MyApp(ctk.CTk):
                             {
                                 ".": "Accounts:", "style": "title", "label": "title1", "outline": {}
                             },
-                            *accounts_content,  # Entpackt die Liste der Mini-Tabellen direkt in den Content
+                            *accounts_content,
                             ([{".": "",}] if len(accounts) < 2 else []),               
                             {".": "", "style": "title", "label": "title0", "outline": {}},
                             {".": "",},
