@@ -1107,6 +1107,7 @@ class MyApp(ctk.CTk):
             self.prfs_zip_logcat.start()
             self.wait_variable(self.change)
             self.change.set(0)
+            self.after(1000)
             # Dumpsys
             self.text.configure(text="Extracting Dumpsys Logs.")
             self.prfs_dumpsys = threading.Thread(target=lambda: dump_dumpsys(self.change))
@@ -1117,6 +1118,7 @@ class MyApp(ctk.CTk):
             self.prfs_zip_dumpsys = threading.Thread(target=lambda: self.zip_prfs_extra(zip_path, "dumpsys.txt", f"dumpsys_{snr}.txt", self.change))
             self.prfs_zip_dumpsys.start()
             self.wait_variable(self.change)
+            self.change.set(0)
             # App-Opps
             self.text.configure(text="Extracting App-Opps.")
             self.progress.pack_forget()
@@ -1131,10 +1133,14 @@ class MyApp(ctk.CTk):
             self.prfs_zip_dumpsys = threading.Thread(target=lambda: self.zip_prfs_extra(zip_path, "app_ops.json", f"{snr}_apps_ops.json", self.change))
             self.prfs_zip_dumpsys.start()
             self.wait_variable(self.change)
-
-            
-
-
+            self.change.set(0)
+            # Content Provider
+            self.text.configure(text="Query Content Provider.")
+            self.progress.set(0)
+            self.prfs_cp = threading.Thread(target=lambda: query_content(self.change, self.text, self.progress, self.prog_text, json_out=True, zip_path=zip_path))
+            self.prfs_cp.start()
+            self.wait_variable(self.change)
+            self.change.set(0)
         self.text.configure(text="Data Extraction complete.")
         log(f"Created Backup: {zip_path}")
         self.prog_text.pack_forget()
@@ -2493,7 +2499,7 @@ def save_info():
     log("Saved Device Info")
 
 def dump_logcat(change):
-    logdump = device.shell("logcat -d -b all -v threadtime", stream=True)
+    logdump = device.shell("logcat -d -b all -v epoch", stream=True)
     buffer = b""
     with open(f"logcat_{snr}.txt", "w", encoding='utf-8') as logcfile:
         while True:
@@ -2677,10 +2683,13 @@ def dump_appops(change, text, progress, prog_text, folder=None, jsonout=False):
 
 
 #Query Content Providers (from the dict: content_provider.json)
-def query_content(change, text, progress, prog_text, json_out=False):
+def query_content(change, text, progress, prog_text, json_out=False, zip_path=None):
     prov_file = os.path.join(os.path.dirname(__file__), "ressources" , "content_provider.json")
     error_text = ["Error while accessing provider", "Unsupported argument", "No result found", "command not found"]
-    out = f"content_provider_{snr}"
+    if zip_path != None:
+        out = f"content_provider_{snr}_tmp"
+    else:
+        out = f"content_provider_{snr}"
     with open(prov_file) as f:
         providers = json.load(f)
     #prov_len = len(providers)
@@ -2714,6 +2723,11 @@ def query_content(change, text, progress, prog_text, json_out=False):
                 json_path = Path(f'{out}/{key}/{key}.json')
                 json_path.parent.mkdir(parents=True, exist_ok=True)
                 json_path.write_text(json_out, encoding="utf-8")
+                if zip_path != None:
+                    with zipfile.ZipFile(zip_path, mode="a") as zf:
+                        zf.write(json_path, f"extra/content_provider/{key}/{key}.json")
+                    try: os.remove(json_path)
+                    except: pass
         if isinstance(value, list):
             for item in value:
                 i+=1
@@ -2737,6 +2751,12 @@ def query_content(change, text, progress, prog_text, json_out=False):
                         json_path = Path(f'{out}/{key}/{key}_{item.replace("/","_")}.json')
                         json_path.parent.mkdir(parents=True, exist_ok=True)
                         json_path.write_text(json_out, encoding="utf-8")
+                        if zip_path != None:
+                            with zipfile.ZipFile(zip_path, mode="a") as zf:
+                                zf.write(json_path, f"extra/content_provider/{key}/{key}_{item.replace("/","_")}.json")
+                            try: os.remove(json_path)
+                            except: pass
+
         i+=1
         current = i/prov_len
         progress.set(current)
@@ -2762,6 +2782,15 @@ def query_content(change, text, progress, prog_text, json_out=False):
                         json_path = Path(f'{out}/{key}/{key}_{value.replace("/","_")}.json')
                         json_path.parent.mkdir(parents=True, exist_ok=True)
                         json_path.write_text(json_out, encoding="utf-8")
+                        if zip_path != None:
+                            with zipfile.ZipFile(zip_path, mode="a") as zf:
+                                zf.write(json_path, f"extra/content_provider/{key}/{key}_{value.replace("/","_")}.json")
+                            try: os.remove(json_path)
+                            except: pass
+
+    if zip_path != None:
+        try: shutil.rmtree(out)
+        except: pass
     change.set(1)
 
 # Convert the content provider output to JSON
