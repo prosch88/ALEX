@@ -94,7 +94,7 @@ def push_temp_script(script_text, mtk_su=False):
     # push script to device
     subprocess.run(["adb", "push", local_path, remote_path], check=True)
     if device_has_su():
-        subprocess.run(["adb", "shell", "su", "-c", f"chmod 700 {remote_path}"], check=True)
+        subprocess.run(["adb", "shell", "sh", "-c", f"echo 'chmod 700 {remote_path}' | su"], check=True)
     elif mtk_su == True:
         subprocess.run(["adb", "shell", "/data/local/tmp/mtk-su", "-c", f"chmod 700 {remote_path}"], check=True)
     else:
@@ -120,7 +120,7 @@ def su_root_ffs(outzip=None, filetext=None, prog_text=None, log=None, change=Non
     remote_script_path = push_temp_script(remote_script_text, mtk_su)
 
     if device_has_su():
-        cmd = ["adb", "exec-out", "su", "-c", f"sh {remote_script_path}"]
+        cmd = ["adb", "exec-out", "sh", "-c", f"echo 'sh {remote_script_path}' | su"]
     elif mtk_su == True:
         cmd = ["adb", "exec-out", "/data/local/tmp/mtk-su", "-c", f"{remote_script_path}"]
     else:
@@ -214,7 +214,7 @@ def su_root_ffs(outzip=None, filetext=None, prog_text=None, log=None, change=Non
     except: proc.kill()
 
     if device_has_su():
-        subprocess.run(["adb", "shell", "su", "-c", f"rm {remote_script_path}"])
+        subprocess.run(["adb", "shell", "sh", "-c", f"echo 'rm {remote_script_path}' | su"])
     else:
         subprocess.run(["adb", "shell", f"rm {remote_script_path}"])
     elapsed = time.time() - start_time
