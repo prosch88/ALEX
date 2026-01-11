@@ -598,6 +598,18 @@ class MyApp(ctk.CTk):
                     self.text.configure(text="Root access has not been confirmed.")
                     self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
                     return
+            elif su_app == None:
+                log("No su-manager found.")
+                self.text.configure(text="Please allow the following superuser request on the device.")
+                check_su = threading.Thread(target=lambda:has_root(self.change))
+                check_su.start()
+                self.wait_variable(self.change)
+                if self.change.get() == 1:
+                    show_root = True
+                else:
+                    self.text.configure(text="Root access has not been confirmed.")
+                    self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
+                    return
             elif d_platform.upper().startswith(mtk_vers):
                 if int(software.split(".")[0]) < 10 and spl < "2020-03-01":
                     self.choose = ctk.BooleanVar(self, False)
@@ -2937,6 +2949,8 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
         target = "mmcblk0"
     elif "sda" in dev_cmd:
         target = "sda"
+    elif "vda" in dev_cmd:
+        target = "vda"
     else:
         target = None
     if target == None:
