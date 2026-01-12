@@ -2517,7 +2517,7 @@ def dump_logcat(change):
 def dump_dumpsys(change):
     sysdump = device.shell("dumpsys", stream=True)
     buffer = b""
-    with open(f"dumpsys_{snr}.txt", "w", encoding='utf-8') as dumpsfile:
+    with open(f"dumpsys_{snr}.txt", "w", encoding='utf-8', errors="surrogateescape") as dumpsfile:
         while True:
             chunk = sysdump.read(1024)
             if not chunk:
@@ -2525,7 +2525,7 @@ def dump_dumpsys(change):
             buffer += chunk
             while b"\n" in buffer:
                     line, buffer = buffer.split(b"\n", 1)
-                    dumpsfile.write(line.decode("utf-8", errors="replace") + "\n")
+                    dumpsfile.write(line.decode("utf-8", errors="surrogateescape") + "\n")
                     dumpsfile.flush()
     log("Extracted Dumpsys")
     change.set(1)
