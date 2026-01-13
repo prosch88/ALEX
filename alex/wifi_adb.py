@@ -77,7 +77,7 @@ def connect_device(address: str, port: int):
             args = [ADB_PATH, "disconnect", f"{address}:{port}"]
             out = subprocess.run(args, capture_output=True)
             #print("disconnected")
-            time.sleep(1)
+            time.sleep(2)
         else:
             zc.close()
             exit.set(1)
@@ -119,6 +119,7 @@ def wifi_pair(change, imglabel=None, p_addr=None, p_port=None, p_pass=None):
     global exit
     global PASSWORD
     exit = change
+    breaktimer = 0
     zcopen = True
     if imglabel:
         qrimg =  make_qr_image(generate_code(NAME, PASSWORD))
@@ -143,3 +144,10 @@ def wifi_pair(change, imglabel=None, p_addr=None, p_port=None, p_pass=None):
                 type_=TYPES,
                 handlers=[on_service_state_change],
             )
+
+            while True:
+                time.sleep(1)
+                breaktimer += 1
+                if breaktimer == 25:
+                    change.set(1)
+
