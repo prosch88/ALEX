@@ -96,5 +96,7 @@ This script utilizes the following projects:
 [mtk-su](https://xdaforums.com/t/amazing-temp-root-for-mediatek-armv8-2020-08-24.3922213/) by [diplomatic](
 https://xdaforums.com/m/diplomatic.8132642/)
 
+[lyto](https://github.com/eeriemyxi/lyto) by [eeriemyxi](https://github.com/eeriemyxi)
+
 [simpleaudio](https://github.com/hamiltron/py-simple-audio), [pdfme](https://github.com/aFelipeSP/pdfme)
 
