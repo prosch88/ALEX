@@ -18,8 +18,9 @@ from adbutils._utils import append_path
 from io import BytesIO
 from pathlib import Path
 from pdfme import build_pdf
-from alex import ufed_style, devdump
+from alex import ufed_style, devdump, wifi_adb
 import numpy as np
+import ipaddress
 import sqlite3
 import shutil
 import json
@@ -261,7 +262,7 @@ class MyApp(ctk.CTk):
         for widget in self.dynamic_frame.winfo_children():
             widget.destroy()
         ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="center")
-        self.text = ctk.CTkLabel(self.dynamic_frame, width=400, height=250, font=self.stfont, anchor="w", justify="left")
+        self.text = ctk.CTkLabel(self.dynamic_frame, width=400, height=220, font=self.stfont, anchor="w", justify="left")
         start_error = False
         global device
         global adb
@@ -302,6 +303,7 @@ class MyApp(ctk.CTk):
                             "Make sure the device is connected and the\ndeveloper options are enabled.")
             self.text.pack(pady=50)
             ctk.CTkButton(self.dynamic_frame, text="Check again", command=self.show_noadbserver).pack(pady=10)
+            ctk.CTkButton(self.dynamic_frame, text="WiFi Pairing", command=self.show_wifi_pairing).pack(pady=10)
             itext = device_info
             self.info_text.configure(state="normal")
             self.info_text.delete("0.0", "end")
@@ -326,6 +328,7 @@ class MyApp(ctk.CTk):
                                 "Make sure the device is connected and the\ndeveloper options are enabled.")
                 self.text.pack(pady=50)
                 ctk.CTkButton(self.dynamic_frame, text="Check again", command=self.show_noadbserver).pack(pady=10)
+                ctk.CTkButton(self.dynamic_frame, text="WiFi Pairing", command=self.show_wifi_pairing).pack(pady=10)
                 itext = device_info
                 self.info_text.configure(state="normal")
                 self.info_text.delete("0.0", "end")
@@ -337,6 +340,7 @@ class MyApp(ctk.CTk):
                                 "Confirm the \"Always trust this Computer\" message\nand check again.")
                 self.text.pack(pady=50)
                 ctk.CTkButton(self.dynamic_frame, text="Check again", command=self.show_noadbserver).pack(pady=10)
+                ctk.CTkButton(self.dynamic_frame, text="WiFi Pairing", command=self.show_wifi_pairing).pack(pady=10)
                 itext = device_info
                 self.info_text.configure(state="normal")
                 self.info_text.delete("0.0", "end")
@@ -364,6 +368,81 @@ class MyApp(ctk.CTk):
                 self.text.configure(text="ADB Server found!")
                 self.text.pack(pady=50)
                 pass
+
+    #Show the Wifi-Pairing
+    def show_wifi_pairing(self):
+        for widget in self.dynamic_frame.winfo_children():
+            widget.destroy()
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter", text_color="#3f3f3f", height=40, padx=40, font=self.stfont).pack(anchor="w")
+        ctk.CTkLabel(self.dynamic_frame, text="Wireless Debugging", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
+        self.text = ctk.CTkLabel(self.dynamic_frame, text="\nChoose the Pairing method:", width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        self.text.pack(anchor="center", pady=25)
+        self.change = ctk.IntVar(self, 0)
+        self.choose = ctk.StringVar(self, "Abort")
+        self.qrb = ctk.CTkButton(self.dynamic_frame, text="QR-Code", font=self.stfont, command=lambda: self.choose.set("qr"))
+        self.qrb.pack(pady=5)
+        self.pinb = ctk.CTkButton(self.dynamic_frame, text="Pairing Code", font=self.stfont, command=lambda: self.choose.set("pin"))
+        self.pinb.pack(pady=5)
+        self.backb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=self.show_noadbserver)
+        self.backb.pack(pady=5)
+        self.wait_variable(self.choose)  
+        self.qrb.pack_forget()
+        self.pinb.pack_forget()
+        self.backb.pack_forget()
+        if self.choose.get() == "qr":
+            self.text.configure(text="Please activate Wireless Debugging and scan the shown QR Code.", anchor="n", height=20)
+            self.placeholder_image = ctk.CTkImage(dark_image=Image.open(os.path.join(os.path.dirname(__file__), "assets" , "qr_ph.png")), size=(256, 256))
+            self.imglabel = ctk.CTkLabel(self.dynamic_frame, image=self.placeholder_image, text=" ", width=256, height=256, font=self.stfont,  justify="left")
+            self.imglabel.pack()
+            self.backb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=self.show_noadbserver)
+            self.backb.pack(pady=30)        
+            self.pair_wifi = threading.Thread(target=lambda: wifi_adb.wifi_pair(self.change, self.imglabel))
+            self.pair_wifi.start()
+        elif self.choose.get() == "pin":
+            self.text.configure(text="Please provide the IP-Address, Port and Pairing-Code\nshown on the device Screen.", anchor="n", height=20)
+            self.ipbox = ctk.CTkEntry(self.dynamic_frame, width=180, height=20, corner_radius=0, placeholder_text="IP Address")
+            self.portbox = ctk.CTkEntry(self.dynamic_frame, width=180, height=20, corner_radius=0, placeholder_text="Port")
+            self.pairbox = ctk.CTkEntry(self.dynamic_frame, width=180, height=20, corner_radius=0, placeholder_text="Pairing Code")
+            self.ipbox.pack(pady=5)
+            self.portbox.pack(pady=5)
+            self.pairbox.pack(pady=5)
+            self.okbutton = ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.choose.set("ok"))
+            self.okbutton.pack(pady=20)
+            self.backb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=self.show_noadbserver)
+            self.backb.pack(pady=5)
+            self.wait_variable(self.choose)
+            self.okbutton.pack_forget()
+            p_ip = self.ipbox.get()
+            p_port = self.portbox.get()
+            p_pair = self.pairbox.get()
+            p_valid = False
+            self.ipbox.pack_forget()
+            self.portbox.pack_forget()
+            self.pairbox.pack_forget()
+            try:
+                ipaddress.ip_address(p_ip)
+            except:
+                self.ipbox.pack_forget()
+                self.text.configure(text="Invalid input! Provide a valid IP address.")
+                self.backb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=self.show_noadbserver)
+                self.backb.pack(pady=30)     
+            try:
+                p_port_check = int(p_port)
+                p_pair_check = int(p_pair)
+                p_valid = True
+            except:
+                self.text.configure(text="Invalid input! Port and Pairing-Code have to be Integers.")
+                self.backb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=self.show_noadbserver)
+                self.backb.pack(pady=30)
+            if p_valid:
+                self.backb.pack_forget()
+                self.text.configure(text="\n\n\nTrying to establish a connection with the device ...")
+                self.pair_wifi = threading.Thread(target=lambda: wifi_adb.wifi_pair(self.change, p_addr=p_ip, p_port = p_port, p_pass=p_pair))
+                self.pair_wifi.start()
+
+        self.wait_variable(self.change) 
+        self.after(500, self.show_noadbserver())
+
 
     # Select the working directory
     def show_cwd(self):
