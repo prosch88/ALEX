@@ -2844,7 +2844,7 @@ def query_content(change, text, progress, prog_text, json_out=False, zip_path=No
                         json_path.write_text(json_out, encoding="utf-8")
                         if zip_path != None:
                             with zipfile.ZipFile(zip_path, mode="a") as zf:
-                                zf.write(json_path, f"extra/content_provider/{key}/{key}_{item.replace("/","_")}.json")
+                                zf.write(json_path, f"extra/content_provider/{key}/{key}_{item.replace('/','_')}.json")
                             try: os.remove(json_path)
                             except: pass
 
@@ -2875,7 +2875,7 @@ def query_content(change, text, progress, prog_text, json_out=False, zip_path=No
                         json_path.write_text(json_out, encoding="utf-8")
                         if zip_path != None:
                             with zipfile.ZipFile(zip_path, mode="a") as zf:
-                                zf.write(json_path, f"extra/content_provider/{key}/{key}_{value.replace("/","_")}.json")
+                                zf.write(json_path, f"extra/content_provider/{key}/{key}_{value.replace('/','_')}.json")
                             try: os.remove(json_path)
                             except: pass
 
