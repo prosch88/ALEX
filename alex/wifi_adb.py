@@ -1,3 +1,5 @@
+# QR-Pairing logic derived from: https://github.com/eeriemyxi/lyto
+
 import importlib.metadata
 import io
 import os
