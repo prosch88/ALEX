@@ -1895,6 +1895,12 @@ class MyApp(ctk.CTk):
             temp_file.write(image_stream.getvalue())
             temp_image_name = temp_file.name
 
+        dev_name_cell = (
+            {".": [{".": d_name}]}
+            if d_name.isascii() and d_name.isprintable()
+            else {"image": temp_image_name}
+            )
+
         if ut == True:
             d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "ut_generic.jpg")
         elif aos == True:
@@ -1946,7 +1952,7 @@ class MyApp(ctk.CTk):
                                 "widths": [1.2, 2.5, 1.8, 2.5],
                                 "style": {"s": 10, "border_color": "lightgrey"},
                                 "table": [
-                                    [{".": [{".b": "Dev-Name:"}]}, {"colspan": 3, "image": temp_image_name}, None, None],
+                                    [{".": [{".b": "Dev-Name:"}]}, {"colspan": 3, **dev_name_cell}, None, None],
                                     [{"style": {"border_color": "white", "cell_fill": u_grey}, ".": [{".b": "Model-Nr:"}]}, {"colspan": 3, "style": {"cell_fill": u_grey}, ".": [{".": full_name.title()}]}, None, None],
                                     [{".": [{".b": "SerialNr:"}]}, {"colspan": 3, ".": [{".": snr}]}, None, None],
                                 ]
@@ -2026,7 +2032,7 @@ class MyApp(ctk.CTk):
                                 "widths": [1.2, 2.5, 1.2, 3.1],
                                 "style": {"s": 10, "border_color": "lightgrey"},
                                 "table": [
-                                    [{".": [{".b": "Dev-Name:"}]}, {"colspan": 3, "image": temp_image_name}, None, None],
+                                    [{".": [{".b": "Dev-Name:"}]}, {"colspan": 3, **dev_name_cell}, None, None],
                                     [{"style": {"border_color": "white", "cell_fill": u_grey}, ".": [{".b": "Model-Nr:"}]}, {"colspan": 3, "style": {"cell_fill": u_grey}, ".": [{".": full_name.title()}]}, None, None],
                                     [{".": [{".b": "Product:"}]}, {"colspan": 3, ".": [{".": product}]}, None, None],
                                     [{"style": {"cell_fill": u_grey}, ".": [{".b": "Platform:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": d_platform}]}, { "style": {"cell_fill": u_grey}, ".": [{".b": "WiFi MAC:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": w_mac}]}],
