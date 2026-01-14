@@ -2925,15 +2925,16 @@ def tar_root_ffs(outtar, prog_text, change):
         log("Pushed tar binary to /data/local/tmp")
         if device_has_su():
             if c_su:
-                subprocess.run(["adb", "shell", "sh", "-c", f"su -c 'chmod 755 {remote_path}'"], check=True)
+                subprocess.run(["adb", "shell", f"su -c 'chmod 755 {remote_path}'"], check=True)
             else:
-                subprocess.run(["adb", "shell", "sh", "-c", f"echo 'chmod 755 {remote_path}' | su"], check=True)
+                subprocess.run(["adb", "shell", f"echo 'chmod 755 {remote_path}' | su"], check=True)
         else:
             subprocess.run(["adb", "shell", f"chmod 755 {remote_path}"], check=True)
         tar_remote = remote_path
     else:
         tar_remote = "tar"
     CHUNK_SIZE = 1024 * 64
+    print(tar_remote)
     if device_has_su():
         if c_su:
             cmd = [
