@@ -441,6 +441,7 @@ class MyApp(ctk.CTk):
                 self.pair_wifi.start()
 
         self.wait_variable(self.change) 
+        
         self.after(500, self.show_noadbserver())
 
 

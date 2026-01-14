@@ -81,6 +81,7 @@ def connect_device(address: str, port: int):
         else:
             zc.close()
             exit.set(1)
+            return
         
 
 def on_service_state_change(
