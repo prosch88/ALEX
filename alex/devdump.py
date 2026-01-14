@@ -86,7 +86,7 @@ def device_has_su() -> bool:
     except Exception:
         return False
 
-def push_temp_script(script_text, mtk_su=False):
+def push_temp_script(script_text, mtk_su=False, c_su=False):
     with tempfile.NamedTemporaryFile("w", delete=False, newline="\n") as f:
         f.write(script_text)
         local_path = f.name
@@ -120,11 +120,11 @@ def su_root_ffs(outzip=None, filetext=None, prog_text=None, log=None, change=Non
         pass
 
     remote_script_text = build_remote_script(root, excludes)
-    remote_script_path = push_temp_script(remote_script_text, mtk_su)
+    remote_script_path = push_temp_script(remote_script_text, mtk_su, c_su)
 
     if device_has_su():
         if c_su:
-            cmd = ["adb", "exec-out", "sh", "-c", f"echo 'sh {remote_script_path}' | su"]
+            cmd = ["adb", "exec-out", "sh", "-c", f"su -c 'sh {remote_script_path}'"]
         else:
             cmd = ["adb", "exec-out", "sh", "-c", f"echo 'sh {remote_script_path}' | su"]
     elif mtk_su == True:
