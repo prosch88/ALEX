@@ -94,7 +94,10 @@ def push_temp_script(script_text, mtk_su=False):
     # push script to device
     subprocess.run(["adb", "push", local_path, remote_path], check=True)
     if device_has_su():
-        subprocess.run(["adb", "shell", "sh", "-c", f"echo 'chmod 700 {remote_path}' | su"], check=True)
+        if c_su:
+            subprocess.run(["adb", "shell", "sh", "-c", f"su -c 'chmod 700 {remote_path}'"], check=True)
+        else:
+            subprocess.run(["adb", "shell", "sh", "-c", f"echo 'chmod 700 {remote_path}' | su"], check=True)
     elif mtk_su == True:
         subprocess.run(["adb", "shell", "/data/local/tmp/mtk-su", "-c", f"chmod 700 {remote_path}"], check=True)
     else:
@@ -102,7 +105,7 @@ def push_temp_script(script_text, mtk_su=False):
     os.unlink(local_path)
     return remote_path
 
-def su_root_ffs(outzip=None, filetext=None, prog_text=None, log=None, change=None, mtk_su=False):
+def su_root_ffs(outzip=None, filetext=None, prog_text=None, log=None, change=None, mtk_su=False, c_su=False):
     if outzip == None:
         outzip = "FFS.zip"
     root = "/"
@@ -120,7 +123,10 @@ def su_root_ffs(outzip=None, filetext=None, prog_text=None, log=None, change=Non
     remote_script_path = push_temp_script(remote_script_text, mtk_su)
 
     if device_has_su():
-        cmd = ["adb", "exec-out", "sh", "-c", f"echo 'sh {remote_script_path}' | su"]
+        if c_su:
+            cmd = ["adb", "exec-out", "sh", "-c", f"echo 'sh {remote_script_path}' | su"]
+        else:
+            cmd = ["adb", "exec-out", "sh", "-c", f"echo 'sh {remote_script_path}' | su"]
     elif mtk_su == True:
         cmd = ["adb", "exec-out", "/data/local/tmp/mtk-su", "-c", f"{remote_script_path}"]
     else:
@@ -214,7 +220,10 @@ def su_root_ffs(outzip=None, filetext=None, prog_text=None, log=None, change=Non
     except: proc.kill()
 
     if device_has_su():
-        subprocess.run(["adb", "shell", "sh", "-c", f"echo 'rm {remote_script_path}' | su"])
+        if c_su:
+            subprocess.run(["adb", "shell", "sh", "-c", f"su -c 'rm {remote_script_path}'"])
+        else:
+            subprocess.run(["adb", "shell", "sh", "-c", f"echo 'rm {remote_script_path}' | su"])
     else:
         subprocess.run(["adb", "shell", f"rm {remote_script_path}"])
     elapsed = time.time() - start_time

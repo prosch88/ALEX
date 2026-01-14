@@ -667,6 +667,11 @@ class MyApp(ctk.CTk):
         if show_root == False:
             if whoami == "root":
                 show_root = True
+                try:
+                    if device.shell("echo 'whoami' | su").strip() == "whoami":
+                        c_su == True
+                except:
+                    pass
             elif su_app != None:
                 self.text.configure(text="Please allow the following superuser request on the device.")
                 check_su = threading.Thread(target=lambda:has_root(self.change))
@@ -857,7 +862,7 @@ class MyApp(ctk.CTk):
         self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
         self.progress.pack()
         self.progress.start()
-        self.do_root_ffs = threading.Thread(target=lambda: devdump.su_root_ffs(outzip=zip_path, filetext=self.text, prog_text=self.prog_text, log=log, change=self.change, mtk_su=mtk_su))
+        self.do_root_ffs = threading.Thread(target=lambda: devdump.su_root_ffs(outzip=zip_path, filetext=self.text, prog_text=self.prog_text, log=log, change=self.change, mtk_su=mtk_su, c_su=c_su))
         self.do_root_ffs.start()
         self.wait_variable(self.change)
         self.text.configure(text="Data Extraction complete.")
@@ -2906,6 +2911,7 @@ def content_to_json(text: str):
 
 #FFS Tar extraction:
 def tar_root_ffs(outtar, prog_text, change):
+    global c_su
     tar_arch = getprop(device, "ro.product.cpu.abilist")
     localtar = False
     if "armeabi" in tar_arch.lower():
@@ -2917,7 +2923,10 @@ def tar_root_ffs(outtar, prog_text, change):
         subprocess.run(["adb", "push", tar_bin, remote_path], check=True)
         log("Pushed tar binary to /data/local/tmp")
         if device_has_su():
-            subprocess.run(["adb", "shell", "sh", "-c", f"echo 'chmod 755 {remote_path}' | su"], check=True)
+            if c_su:
+                subprocess.run(["adb", "shell", "sh", "-c", f"su -c 'chmod 755 {remote_path}'"], check=True)
+            else:
+                subprocess.run(["adb", "shell", "sh", "-c", f"echo 'chmod 755 {remote_path}' | su"], check=True)
         else:
             subprocess.run(["adb", "shell", f"chmod 755 {remote_path}"], check=True)
         tar_remote = remote_path
@@ -2925,11 +2934,18 @@ def tar_root_ffs(outtar, prog_text, change):
         tar_remote = "tar"
     CHUNK_SIZE = 1024 * 64
     if device_has_su():
-        cmd = [
+        if c_su:
+            cmd = [
             "adb", "exec-out",
             "sh", "-c",
-            f"echo '{tar_remote} -cO /data 2>/dev/null' | su"
-        ]
+            f"su -c '{tar_remote} -cO /data 2>/dev/null'"
+            ]
+        else:
+            cmd = [
+                "adb", "exec-out",
+                "sh", "-c",
+                f"echo '{tar_remote} -cO /data 2>/dev/null' | su"
+            ]
 
     elif mtk_su == True:
         cmd = [
@@ -2960,11 +2976,18 @@ def tar_root_ffs(outtar, prog_text, change):
 
     if localtar == False and total_bytes == 0:
         if device_has_su():
-            cmd = [
+            if c_su:
+                cmd = [
                 "adb", "exec-out",
                 "sh", "-c",
-                "echo 'tar -cO /data 2>/dev/null' | su"
-            ]
+                "su -c 'tar -cO /data 2>/dev/null'"
+                ]
+            else:
+                cmd = [
+                    "adb", "exec-out",
+                    "sh", "-c",
+                    "echo 'tar -cO /data 2>/dev/null' | su"
+                ]
         elif mtk_su == True:
             cmd = [
                 "adb", "exec-out",
@@ -2996,6 +3019,7 @@ def tar_root_ffs(outtar, prog_text, change):
 
 #Physical Extraction for Android and Ubuntu Touch
 def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, back_button=None):
+    global c_su
     if ut == True:
         sh_pwd = pw_box.get()
         pw_box.pack_forget()
@@ -3006,7 +3030,10 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
     block = ""
     if show_root == True:
         if device_has_su():
-            dev_cmd = device.shell("echo 'ls /dev' | su")
+            if c_su:
+                dev_cmd = device.shell("su -c 'ls /dev'")
+            else:
+                dev_cmd = device.shell("echo 'ls /dev' | su")
         elif mtk_su == True:
             dev_cmd = device.shell("/data/local/tmp/mtk-su -c ls /dev")
         else:
@@ -3017,7 +3044,10 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
     if "block" in dev_cmd:
         if show_root == True:
             if device_has_su():
-                dev_cmd = device.shell("echo 'ls /dev/block' | su")
+                if c_su:
+                    dev_cmd = device.shell("su -c 'ls /dev/block'")
+                else:
+                    dev_cmd = device.shell("echo 'ls /dev/block' | su")
             elif mtk_su == True: 
                 dev_cmd = device.shell("/data/local/tmp/mtk-su -c ls /dev/block")
             else:
@@ -3042,7 +3072,10 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
     else:
         if show_root == True:
             if device_has_su():
-                size = int(device.shell(f"echo 'cat /sys/block/{target}/size' | su"))*512
+                if c_su:
+                    size = int(device.shell(f"su -c 'cat /sys/block/{target}/size'"))*512
+                else:
+                    size = int(device.shell(f"echo 'cat /sys/block/{target}/size' | su"))*512
             elif mtk_su == True:
                 size = int(device.shell(f"/data/local/tmp/mtk-su -c cat /sys/block/{target}/size"))*512
             else:
@@ -3072,7 +3105,10 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                 else:
                     if show_root == True:
                         if device_has_su():
-                            proc = subprocess.Popen(["adb", "exec-out", f"echo 'cat /dev/{block + target} 2>/dev/null' | su"], stdout=subprocess.PIPE)
+                            if c_su:
+                                proc = subprocess.Popen(["adb", "exec-out", f"su -c 'cat /dev/{block + target} 2>/dev/null'"], stdout=subprocess.PIPE)
+                            else:
+                                proc = subprocess.Popen(["adb", "exec-out", f"echo 'cat /dev/{block + target} 2>/dev/null' | su"], stdout=subprocess.PIPE)
                         elif mtk_su == True:
                             proc = subprocess.Popen(["adb", "exec-out", f"/data/local/tmp/mtk-su -c cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
                         else:
@@ -3624,12 +3660,14 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
 
 # Check for root via su
 def has_root(change, timeout=30):
+    global c_su
     result_holder = {"value": None}
 
     def check_root():
         try:
             check_whoami = device.shell("echo 'whoami' | su").strip()
             if check_whoami == "whoami":
+                c_su == True
                 check_whoami = device.shell("su -c whoami").strip()
             result_holder["value"] = check_whoami == "root"
             #print(result_holder["value"])
@@ -3700,11 +3738,13 @@ adb = None
 state = None
 show_root = False
 mtk_su = False
+c_su = False
 case_number = ""
 case_name = ""
 evidence_number = ""
 examiner = ""
 device_info = ""
+
 
 
 guiv = "default"
