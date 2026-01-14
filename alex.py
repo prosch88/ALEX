@@ -662,6 +662,7 @@ class MyApp(ctk.CTk):
         mtk_vers = ("MT67", "MT816", "MT817", "MT6580")
         global show_root
         global mtk_su
+        global c_su
         mtk_su = False
         self.change = ctk.IntVar(self, 0)
         if show_root == False:
@@ -669,7 +670,7 @@ class MyApp(ctk.CTk):
                 show_root = True
                 try:
                     if device.shell("echo 'whoami' | su").strip() == "whoami":
-                        c_su == True
+                        c_su = True
                 except:
                     pass
             elif su_app != None:
