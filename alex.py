@@ -3665,10 +3665,11 @@ def has_root(change, timeout=30):
     result_holder = {"value": None}
 
     def check_root():
+        global c_su
         try:
             check_whoami = device.shell("echo 'whoami' | su").strip()
             if check_whoami == "whoami":
-                c_su == True
+                c_su = True
                 check_whoami = device.shell("su -c whoami").strip()
             result_holder["value"] = check_whoami == "root"
             #print(result_holder["value"])
