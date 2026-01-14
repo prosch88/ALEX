@@ -3628,7 +3628,10 @@ def has_root(change, timeout=30):
 
     def check_root():
         try:
-            result_holder["value"] = device.shell("echo 'whoami' | su").strip() == "root"
+            check_whoami = device.shell("echo 'whoami' | su").strip()
+            if check_whoami == "whoami":
+                check_whoami = device.shell("su -c whoami").strip()
+            result_holder["value"] = check_whoami == "root"
             #print(result_holder["value"])
         except Exception:
             result_holder["value"] = False
