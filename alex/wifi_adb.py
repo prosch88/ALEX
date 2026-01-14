@@ -51,6 +51,16 @@ def make_qr_image(data: str, size: int = 256) -> Image.Image:
 
     return img.resize((size, size), Image.NEAREST)
 
+def adb_devices():
+    out = subprocess.check_output([ADB_PATH, "devices"], text=True)
+
+    devices = []
+    for line in out.splitlines():
+        if line.strip() and not line.startswith("List of devices"):
+            devices.append(line.strip())
+
+    return devices
+
 def pair_device(address: str, port: int, password: str):
     global paired
     #print("in pairing")
@@ -62,24 +72,24 @@ def pair_device(address: str, port: int, password: str):
     #print("paired")
 
 def connect_device(address: str, port: int):
-    #print("in connecting")
     global connected, paired, exit, ADDRESS
     args = [ADB_PATH, "connect", f"{address}:{port}"]
     out = subprocess.run(args, capture_output=True)
     if out.returncode != 0:
-        #print("connect not 0")
         return
     if paired:
-        #print("connected")
         connected = True
         if ADDRESS != None:
             ADDRESS = None
             args = [ADB_PATH, "disconnect", f"{address}:{port}"]
             out = subprocess.run(args, capture_output=True)
-            #print("disconnected")
             time.sleep(2)
         else:
             zc.close()
+            devices = adb_devices()
+            if not devices:
+                subprocess.run([ADB_PATH, "kill-server"], capture_output=False)
+                subprocess.run([ADB_PATH, "start-server"], capture_output=False)
             exit.set(1)
             return
         
