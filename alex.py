@@ -2943,7 +2943,7 @@ def tar_root_ffs(outtar, prog_text, change):
             if c_su:
                 subprocess.run(["adb", "shell", "su", "-c", f"chmod 755 {remote_path}"], check=True)
             else:
-                subprocess.run(["adb", "shell", "sh", "-c", f"echo 'chmod 755 {remote_path}' | su"],
+                subprocess.run(["adb", "shell", f"echo 'chmod 755 {remote_path}' | su"],
                               check=True, stdin=subprocess.DEVNULL)
         else:
             subprocess.run(["adb", "shell", f"chmod 755 {remote_path}"], check=True)
