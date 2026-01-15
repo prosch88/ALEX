@@ -194,7 +194,7 @@ def su_root_ffs(outzip=None, filetext=None, prog_text=None, log=None, change=Non
         zi.compress_type = zipfile.ZIP_DEFLATED if size < 1024*1024 else zipfile.ZIP_STORED
 
         try:
-            with zf.open(zi,"w") as zfile:
+            with zf.open(zi, "w", force_zip64=True) as zfile:
                 remaining = size
                 while remaining > 0:
                     to_read = min(512*1024, remaining)
