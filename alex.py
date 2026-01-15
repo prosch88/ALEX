@@ -2941,9 +2941,10 @@ def tar_root_ffs(outtar, prog_text, change):
         log("Pushed tar binary to /data/local/tmp")
         if device_has_su():
             if c_su:
-                subprocess.run(["adb", "shell", f"su -c 'chmod 755 {remote_path}'"], check=True)
+                subprocess.run(["adb", "shell", "su", "-c", f"chmod 755 {remote_path}"], check=True)
             else:
-                subprocess.run(["adb", "shell", f"echo 'chmod 755 {remote_path}' | su"], check=True)
+                subprocess.run(["adb", "shell", "sh", "-c", f"echo 'chmod 755 {remote_path}' | su"],
+                              check=True, stdin=subprocess.DEVNULL)
         else:
             subprocess.run(["adb", "shell", f"chmod 755 {remote_path}"], check=True)
         tar_remote = remote_path
@@ -2956,7 +2957,7 @@ def tar_root_ffs(outtar, prog_text, change):
             cmd = [
             "adb", "exec-out",
             "su", "-c",
-            f"sh -c '{tar_remote} -cO /data 2>/dev/null'"
+            f"{tar_remote} -cO /data 2>/dev/null"
             ]
         else:
             cmd = [
@@ -2978,7 +2979,7 @@ def tar_root_ffs(outtar, prog_text, change):
         ]
 
     with open(outtar, "wb") as f:
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL, bufsize=0)
         total_bytes = 0
         try:
             while True:
@@ -2998,7 +2999,7 @@ def tar_root_ffs(outtar, prog_text, change):
                 cmd = [
                 "adb", "exec-out",
                 "su", "-c",
-                "sh -c 'tar -cO /data 2>/dev/null'"
+                "tar -cO /data 2>/dev/null"
                 ]
             else:
                 cmd = [
@@ -3018,7 +3019,7 @@ def tar_root_ffs(outtar, prog_text, change):
             ]
 
         with open(outtar, "wb") as f:
-            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL, bufsize=0)
             total_bytes = 0
             try:
                 while True:
