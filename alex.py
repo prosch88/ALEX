@@ -3591,7 +3591,7 @@ def get_data_size(data_path, change):
     try:
         total_size = int(size_cmd.split()[0])*1024
     except Exception as e:
-        print(e)
+        #print(e)
         total_size = 1
     change.set(1)
 
