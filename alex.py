@@ -2955,8 +2955,8 @@ def tar_root_ffs(outtar, prog_text, change):
         if c_su:
             cmd = [
             "adb", "exec-out",
-            "sh", "-c",
-            f"su -c '{tar_remote} -cO /data 2>/dev/null'"
+            "su", "-c",
+            f"sh -c '{tar_remote} -cO /data 2>/dev/null'"
             ]
         else:
             cmd = [
@@ -2997,8 +2997,8 @@ def tar_root_ffs(outtar, prog_text, change):
             if c_su:
                 cmd = [
                 "adb", "exec-out",
-                "sh", "-c",
-                "su -c 'tar -cO /data 2>/dev/null'"
+                "su", "-c",
+                "sh -c 'tar -cO /data 2>/dev/null'"
                 ]
             else:
                 cmd = [
@@ -3217,32 +3217,32 @@ def insert_data(cur, table_name, schema_defaults, data_rows):
 def recreate_dbs(change, text, zip_path=None):
   
     #SMS/MMS
-    text.configure(text="Attempt to recreate the mmssms.db database.")
+    text.configure(text="Attempt to recreate the mmssms.db database.", timeout=10)
     mmssms_db = "mmssms.db"
     try: os.remove(mmssms_db)
     except: pass
     try:
-        sms_data = device.shell("content query --uri content://sms")
+        sms_data = device.shell("content query --uri content://sms", timeout=10)
         sms_json = content_to_json(sms_data) 
     except:
         sms_json = [{}]
     try:
-        pdu_data = device.shell("content query --uri content://mms")
+        pdu_data = device.shell("content query --uri content://mms", timeout=10)
         pdu_json = content_to_json(pdu_data)
     except:
         pdu_json = [{}]
     try:
-        addr_data = device.shell("content query --uri content://mms/addr")
+        addr_data = device.shell("content query --uri content://mms/addr", timeout=10)
         addr_json = content_to_json(addr_data)
     except:
         addr_json = [{}]
     try:
-        part_data = device.shell("content query --uri content://mms/part")
+        part_data = device.shell("content query --uri content://mms/part", timeout=10)
         part_json = content_to_json(part_data)
     except:
         part_data = [{}]
 
-    mmssms_schema = os.path.join(os.path.dirname(__file__), "ressources" , "mmssms.json")
+    mmssms_schema = os.path.join(os.path.dirname(__file__), "ressources" , "mmssms.json", timeout=10)
     with open(mmssms_schema, "r", encoding="utf-8") as f:
         schema = json.load(f)
     addr_defaults = schema["addr"]
@@ -3274,12 +3274,12 @@ def recreate_dbs(change, text, zip_path=None):
     log("Recreated mmssms.db (partial)")
     
     #CallLog
-    text.configure(text="Attempt to recreate the calllog.db database.")
+    text.configure(text="Attempt to recreate the calllog.db database.", timeout=10)
     call_db = "calllog.db"
     try: os.remove(call_db)
     except: pass
     try:
-        call_data = device.shell("content query --uri content://call_log/calls")
+        call_data = device.shell("content query --uri content://call_log/calls", timeout=10)
         call_json = content_to_json(call_data)
     except:
         call_json = [{}]
@@ -3304,17 +3304,17 @@ def recreate_dbs(change, text, zip_path=None):
     log("Recreated calllog.db (partial)")
 
     #CONTACTS
-    text.configure(text="Attempt to recreate the contacts2.db database.")
+    text.configure(text="Attempt to recreate the contacts2.db database.", timeout=10)
     contact_db = "contacts2.db"
     try: os.remove(contact_db)
     except: pass
     try:
-        contact_contacts = device.shell("content query --uri content://com.android.contacts/contacts")
+        contact_contacts = device.shell("content query --uri content://com.android.contacts/contacts", timeout=10)
         contact_contacts_json = content_to_json(contact_contacts)
     except:
         contact_contacs_json = [{}]
     try:
-        contact_data = device.shell("content query --uri content://com.android.contacts/data")
+        contact_data = device.shell("content query --uri content://com.android.contacts/data", timeout=10)
         contact_data_json = content_to_json(contact_data)
         unique_mimetypes = {}
         next_id = 1
@@ -3331,12 +3331,12 @@ def recreate_dbs(change, text, zip_path=None):
         contact_data_json = [{}]
         mimetype_json = [{}]
     try:
-        contact_raw_contacts_data = device.shell("content query --uri content://com.android.contacts/raw_contacts")
+        contact_raw_contacts_data = device.shell("content query --uri content://com.android.contacts/raw_contacts", timeout=10)
         contact_raw_contacts_json = content_to_json(contact_raw_contacts_data)
     except:
         contact_raw_contacts_json = [{}]
     try:
-        contact_settings_data = device.shell("content query --uri content://com.android.contacts/settings")
+        contact_settings_data = device.shell("content query --uri content://com.android.contacts/settings", timeout=10)
         contact_settings_json = content_to_json(contact_settings_data)
     except:
         contact_settings_json = [{}]
@@ -3371,32 +3371,32 @@ def recreate_dbs(change, text, zip_path=None):
     try: os.remove(calendar_db)
     except: pass
     try:
-        colors_data = device.shell("content query --uri content://com.android.calendar/colors")
+        colors_data = device.shell("content query --uri content://com.android.calendar/colors", timeout=10)
         colors_json = content_to_json(colors_data) 
     except:
         colors_json = [{}]
     try:
-        calendars_data = device.shell("content query --uri content://com.android.calendar/calendars")
+        calendars_data = device.shell("content query --uri content://com.android.calendar/calendars", timeout=10)
         calendars_json = content_to_json(calendars_data)
     except:
         calendars_json = [{}]
     try:
-        event_data = device.shell("content query --uri content://com.android.calendar/event_entities")
+        event_data = device.shell("content query --uri content://com.android.calendar/event_entities", timeout=10)
         event_json = content_to_json(event_data)
     except:
         event_json = [{}]
     try:
-        extended_data = device.shell("content query --uri content://com.android.calendar/extendedproperties")
+        extended_data = device.shell("content query --uri content://com.android.calendar/extendedproperties", timeout=10)
         extended_json = content_to_json(extended_data)
     except:
         extended_json = [{}]
     try:
-        reminders_data = device.shell("content query --uri content://com.android.calendar/reminders")
+        reminders_data = device.shell("content query --uri content://com.android.calendar/reminders", timeout=10)
         reminders_json = content_to_json(reminders_data)
     except:
         reminders_json = [{}]
     try:
-        syncstate_data = device.shell("content query --uri content://com.android.calendar/syncstate")
+        syncstate_data = device.shell("content query --uri content://com.android.calendar/syncstate", timeout=10)
         syncstate_json = content_to_json(syncstate_data)
     except:
         syncstate_json = [{}]
@@ -3444,7 +3444,7 @@ def recreate_dbs(change, text, zip_path=None):
                 pack_class = "platform:vendor"
             else:
                 pack_class = "default"
-            dumpsys = device.shell(f"dumpsys package {app}")
+            dumpsys = device.shell(f"dumpsys package {app}", timeout=30)
             app_dir = re.search(r"dataDir=([^\s]+)", dumpsys)
             app_uid = re.search(r"\buid=(\d+)", dumpsys)
             app_tar = re.search(r"targetSdk=(\d+)", dumpsys)
@@ -3462,15 +3462,25 @@ def recreate_dbs(change, text, zip_path=None):
     if zip_path != None:
         with zipfile.ZipFile(zip_path, mode="a") as zf:
             if os.path.exists(mmssms_db):
-                zf.write(mmssms_db, "dump/data/data/com.android.providers.telephony/databases/mmssms.db")
+                fname =  "dump/data/data/com.android.providers.telephony/databases/mmssms.db"
+                if fname not in zf.namelist():
+                    zf.write(mmssms_db, fname)
             if os.path.exists(call_db):
-                zf.write(call_db, "dump/data/data/com.android.providers.contacts/databases/calllog.db")
+                fname = "dump/data/data/com.android.providers.contacts/databases/calllog.db"
+                if fname not in zf.namelist():
+                 zf.write(call_db, fname)
             if os.path.exists(contact_db):
-                zf.write(contact_db, "dump/data/data/com.android.providers.contacts/databases/contacts2.db")
+                fname = "dump/data/data/com.android.providers.contacts/databases/contacts2.db"
+                if fname not in zf.namelist():
+                    zf.write(contact_db, fname)
             if os.path.exists(calendar_db):
-                zf.write(calendar_db, "dump/data/data/com.android.providers.calendar/databases/calendar.db")
+                fname = "dump/data/data/com.android.providers.calendar/databases/calendar.db"
+                if fname not in zf.namelist():
+                    zf.write(calendar_db, fname)
             if os.path.exists(packages_list):
-                zf.write(packages_list, "dump/data/system/packages.list")
+                fname = "dump/data/system/packages.list"
+                if fname not in zf.namelist():
+                    zf.write(packages_list, fname)
     try: os.remove(mmssms_db)
     except: pass
     try: os.remove(call_db)
