@@ -1173,6 +1173,16 @@ class MyApp(ctk.CTk):
                 self.wait_variable(self.change)
             else:
                 pass
+            if int(software.split(".")[0]) in range(12,14) and spl < "2024-03-01":
+                self.change.set(0)
+                self.prog_text.configure(text="")
+                self.progress.pack_forget()
+                self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
+                self.progress.pack()
+                self.progress.start()
+                self.pull_cve_apps = threading.Thread(target=lambda: exploits.cve_2024_0044(device=device, log=log, zip_path=zip_path, text=self.text, prog_text=self.prog_text, change=self.change, mode="prfs"))
+                self.pull_cve_apps.start()
+                self.wait_variable(self.change)
 
         # Database Recreation
         if incl_dbfiles == "on":
@@ -3006,6 +3016,7 @@ def tar_root_ffs(outtar, prog_text, change):
                 "adb", "exec-out",
                 "sh -c 'tar -cO /data 2>/dev/null'"
             ]
+
         with open(outtar, "wb") as f:
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
             total_bytes = 0
