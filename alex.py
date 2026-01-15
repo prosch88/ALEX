@@ -3215,249 +3215,269 @@ def insert_data(cur, table_name, schema_defaults, data_rows):
 
 #Recreate Device Databases
 def recreate_dbs(change, text, zip_path=None):
+    try:
+        with zipfile.ZipFile(zip_path, "a", compression=zipfile.ZIP_DEFLATED) as zf:
+            existing_files = set(zf.namelist()) 
+    except:
+        existing_files = []
   
     #SMS/MMS
-    text.configure(text="Attempt to recreate the mmssms.db database.", timeout=10)
     mmssms_db = "mmssms.db"
-    try: os.remove(mmssms_db)
-    except: pass
-    try:
-        sms_data = device.shell("content query --uri content://sms", timeout=10)
-        sms_json = content_to_json(sms_data) 
-    except:
-        sms_json = [{}]
-    try:
-        pdu_data = device.shell("content query --uri content://mms", timeout=10)
-        pdu_json = content_to_json(pdu_data)
-    except:
-        pdu_json = [{}]
-    try:
-        addr_data = device.shell("content query --uri content://mms/addr", timeout=10)
-        addr_json = content_to_json(addr_data)
-    except:
-        addr_json = [{}]
-    try:
-        part_data = device.shell("content query --uri content://mms/part", timeout=10)
-        part_json = content_to_json(part_data)
-    except:
-        part_data = [{}]
+    if "dump/data/data/com.android.providers.telephony/databases/mmssms.db" not in existing_files:
+        text.configure(text="Attempt to recreate the mmssms.db database.")
+        try: os.remove(mmssms_db)
+        except: pass
+        try:
+            sms_data = device.shell("content query --uri content://sms")
+            sms_json = content_to_json(sms_data) 
+        except:
+            sms_json = [{}]
+        try:
+            pdu_data = device.shell("content query --uri content://mms")
+            pdu_json = content_to_json(pdu_data)
+        except:
+            pdu_json = [{}]
+        try:
+            addRecreatedr_data = device.shell("content query --uri content://mms/addr")
+            addr_json = content_to_json(addr_data)
+        except:
+            addr_json = [{}]
+        try:
+            part_data = device.shell("content query --uri content://mms/part")
+            part_json = content_to_json(part_data)
+        except:
+            part_data = [{}]
 
-    mmssms_schema = os.path.join(os.path.dirname(__file__), "ressources" , "mmssms.json", timeout=10)
-    with open(mmssms_schema, "r", encoding="utf-8") as f:
-        schema = json.load(f)
-    addr_defaults = schema["addr"]
-    part_defaults = schema["part"]
-    pdu_defaults = schema["pdu"]
-    sms_defaults = schema["sms"]
-    tables_map = {
-        "addr": (addr_defaults, addr_json),
-        "part": (part_defaults, part_json),
-        "pdu": (pdu_defaults, pdu_json),
-        "sms": (sms_defaults, sms_json)
-    }    
-    conn = sqlite3.connect(mmssms_db)
-    cur = conn.cursor()
+        mmssms_schema = os.path.join(os.path.dirname(__file__), "ressources" , "mmssms.json")
+        with open(mmssms_schema, "r", encoding="utf-8") as f:
+            schema = json.load(f)
+        addr_defaults = schema["addr"]
+        part_defaults = schema["part"]
+        pdu_defaults = schema["pdu"]
+        sms_defaults = schema["sms"]
+        tables_map = {
+            "addr": (addr_defaults, addr_json),
+            "part": (part_defaults, part_json),
+            "pdu": (pdu_defaults, pdu_json),
+            "sms": (sms_defaults, sms_json)
+        }    
+        conn = sqlite3.connect(mmssms_db)
+        cur = conn.cursor()
+        
+        for table_name, (table_defaults, table_data) in tables_map.items():
+            schema_columns = list(table_defaults.keys())
+            extra_columns = []
+            for row in table_data:
+                for key in row.keys():
+                    if key not in schema_columns and key not in extra_columns:
+                        extra_columns.append(key)
+            columns = schema_columns + extra_columns
+            cur.execute(f"DROP TABLE IF EXISTS {table_name}")
+            create_table(cur, table_name, columns)
+            insert_data(cur, table_name, table_defaults, table_data)
+        conn.commit()
+        conn.close()
+        log("Recreated mmssms.db (partial)")
+    else:
+        log("mmssms.db already in Backup - skipped")
     
-    for table_name, (table_defaults, table_data) in tables_map.items():
-        schema_columns = list(table_defaults.keys())
+    #CallLog
+    call_db = "calllog.db"
+    if "dump/data/data/com.android.providers.contacts/databases/calllog.db" not in existing_files:
+        text.configure(text="Attempt to recreate the calllog.db database.")
+        try: os.remove(call_db)
+        except: pass
+        try:
+            call_data = device.shell("content query --uri content://call_log/calls")
+            call_json = content_to_json(call_data)
+        except:
+            call_json = [{}]
+        call_schema = os.path.join(os.path.dirname(__file__), "ressources" , "calllog.json")
+        with open(call_schema, "r", encoding="utf-8") as f:
+            schema = json.load(f)
+        calls_defaults = schema["calls"]    
+        conn = sqlite3.connect(call_db)
+        cur = conn.cursor()
+        
+        schema_columns = list(calls_defaults.keys())
         extra_columns = []
-        for row in table_data:
+        for row in call_json:
             for key in row.keys():
                 if key not in schema_columns and key not in extra_columns:
                     extra_columns.append(key)
         columns = schema_columns + extra_columns
-        cur.execute(f"DROP TABLE IF EXISTS {table_name}")
-        create_table(cur, table_name, columns)
-        insert_data(cur, table_name, table_defaults, table_data)
-    conn.commit()
-    conn.close()
-    log("Recreated mmssms.db (partial)")
-    
-    #CallLog
-    text.configure(text="Attempt to recreate the calllog.db database.", timeout=10)
-    call_db = "calllog.db"
-    try: os.remove(call_db)
-    except: pass
-    try:
-        call_data = device.shell("content query --uri content://call_log/calls", timeout=10)
-        call_json = content_to_json(call_data)
-    except:
-        call_json = [{}]
-    call_schema = os.path.join(os.path.dirname(__file__), "ressources" , "calllog.json")
-    with open(call_schema, "r", encoding="utf-8") as f:
-        schema = json.load(f)
-    calls_defaults = schema["calls"]    
-    conn = sqlite3.connect(call_db)
-    cur = conn.cursor()
-    
-    schema_columns = list(calls_defaults.keys())
-    extra_columns = []
-    for row in call_json:
-        for key in row.keys():
-            if key not in schema_columns and key not in extra_columns:
-                extra_columns.append(key)
-    columns = schema_columns + extra_columns
-    create_table(cur, "calls", columns)
-    insert_data(cur, "calls", calls_defaults, call_json)
-    conn.commit()
-    conn.close()
-    log("Recreated calllog.db (partial)")
+        create_table(cur, "calls", columns)
+        insert_data(cur, "calls", calls_defaults, call_json)
+        conn.commit()
+        conn.close()
+        log("Recreated calllog.db (partial)")
+    else:
+        log("calllog.db already in Backup - skipped")
 
     #CONTACTS
-    text.configure(text="Attempt to recreate the contacts2.db database.", timeout=10)
     contact_db = "contacts2.db"
-    try: os.remove(contact_db)
-    except: pass
-    try:
-        contact_contacts = device.shell("content query --uri content://com.android.contacts/contacts", timeout=10)
-        contact_contacts_json = content_to_json(contact_contacts)
-    except:
-        contact_contacs_json = [{}]
-    try:
-        contact_data = device.shell("content query --uri content://com.android.contacts/data", timeout=10)
-        contact_data_json = content_to_json(contact_data)
-        unique_mimetypes = {}
-        next_id = 1
-        for entry in contact_data_json:
-            mime = entry.get("mimetype")
-            if mime is None:
-                continue  
-            if mime not in unique_mimetypes:
-                unique_mimetypes[mime] = next_id
-                next_id += 1
-            entry["mimetype_id"] = unique_mimetypes[mime]
-        mimetype_json = [{"_id": id_, "mimetype": mime} for mime, id_ in unique_mimetypes.items()]
-    except:
-        contact_data_json = [{}]
-        mimetype_json = [{}]
-    try:
-        contact_raw_contacts_data = device.shell("content query --uri content://com.android.contacts/raw_contacts", timeout=10)
-        contact_raw_contacts_json = content_to_json(contact_raw_contacts_data)
-    except:
-        contact_raw_contacts_json = [{}]
-    try:
-        contact_settings_data = device.shell("content query --uri content://com.android.contacts/settings", timeout=10)
-        contact_settings_json = content_to_json(contact_settings_data)
-    except:
-        contact_settings_json = [{}]
-    contact_schema = os.path.join(os.path.dirname(__file__), "ressources" , "contacts2.json")
-    with open(contact_schema, "r", encoding="utf-8") as f:
-        schema = json.load(f)
-    contacts_defaults = schema["contacts"]
-    data_defaults = schema["data"]
-    mimetype_defaults = schema["mimetypes"]
-    raw_contacts_defaults = schema["raw_contacts"]
-    tables_map = {
-        "contacts": (contacts_defaults, contact_contacts_json),
-        "data": (data_defaults, contact_data_json),
-        "mimetypes": (mimetype_defaults, mimetype_json),
-        "raw_contacts": (raw_contacts_defaults, contact_raw_contacts_json)
-    }    
-    conn = sqlite3.connect(contact_db)
-    cur = conn.cursor()
-    for table_name, (table_defaults, table_data) in tables_map.items():
-        schema_columns = list(table_defaults.keys())
-        columns = schema_columns
-        cur.execute(f"DROP TABLE IF EXISTS {table_name}")
-        create_table(cur, table_name, columns)
-        insert_data(cur, table_name, table_defaults, table_data)
-    conn.commit()
-    conn.close()
-    log("Recreated contacts2.db (partial)")
+    if "dump/data/data/com.android.providers.contacts/databases/contacts2.db" not in existing_files:
+        text.configure(text="Attempt to recreate the contacts2.db database.")
+        try: os.remove(contact_db)
+        except: pass
+        try:
+            contact_contacts = device.shell("content query --uri content://com.android.contacts/contacts")
+            contact_contacts_json = content_to_json(contact_contacts)
+        except:
+            contact_contacs_json = [{}]
+        try:
+            contact_data = device.shell("content query --uri content://com.android.contacts/data")
+            contact_data_json = content_to_json(contact_data)
+            unique_mimetypes = {}
+            next_id = 1
+            for entry in contact_data_json:
+                mime = entry.get("mimetype")
+                if mime is None:
+                    continue  
+                if mime not in unique_mimetypes:
+                    unique_mimetypes[mime] = next_id
+                    next_id += 1
+                entry["mimetype_id"] = unique_mimetypes[mime]
+            mimetype_json = [{"_id": id_, "mimetype": mime} for mime, id_ in unique_mimetypes.items()]
+        except:
+            contact_data_json = [{}]
+            mimetype_json = [{}]
+        try:
+            contact_raw_contacts_data = device.shell("content query --uri content://com.android.contacts/raw_contacts")
+            contact_raw_contacts_json = content_to_json(contact_raw_contacts_data)
+        except:
+            contact_raw_contacts_json = [{}]
+        try:
+            contact_settings_data = device.shell("content query --uri content://com.android.contacts/settings")
+            contact_settings_json = content_to_json(contact_settings_data)
+        except:
+            contact_settings_json = [{}]
+        contact_schema = os.path.join(os.path.dirname(__file__), "ressources" , "contacts2.json")
+        with open(contact_schema, "r", encoding="utf-8") as f:
+            schema = json.load(f)
+        contacts_defaults = schema["contacts"]
+        data_defaults = schema["data"]
+        mimetype_defaults = schema["mimetypes"]
+        raw_contacts_defaults = schema["raw_contacts"]
+        tables_map = {
+            "contacts": (contacts_defaults, contact_contacts_json),
+            "data": (data_defaults, contact_data_json),
+            "mimetypes": (mimetype_defaults, mimetype_json),
+            "raw_contacts": (raw_contacts_defaults, contact_raw_contacts_json)
+        }    
+        conn = sqlite3.connect(contact_db)
+        cur = conn.cursor()
+        for table_name, (table_defaults, table_data) in tables_map.items():
+            schema_columns = list(table_defaults.keys())
+            columns = schema_columns
+            cur.execute(f"DROP TABLE IF EXISTS {table_name}")
+            create_table(cur, table_name, columns)
+            insert_data(cur, table_name, table_defaults, table_data)
+        conn.commit()
+        conn.close()
+        log("Recreated contacts2.db (partial)")
+    else:
+        log("contacts2.db already in Backup - skipped")
 
     #Calendar
-    text.configure(text="Attempt to recreate the calendar.db database.")
     calendar_db = "calendar.db"
-    try: os.remove(calendar_db)
-    except: pass
-    try:
-        colors_data = device.shell("content query --uri content://com.android.calendar/colors", timeout=10)
-        colors_json = content_to_json(colors_data) 
-    except:
-        colors_json = [{}]
-    try:
-        calendars_data = device.shell("content query --uri content://com.android.calendar/calendars", timeout=10)
-        calendars_json = content_to_json(calendars_data)
-    except:
-        calendars_json = [{}]
-    try:
-        event_data = device.shell("content query --uri content://com.android.calendar/event_entities", timeout=10)
-        event_json = content_to_json(event_data)
-    except:
-        event_json = [{}]
-    try:
-        extended_data = device.shell("content query --uri content://com.android.calendar/extendedproperties", timeout=10)
-        extended_json = content_to_json(extended_data)
-    except:
-        extended_json = [{}]
-    try:
-        reminders_data = device.shell("content query --uri content://com.android.calendar/reminders", timeout=10)
-        reminders_json = content_to_json(reminders_data)
-    except:
-        reminders_json = [{}]
-    try:
-        syncstate_data = device.shell("content query --uri content://com.android.calendar/syncstate", timeout=10)
-        syncstate_json = content_to_json(syncstate_data)
-    except:
-        syncstate_json = [{}]
-    
-    calendar_schema = os.path.join(os.path.dirname(__file__), "ressources" , "calendar.json")
-    with open(calendar_schema, "r", encoding="utf-8") as f:
-        schema = json.load(f)
-    calendar_defaults = schema["Calendars"]
-    color_defaults = schema["Colors"]
-    event_defaults = schema["Events"]
-    extended_defaults = schema["ExtendedProperties"]
-    reminders_defaults = schema["Reminders"]
-    sync_defaults = schema["_sync_state"]
-    tables_map = {
-        "Calendars": (calendar_defaults, calendars_json),
-        "Colors": (color_defaults, colors_json),
-        "Events": (event_defaults, event_json),
-        "ExtendedProperties": (extended_defaults, extended_json),
-        "Reminders": (reminders_defaults, reminders_json),
-        "_sync_state": (sync_defaults, syncstate_json)
-    }  
-    conn = sqlite3.connect(calendar_db)
-    cur = conn.cursor()
-    for table_name, (table_defaults, table_data) in tables_map.items():
-        schema_columns = list(table_defaults.keys())
-        columns = schema_columns
-        cur.execute(f"DROP TABLE IF EXISTS {table_name}")
-        create_table(cur, table_name, columns)
-        insert_data(cur, table_name, table_defaults, table_data)
-    conn.commit()
-    conn.close()
-    log("Recreated calendar.db (partial)")
+    if "dump/data/data/com.android.providers.calendar/databases/calendar.db" not in existing_files:
+        text.configure(text="Attempt to recreate the calendar.db database.")
+        try: os.remove(calendar_db)
+        except: pass
+        try:
+            colors_data = device.shell("content query --uri content://com.android.calendar/colors")
+            colors_json = content_to_json(colors_data) 
+        except:
+            colors_json = [{}]
+        try:
+            calendars_data = device.shell("content query --uri content://com.android.calendar/calendars")
+            calendars_json = content_to_json(calendars_data)
+        except:
+            calendars_json = [{}]
+        try:
+            event_data = device.shell("content query --uri content://com.android.calendar/event_entities")
+            event_json = content_to_json(event_data)
+        except:
+            event_json = [{}]
+        try:
+            extended_data = device.shell("content query --uri content://com.android.calendar/extendedproperties")
+            extended_json = content_to_json(extended_data)
+        except:
+            extended_json = [{}]
+        try:
+            reminders_data = device.shell("content query --uri content://com.android.calendar/reminders")
+            reminders_json = content_to_json(reminders_data)
+        except:
+            reminders_json = [{}]
+        try:
+            syncstate_data = device.shell("content query --uri content://com.android.calendar/syncstate")
+            syncstate_json = content_to_json(syncstate_data)
+        except:
+            syncstate_json = [{}]
+        
+        calendar_schema = os.path.join(os.path.dirname(__file__), "ressources" , "calendar.json")
+        with open(calendar_schema, "r", encoding="utf-8") as f:
+            schema = json.load(f)
+        calendar_defaults = schema["Calendars"]
+        color_defaults = schema["Colors"]
+        event_defaults = schema["Events"]
+        extended_defaults = schema["ExtendedProperties"]
+        reminders_defaults = schema["Reminders"]
+        sync_defaults = schema["_sync_state"]
+        tables_map = {
+            "Calendars": (calendar_defaults, calendars_json),
+            "Colors": (color_defaults, colors_json),
+            "Events": (event_defaults, event_json),
+            "ExtendedProperties": (extended_defaults, extended_json),
+            "Reminders": (reminders_defaults, reminders_json),
+            "_sync_state": (sync_defaults, syncstate_json)
+        }  
+        conn = sqlite3.connect(calendar_db)
+        cur = conn.cursor()
+        for table_name, (table_defaults, table_data) in tables_map.items():
+            schema_columns = list(table_defaults.keys())
+            columns = schema_columns
+            cur.execute(f"DROP TABLE IF EXISTS {table_name}")
+            create_table(cur, table_name, columns)
+            insert_data(cur, table_name, table_defaults, table_data)
+        conn.commit()
+        conn.close()
+        log("Recreated calendar.db (partial)")
+    else:
+        log("calendar.db already in Backup - skipped")
 
     #packages.list
-    text.configure(text="Attempt to recreate the packages.list")
     packages_list = "packages.list"
-    try: os.remove(packages_list)
-    except: pass
-    with open(packages_list, "w", encoding="utf-8") as pl:
-        for app in all_apps:
-            a_class = device.shell(f"pm path {app}")
-            if "priv-app" in a_class:
-                pack_class = "platform:privapp"
-            elif "vendor" in a_class:
-                pack_class = "platform:vendor"
-            else:
-                pack_class = "default"
-            dumpsys = device.shell(f"dumpsys package {app}", timeout=30)
-            app_dir = re.search(r"dataDir=([^\s]+)", dumpsys)
-            app_uid = re.search(r"\buid=(\d+)", dumpsys)
-            app_tar = re.search(r"targetSdk=(\d+)", dumpsys)
-            gids_matches = re.findall(r"gids=\[([^\]]*)\]", dumpsys)
-            gids = []
-            baseapk_match = re.search(r"base\.apk\s*-\s*(\d+)", dumpsys)
-            baseapk_value = baseapk_match.group(1) if baseapk_match else 0
-            for match in gids_matches:
-                gids += [g.strip() for g in match.split(',') if g.strip()]
-            app_gids = sorted(set(gids), key=int) if gids else None
-            gid_str = ",".join(gids) if gids else "none"
-            pl.write(f"{app} {app_uid.group(1) if app_uid else 0} 0 {app_dir.group(1) if app_dir else 'none'} {pack_class}:targetSdkVersion={app_tar.group(1) if pack_class else 0} {gid_str} 0 {baseapk_value}\n")
-    log("Recreated packages.list")
+    if "dump/data/system/packages.list" not in existing_files:
+        text.configure(text="Attempt to recreate the packages.list")
+        try: os.remove(packages_list)
+        except: pass
+        with open(packages_list, "w", encoding="utf-8") as pl:
+            for app in all_apps:
+                a_class = device.shell(f"pm path {app}")
+                if "priv-app" in a_class:
+                    pack_class = "platform:privapp"
+                elif "vendor" in a_class:
+                    pack_class = "platform:vendor"
+                else:
+                    pack_class = "default"
+                dumpsys = device.shell(f"dumpsys package {app}")
+                app_dir = re.search(r"dataDir=([^\s]+)", dumpsys)
+                app_uid = re.search(r"\buid=(\d+)", dumpsys)
+                app_tar = re.search(r"targetSdk=(\d+)", dumpsys)
+                gids_matches = re.findall(r"gids=\[([^\]]*)\]", dumpsys)
+                gids = []
+                baseapk_match = re.search(r"base\.apk\s*-\s*(\d+)", dumpsys)
+                baseapk_value = baseapk_match.group(1) if baseapk_match else 0
+                for match in gids_matches:
+                    gids += [g.strip() for g in match.split(',') if g.strip()]
+                app_gids = sorted(set(gids), key=int) if gids else None
+                gid_str = ",".join(gids) if gids else "none"
+                pl.write(f"{app} {app_uid.group(1) if app_uid else 0} 0 {app_dir.group(1) if app_dir else 'none'} {pack_class}:targetSdkVersion={app_tar.group(1) if pack_class else 0} {gid_str} 0 {baseapk_value}\n")
+        log("Recreated packages.list")
+    else:
+        log("packages.list already in Backup - skipped")
 
     if zip_path != None:
         with zipfile.ZipFile(zip_path, mode="a") as zf:
