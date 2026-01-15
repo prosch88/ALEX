@@ -95,9 +95,10 @@ def push_temp_script(script_text, mtk_su=False, c_su=False):
     subprocess.run(["adb", "push", local_path, remote_path], check=True)
     if device_has_su():
         if c_su:
-            subprocess.run(["adb", "shell", "su", "-c", f"sh -c 'chmod 700 {remote_path}'"], check=True)
+            subprocess.run(["adb", "shell", "su", "-c", f"chmod 700 {remote_path}"], check=True)
         else:
-            subprocess.run(["adb", "shell", "sh", "-c", f"echo 'chmod 700 {remote_path}' | su"], check=True)
+            subprocess.run(["adb", "shell", "sh", "-c", f"echo 'chmod 700 {remote_path}' | su"],
+                          check=True, stdin=subprocess.DEVNULL)
     elif mtk_su == True:
         subprocess.run(["adb", "shell", "/data/local/tmp/mtk-su", "-c", f"chmod 700 {remote_path}"], check=True)
     else:
@@ -131,7 +132,7 @@ def su_root_ffs(outzip=None, filetext=None, prog_text=None, log=None, change=Non
         cmd = ["adb", "exec-out", "/data/local/tmp/mtk-su", "-c", f"{remote_script_path}"]
     else:
         cmd = ["adb", "exec-out", f"sh {remote_script_path}"]
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL, bufsize=0)
 
     zf = zipfile.ZipFile(outzip, "w", allowZip64=True)
     seen_inodes = set()
@@ -223,7 +224,8 @@ def su_root_ffs(outzip=None, filetext=None, prog_text=None, log=None, change=Non
         if c_su:
             subprocess.run(["adb", "shell", "su", "-c", f"rm {remote_script_path}"])
         else:
-            subprocess.run(["adb", "shell", "sh", "-c", f"echo 'rm {remote_script_path}' | su"])
+            subprocess.run(["adb", "shell", "sh", "-c", f"echo 'rm {remote_script_path}' | su"],
+                          stdin=subprocess.DEVNULL)
     else:
         subprocess.run(["adb", "shell", f"rm {remote_script_path}"])
     elapsed = time.time() - start_time
