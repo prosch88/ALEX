@@ -2951,7 +2951,6 @@ def tar_root_ffs(outtar, prog_text, change):
     else:
         tar_remote = "tar"
     CHUNK_SIZE = 1024 * 64
-    print(tar_remote)
     if device_has_su():
         if c_su:
             cmd = [
@@ -2962,7 +2961,6 @@ def tar_root_ffs(outtar, prog_text, change):
         else:
             cmd = [
                 "adb", "exec-out",
-                "sh", "-c",
                 f"echo '{tar_remote} -cO /data 2>/dev/null' | su"
             ]
 
@@ -3004,7 +3002,6 @@ def tar_root_ffs(outtar, prog_text, change):
             else:
                 cmd = [
                     "adb", "exec-out",
-                    "sh", "-c",
                     "echo 'tar -cO /data 2>/dev/null' | su"
                 ]
         elif mtk_su == True:
