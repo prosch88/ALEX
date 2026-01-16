@@ -890,7 +890,8 @@ class MyApp(ctk.CTk):
         system_apps = [app for app in all_apps if app not in pkg_list]
 
         ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
-        self.tlabel = ctk.CTkLabel(self.dynamic_frame, text="CVE-2024-0044 - App Extraction", height=60, width=585, font=("standard",24), justify="left").pack(pady=10)
+        self.tlabel = ctk.CTkLabel(self.dynamic_frame, text="CVE-2024-0044 - App Extraction", height=60, width=585, font=("standard",24), justify="left")
+        self.tlabel.pack(pady=10)
         self.text = ctk.CTkLabel(self.dynamic_frame, text="Checking compatibility ...", width=585, height=60, font=self.stfont, anchor="w", justify="left")
         self.text.pack(anchor="center", pady=25)
         self.change = ctk.IntVar(self, 0)
