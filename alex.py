@@ -11,6 +11,7 @@ if sys.stderr is None:
 import customtkinter as ctk
 from PIL import ImageTk, Image, ExifTags, ImageDraw, ImageFont
 import tkinter.ttk as ttk
+import tkinter as tk
 from datetime import datetime, timedelta, timezone, date
 from tkinter import StringVar
 from importlib.metadata import version
@@ -163,6 +164,7 @@ class MyApp(ctk.CTk):
                 ctk.CTkButton(self.dynamic_frame, text="Acquisition Options", command=lambda: self.switch_menu("AcqMenu"), width=200, height=70, font=self.stfont),
                 ctk.CTkButton(self.dynamic_frame, text="Logging Options", command=lambda: self.switch_menu("LogMenu"), width=200, height=70, font=self.stfont, state="disabled"),
                 ctk.CTkButton(self.dynamic_frame, text="Advanced Options", command=lambda: self.switch_menu("AdvMenu"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Exploit Options", command=lambda: self.switch_menu("Exploits"), width=200, height=70, font=self.stfont, state="disabled"),
             ]
         elif recovery == True:
             if rec_root == False:
@@ -171,6 +173,7 @@ class MyApp(ctk.CTk):
                 ctk.CTkButton(self.dynamic_frame, text="Acquisition Options", command=lambda: self.switch_menu("AcqMenu"), width=200, height=70, font=self.stfont, state ="disabled"),
                 ctk.CTkButton(self.dynamic_frame, text="Logging Options", command=lambda: self.switch_menu("LogMenu"), width=200, height=70, font=self.stfont, state="disabled"),
                 ctk.CTkButton(self.dynamic_frame, text="Advanced Options", command=lambda: self.switch_menu("AdvMenu"), width=200, height=70, font=self.stfont, state="disabled"),
+                ctk.CTkButton(self.dynamic_frame, text="Exploit Options", command=lambda: self.switch_menu("Exploits"), width=200, height=70, font=self.stfont, state="disabled"),
                 ]
             else:
                 self.menu_buttons = [
@@ -178,6 +181,7 @@ class MyApp(ctk.CTk):
                 ctk.CTkButton(self.dynamic_frame, text="Acquisition Options", command=lambda: self.switch_menu("AcqMenu"), width=200, height=70, font=self.stfont),
                 ctk.CTkButton(self.dynamic_frame, text="Logging Options", command=lambda: self.switch_menu("LogMenu"), width=200, height=70, font=self.stfont, state="disabled"),
                 ctk.CTkButton(self.dynamic_frame, text="Advanced Options", command=lambda: self.switch_menu("AdvMenu"), width=200, height=70, font=self.stfont, state="disabled"),
+                ctk.CTkButton(self.dynamic_frame, text="Exploit Options", command=lambda: self.switch_menu("Exploits"), width=200, height=70, font=self.stfont, state="disabled"),
                 ]
 
         else:
@@ -186,11 +190,13 @@ class MyApp(ctk.CTk):
             ctk.CTkButton(self.dynamic_frame, text="Acquisition Options", command=lambda: self.switch_menu("AcqMenu"), width=200, height=70, font=self.stfont),
             ctk.CTkButton(self.dynamic_frame, text="Logging Options", command=lambda: self.switch_menu("LogMenu"), width=200, height=70, font=self.stfont),
             ctk.CTkButton(self.dynamic_frame, text="Advanced Options", command=lambda: self.switch_menu("AdvMenu"), width=200, height=70, font=self.stfont),
+            ctk.CTkButton(self.dynamic_frame, text="Exploit Options", command=lambda: self.switch_menu("Exploits"), width=200, height=70, font=self.stfont),
             ]
         self.menu_text = ["Save information about the device and installed apps.", 
                           "Allows logical, advanced logical and filesystem\nextractions.", 
                           "Collect the Bugreport, dumpsys and logcat logs",
-                          "More specific options like screenshotting."]
+                          "More specific options like screenshotting.",
+                          "Access to implemented exploit methods,"]
         self.menu_textbox = []
         for btn in self.menu_buttons:
             self.menu_textbox.append(ctk.CTkLabel(self.dynamic_frame, width=right_content, height=70, font=self.stfont, anchor="w", justify="left"))
@@ -252,6 +258,14 @@ class MyApp(ctk.CTk):
             self.show_root_ffs()
         elif menu_name == "TarRootFFS":
             self.show_root_tar_ffs()
+        elif menu_name == "Exploits":
+            self.show_exploit_menu()
+        elif menu_name == "2020_0069":
+            self.show_2020_0069()
+        elif menu_name == "2024_31317":
+            self.show_2024_31317()
+        elif menu_name == "2024_0044":
+            self.show_2024_0044()
         #UT Options:
         elif menu_name == "Physical":
             self.show_physical()
@@ -651,6 +665,32 @@ class MyApp(ctk.CTk):
 
         ctk.CTkButton(self.dynamic_frame, text="Back", command=self.show_main_menu).grid(row=r, column=1, padx=10, pady=10, sticky="e" )
 
+    #Exploits Menu
+    def show_exploit_menu(self):
+        self.skip = ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont)
+        self.skip.grid(row=0, column=0, columnspan=2, sticky="w")
+        self.menu_buttons = [
+        ctk.CTkButton(self.dynamic_frame, text="CVE-2024-0044 ", command=lambda: self.switch_menu("2024_0044"), width=200, height=50, font=self.stfont),
+        ctk.CTkButton(self.dynamic_frame, text="CVE-2024-31317", command=lambda: self.switch_menu("2024_31317"), width=200, height=50, font=self.stfont),
+        ctk.CTkButton(self.dynamic_frame, text="CVE-2020-0069 ", command=lambda: self.switch_menu("2020_0069"), width=200, height=50, font=self.stfont),
+        ]
+        self.menu_text = ["Android 12 & 13 with SPL < 03/2024 - Gains access\nto app sandboxes by installing a dummy app.",
+                          "Android 9 - 11 with SPL < 06/2024 - Gains system-user\nshell access through a zygote attack.",
+                          "Android < 10 with SPL < 03/2020 - Gains temp-root on\nMediaTek devices. (MT67xx, MT816x, MT817x, MT6580)"]
+        self.menu_textbox = []
+        for btn in self.menu_buttons:
+            self.menu_textbox.append(ctk.CTkLabel(self.dynamic_frame, width=right_content, height=50, font=self.stfont, anchor="w", justify="left"))
+        r=1
+        i=0
+        for btn in self.menu_buttons:
+            btn.grid(row=r,column=0, padx=30, pady=10)
+            self.menu_textbox[i].grid(row=r,column=1, padx=10, pady=10)
+            self.menu_textbox[i].configure(text=self.menu_text[i])
+            r+=1
+            i+=1
+
+        ctk.CTkButton(self.dynamic_frame, text="Back", command=self.show_main_menu).grid(row=r, column=1, padx=10, pady=10, sticky="e" )
+
     
 
     #Show the Check Root
@@ -729,6 +769,175 @@ class MyApp(ctk.CTk):
         else:
             self.text.configure(text="Root access has not been confirmed.")
             self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
+            return
+
+    # CVE-2020-0069 MTK-SU - Check
+    def show_2020_0069(self):
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
+        ctk.CTkLabel(self.dynamic_frame, text="", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
+        self.text = ctk.CTkLabel(self.dynamic_frame, text="Checking compatibility ...", width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        self.text.pack(anchor="center", pady=25)
+        mtk_vers = ("MT67", "MT816", "MT817", "MT6580")
+        global show_root
+        global mtk_su
+        mtk_su = False
+        self.change = ctk.IntVar(self, 0)
+
+        if d_platform.upper().startswith(mtk_vers):
+            if int(software.split(".")[0]) < 10 and spl < "2020-03-01":
+                self.choose = ctk.BooleanVar(self, False)
+                self.text.configure(text="This device may be vulnerable to CVE-2020-0069 (mtk-su).\nFor temporary root access, mtk-su can be copied to the device's\ntmp directory and executed.\n\nDo you want to continue?")
+                self.yesb = ctk.CTkButton(self.dynamic_frame, text="YES", font=self.stfont, command=lambda: self.choose.set(True))
+                self.yesb.pack(side="left", pady=(20,330), padx=140)
+                self.nob = ctk.CTkButton(self.dynamic_frame, text="NO", font=self.stfont, command=lambda: self.choose.set(False))
+                self.nob.pack(side="left", pady=(20,330))    
+                self.wait_variable(self.choose)  
+                self.yesb.pack_forget()
+                self.nob.pack_forget()
+                if self.choose.get() == True:     
+                    self.text.configure(text="Attempt to gain temp-root via CVE-2020-0069 (mtk-su).\nPlease Wait ...")
+                    check_su = threading.Thread(target=lambda:temp_mtk_su(self.change))
+                    check_su.start()
+                    print("mtk-su tried")
+                    self.wait_variable(self.change)
+                    if self.change.get() == 1:
+                        show_root = True
+                        mtk_su = True
+                    else:
+                        self.text.configure(text="Root access has not been gained.\nDue to the nature of this process, another attempt may be successful.")
+                        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("Exploits")).pack(pady=40))
+                        return
+                else:
+                    self.switch_menu("Exploits")
+                    return
+            else:
+                self.text.configure(text="This device isn't vulnerable to CVE-2020-0069.", anchor="center")
+                self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("Exploits")).pack(pady=40))
+                return
+        else:
+            self.text.configure(text="This device isn't vulnerable to CVE-2020-0069.", anchor="center")
+            self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("Exploits")).pack(pady=40))
+            return
+        
+    # CVE-2024-03137 (Zygote Attack)
+    def show_2024_31317(self):
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
+        ctk.CTkLabel(self.dynamic_frame, text="", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
+        self.text = ctk.CTkLabel(self.dynamic_frame, text="Checking compatibility ...", width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        self.text.pack(anchor="center", pady=25)
+        self.change = ctk.IntVar(self, 0)
+        if int(software.split(".")[0]) in range(9,12) or int(software.split(".")[0]) in range(12,14) and spl < "2024-06-01":
+            zip_path = f'System_{snr}_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}.zip'
+            self.change.set(0)
+            self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="", width=585, height=20, font=self.stfont, anchor="w", justify="left")
+            self.prog_text.pack()
+            self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
+            self.progress.pack()
+            self.progress.start()
+            self.pull_zygote = threading.Thread(target=lambda: exploits.cve_2024_31317(device=device, log=log, software=software, all_apps=all_apps, zip_path=zip_path, text=self.text, prog_text=self.prog_text, change=self.change))
+            self.pull_zygote.start()
+            self.wait_variable(self.change)
+            self.prog_text.pack_forget()
+            self.progress.pack_forget()
+            self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("Exploits")).pack(pady=40))
+            return
+            
+        else:
+            self.text.configure(text="This device isn't vulnerable to CVE-2024-31317.", anchor="center")
+            self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("Exploits")).pack(pady=40))
+            return
+
+    # CVE-2024-044 (App Impersonation)
+    def show_2024_0044(self):
+
+        def cve_selected(listbox):
+            selected_indices = listbox.curselection()
+            selected_items = [listbox.get(i) for i in selected_indices]
+            try:
+                sel_list = list(selected_items)
+                print(sel_list)
+            except:
+                sel_list = []
+            self.selectframe.pack_forget()
+            self.textframe.pack_forget()
+            ctk.CTkLabel(self.dynamic_frame, text="", height=30, width=585, font=("standard",24), justify="left").pack()
+            self.text = ctk.CTkLabel(self.dynamic_frame, text="", width=585, height=60, font=self.stfont, anchor="w", justify="left")
+            self.text.pack(anchor="center", pady=25)
+            if sel_list == []:
+                self.text.configure(text="Choose at least one package.", anchor="center")
+                self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("Exploits")).pack(pady=40))
+                return
+            else:
+                self.change.set(0)
+                self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="", width=585, height=20, font=self.stfont, anchor="w", justify="left")
+                self.prog_text.pack()
+                self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
+                self.progress.pack()
+                self.progress.start()
+                self.pull_cve_apps = threading.Thread(target=lambda: exploits.cve_2024_0044(device=device, log=log, zip_path=zip_path, text=self.text, prog_text=self.prog_text, change=self.change, selection=sel_list))
+                self.pull_cve_apps.start()
+                self.wait_variable(self.change)
+                self.prog_text.pack_forget()
+                self.progress.pack_forget()
+                self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("Exploits")).pack(pady=40))
+                return           
+
+        def fill_list(app_list, listbox):
+            listbox.select_clear(0, tk.END)
+            var = tk.StringVar(value=app_list)
+            listbox.configure(listvariable=var)
+        pkg_list = [pkg for pkg, installer in apps]
+        system_apps = [app for app in all_apps if app not in pkg_list]
+
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
+        self.tlabel = ctk.CTkLabel(self.dynamic_frame, text="CVE-2024-0044 - App Extraction", height=60, width=585, font=("standard",24), justify="left").pack(pady=10)
+        self.text = ctk.CTkLabel(self.dynamic_frame, text="Checking compatibility ...", width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        self.text.pack(anchor="center", pady=25)
+        self.change = ctk.IntVar(self, 0)
+        if int(software.split(".")[0]) in range(12,14) and spl < "2024-03-01":
+            zip_path = f'App_Extration_{snr}_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}.zip'
+            self.tlabel.configure(height=30)
+            self.text.pack_forget()
+            self.selectframe = ctk.CTkFrame(self.dynamic_frame, width=400, corner_radius=0, fg_color="transparent")
+            self.textframe = ctk.CTkFrame(self.dynamic_frame, width=200, corner_radius=0, fg_color="transparent")
+            self.selectframe.pack(side="left", pady=20, padx=30, fill="y", expand=True)
+            self.selectframe.pack_propagate(False)
+            container = tk.Frame(self.selectframe, width=380, height=380)
+            container.pack(side="left", pady=10)
+            container.pack_propagate(False)
+            self.textframe.pack(side="left", pady=20, fill="both", expand=True)
+            self.textframe.pack_propagate(False)
+            self.applistbox = tk.Listbox(container, width=200, height=380, 
+                                            bg="#2E2E2E", fg="#abb3bd", selectbackground="#195727",
+                                            selectforeground="#80FD9C", highlightthickness=0,
+                                            borderwidth=0, relief="flat", activestyle="none",
+                                            exportselection=False, selectmode=tk.MULTIPLE)
+            self.applistbox.pack(side="left")
+            self.appscrollbar = ctk.CTkScrollbar(self.selectframe, width=16, height=380, orientation="vertical", corner_radius=0, command=self.applistbox.yview)
+            self.appscrollbar.pack(side="right")
+            self.applistbox.config(yscrollcommand=self.appscrollbar.set)
+            fill_list(all_apps, self.applistbox)
+            self.scopetext = ctk.CTkLabel(self.textframe, text="\nScope:", height=20, width=40, font=self.stfont, justify="left").pack(anchor="w", pady=10)
+            self.allbutton = ctk.CTkButton(self.textframe, text="All Apps", font=self.stfont, command=lambda: fill_list(all_apps, self.applistbox))
+            self.allbutton.pack(pady=5, ipadx=0, anchor="w")
+            self.systembutton = ctk.CTkButton(self.textframe, text="System", font=self.stfont, command=lambda: fill_list(system_apps, self.applistbox))
+            self.systembutton.pack(pady=5, ipadx=0, anchor="w")
+            self.tpbutton = ctk.CTkButton(self.textframe, text="Third-Party", font=self.stfont, command=lambda: fill_list(pkg_list, self.applistbox))
+            self.tpbutton.pack(pady=5, ipadx=0, anchor="w")
+            self.selectiontext = ctk.CTkLabel(self.textframe, text="Selection:", height=10, width=40, font=self.stfont, justify="left").pack(anchor="w", pady=10)
+            self.allsbutton = ctk.CTkButton(self.textframe, text="Select All", font=self.stfont, command=lambda: self.applistbox.select_set(0, tk.END))
+            self.allsbutton.pack(pady=5, ipadx=0, anchor="w")
+            self.nonebutton = ctk.CTkButton(self.textframe, text="Select None", font=self.stfont, command=lambda: self.applistbox.select_clear(0, tk.END))
+            self.nonebutton.pack(pady=5, ipadx=0, anchor="w")
+            self.extractiontext = ctk.CTkLabel(self.textframe, text="Extraction:", height=10, width=40, font=self.stfont, justify="left").pack(anchor="w", pady=10)
+            self.startbutton = ctk.CTkButton(self.textframe, text="Extract", font=self.stfont, command=lambda: cve_selected(self.applistbox))
+            self.startbutton.pack(pady=5, ipadx=0, anchor="w")
+            self.abortbutton = ctk.CTkButton(self.textframe, text="Back", fg_color="#8c2c27", text_color="#DCE4EE", font=self.stfont, command=lambda: self.switch_menu("Exploits"))
+            self.abortbutton.pack(pady=5, ipadx=0, anchor="w")
+
+        else:
+            self.text.configure(text="\n\nThis device isn't vulnerable to CVE-2024-0044.", anchor="center")
+            self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("Exploits")).pack(pady=40))
             return
 
     #Show rooted Backup Options
@@ -2697,7 +2906,6 @@ def dump_appops(change, text, progress, prog_text, folder=None, jsonout=False):
 
     #Convert Time to seconds
     def duration_to_seconds(s: str) -> float:
-        log("Started App Ops extraction")
         m = AGO_RE.search(s)
         if not m:
             raise ValueError(f"Unknown format: {s}")
