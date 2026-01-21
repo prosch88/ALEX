@@ -2173,7 +2173,7 @@ class MyApp(ctk.CTk):
                                 "style": {"s": 10, "border_color": "lightgrey"},
                                 "table": [
                                     [{".": [{".b": "Dev-Name:"}]}, {"colspan": 3, **dev_name_cell}, None, None],
-                                    [{"style": {"border_color": "white", "cell_fill": u_grey}, ".": [{".b": "Model-Nr:"}]}, {"colspan": 3, "style": {"cell_fill": u_grey}, ".": [{".": full_name.title()}]}, None, None],
+                                    [{"style": {"border_color": "white", "cell_fill": u_grey}, ".": [{".b": "Model-Nr:"}]}, {"colspan": 3, "style": {"cell_fill": u_grey}, ".": [{".": full_name}]}, None, None],
                                     [{".": [{".b": "SerialNr:"}]}, {"colspan": 3, ".": [{".": snr}]}, None, None],
                                 ]
                             },
@@ -2253,7 +2253,7 @@ class MyApp(ctk.CTk):
                                 "style": {"s": 10, "border_color": "lightgrey"},
                                 "table": [
                                     [{".": [{".b": "Dev-Name:"}]}, {"colspan": 3, **dev_name_cell}, None, None],
-                                    [{"style": {"border_color": "white", "cell_fill": u_grey}, ".": [{".b": "Model-Nr:"}]}, {"colspan": 3, "style": {"cell_fill": u_grey}, ".": [{".": full_name.title()}]}, None, None],
+                                    [{"style": {"border_color": "white", "cell_fill": u_grey}, ".": [{".b": "Model-Nr:"}]}, {"colspan": 3, "style": {"cell_fill": u_grey}, ".": [{".": full_name}]}, None, None],
                                     [{".": [{".b": "Product:"}]}, {"colspan": 3, ".": [{".": product}]}, None, None],
                                     [{"style": {"cell_fill": u_grey}, ".": [{".b": "Platform:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": d_platform}]}, { "style": {"cell_fill": u_grey}, ".": [{".b": "WiFi MAC:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": w_mac}]}],
                                     [{".": [{".b": "Software:"}]}, {".": [{".": software}]}, {".": [{".b": "BT MAC:"}]}, {".": [{".": b_mac}]}],
@@ -2376,6 +2376,24 @@ def to_mb(text: str) -> float:
         return val
 
 def get_client(host=default_host, port=default_port, check=False):
+
+    def smart_title(s: str) -> str:
+        def transform_word(word: str) -> str:
+            if re.search(r"[A-Za-z]", word) and re.search(r"\d", word):
+                return word.upper()
+            if "-" in word:
+                parts = word.split("-")
+                left = parts[0].upper() if len(parts[0]) <= 3 else parts[0].title()
+                right = "-".join(
+                    p.upper() if re.search(r"\d", p) else p.title()
+                    for p in parts[1:]
+                )
+                return left + "-" + right
+            if len(word) <= 3:
+                return word.upper()
+            return word.title()
+        return " ".join(transform_word(w) for w in s.split())
+
     global adb
     global snr_id
     global snr
@@ -2449,7 +2467,7 @@ def get_client(host=default_host, port=default_port, check=False):
             brand = getprop(device, "ro.product.brand").capitalize()
             model = getprop(device, "ro.product.model").capitalize()
             global full_name   
-            full_name = f"{brand} {model}" if brand not in model else model
+            full_name = smart_title(f"{brand} {model}" if brand not in model else model)
             global product 
             product = getprop(device, "ro.product.name").capitalize()
             global d_platform 
@@ -2554,11 +2572,11 @@ def get_client(host=default_host, port=default_port, check=False):
             if len(full_name) > 26:
                 wordnames = full_name.split()
                 if len(' '.join(wordnames[:-1])) < 27:
-                    fname_s = (' '.join(wordnames[:-1]) + "\n" + '{:13}'.format(" ") + "\t" + wordnames[-1]).title()
+                    fname_s = (' '.join(wordnames[:-1]) + "\n" + '{:13}'.format(" ") + "\t" + wordnames[-1])
                 else:
-                    fname_s = (' '.join(wordnames[:-2]) + "\n" + '{:13}'.format(" ") + "\t" + ' '.join(wordnames[-2:])).title()
+                    fname_s = (' '.join(wordnames[:-2]) + "\n" + '{:13}'.format(" ") + "\t" + ' '.join(wordnames[-2:]))
             else:
-                fname_s = full_name.title()
+                fname_s = full_name
             global data_s
             global used
             global used_s
@@ -2795,7 +2813,7 @@ def save_info_json(zip_path, change):
 
 def save_info():
     file = open("device_" + snr + ".txt", "w", encoding='utf-8')
-    file.write("## DEVICE ##\n\n" + "Model-Nr:   " + full_name.title() + "\nDev-Name:   " + d_name + "\nProduct:    " + product + 
+    file.write("## DEVICE ##\n\n" + "Model-Nr:   " + full_name + "\nDev-Name:   " + d_name + "\nProduct:    " + product + 
         "\nPlatform:   " + d_platform + "\nSoftware:   " + software + "\nBuild-Nr:   " + build + "\nLanguage:   " + locale + "\nSerialnr:   " + snr + 
         "\nWifi MAC:   " + w_mac + "\nBT-MAC:     " + b_mac + "\nData:       " + data_s + "\nFree Space: " + free + 
         "\nAD-ID :     " + ad_id + "\nIMEI :      " + imei)    
