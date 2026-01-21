@@ -1309,6 +1309,26 @@ class MyApp(ctk.CTk):
         self.text.configure(height=60)
         self.after(50)
 
+        if incl_logs == "on":
+            self.prog_text = ctk.CTkLabel(self.dynamic_frame, text=" ", width=585, height=20, font=self.stfont, anchor="w", justify="left")
+            self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
+            self.progress.pack()
+            self.progress.start()
+            self.prog_text.pack()
+            self.change.set(0)
+            # Logcat
+            self.text.configure(text="Dumping Logcat Logs.")
+            self.prfs_logcat = threading.Thread(target=lambda: dump_logcat(self.change))
+            self.prfs_logcat.start()
+            self.wait_variable(self.change)
+            self.change.set(0)
+            self.after(1000)
+            # Dumpsys
+            self.text.configure(text="Extracting Dumpsys Logs.")
+            self.prfs_dumpsys = threading.Thread(target=lambda: dump_dumpsys(self.change))
+            self.prfs_dumpsys.start()
+            self.wait_variable(self.change)   
+
         if incl_sdcard == "on":
             self.change.set(0)
             self.text.configure(text="Preparing Data Extraction ...")
@@ -1322,6 +1342,9 @@ class MyApp(ctk.CTk):
         try: os.mkdir(folder)
         except: pass
         self.change.set(0)
+        if incl_logs == "on":
+            self.progress.pack_forget()
+            self.prog_text.pack_forget()
         self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="0%", width=585, height=20, font=self.stfont, anchor="w", justify="left")
         self.prog_text.pack()
         self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0)
@@ -1414,24 +1437,14 @@ class MyApp(ctk.CTk):
             self.progress.pack()
             self.progress.start()
             self.change.set(0)
-            # Logcat
-            self.text.configure(text="Dumping Logcat Logs.")
-            self.prfs_logcat = threading.Thread(target=lambda: dump_logcat(self.change))
-            self.prfs_logcat.start()
-            self.wait_variable(self.change)
-            self.change.set(0)
+            # Logcat (in Backup)
             self.text.configure(text="Adding Logcat logs to the backup.")
             self.prfs_zip_logcat = threading.Thread(target=lambda: self.zip_prfs_extra(zip_path, "logcat.txt", f"logcat_{snr}.txt", self.change))
             self.prfs_zip_logcat.start()
             self.wait_variable(self.change)
             self.change.set(0)
             self.after(1000)
-            # Dumpsys
-            self.text.configure(text="Extracting Dumpsys Logs.")
-            self.prfs_dumpsys = threading.Thread(target=lambda: dump_dumpsys(self.change))
-            self.prfs_dumpsys.start()
-            self.wait_variable(self.change)
-            self.change.set(0)
+            # Dumpsys (in Backup)
             self.text.configure(text="Adding Dumpsys logs to the backup.")
             self.prfs_zip_dumpsys = threading.Thread(target=lambda: self.zip_prfs_extra(zip_path, "dumpsys.txt", f"dumpsys_{snr}.txt", self.change))
             self.prfs_zip_dumpsys.start()
@@ -2841,7 +2854,10 @@ def save_info():
     log("Saved Device Info")
 
 def dump_logcat(change):
-    logdump = device.shell("logcat -d -b all -v epoch", stream=True)
+    if int(software.split(".")[0]) < 10:
+        logdump = device.shell("logcat -d -b all -v time", stream=True)
+    else:
+        logdump = device.shell("logcat -d -b all -v epoch", stream=True)
     buffer = b""
     with open(f"logcat_{snr}.txt", "w", encoding='utf-8') as logcfile:
         while True:
@@ -3680,7 +3696,7 @@ def recreate_dbs(change, text, zip_path=None):
         except: pass
         with open(packages_list, "w", encoding="utf-8") as pl:
             for app in all_apps:
-                text.configure(text=f"Attempt to recreate the packages.list\nCurrent package: Current package: {app[:56]}")
+                text.configure(text=f"Attempt to recreate the packages.list\nCurrent package: {app[:56]}")
                 a_class = device.shell(f"pm path {app}")
                 if "priv-app" in a_class:
                     pack_class = "platform:privapp"
