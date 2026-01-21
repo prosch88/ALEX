@@ -3662,6 +3662,7 @@ def recreate_dbs(change, text, zip_path=None):
         except: pass
         with open(packages_list, "w", encoding="utf-8") as pl:
             for app in all_apps:
+                text.configure(text=f"Attempt to recreate the packages.list\nCurrent package: Current package: {app[:56]}")
                 a_class = device.shell(f"pm path {app}")
                 if "priv-app" in a_class:
                     pack_class = "platform:privapp"
