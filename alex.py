@@ -3861,7 +3861,7 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
                 try: 
                     mtime = self.stat(new_src).mtime.timestamp()
                 except:
-                    pass
+                    mtime = datetime.fromisoformat('1980-01-01').timestamp() 
                 size = self.pull_file(new_src, new_dst)
                 try:
                     if mtime < datetime.fromisoformat('1980-01-01').timestamp():
