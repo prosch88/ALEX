@@ -45,6 +45,7 @@ import pathlib
 import re
 import io
 
+stop_logcat_event = threading.Event()
 ctk.set_appearance_mode("dark")  # Dark Mode
 ctk.set_default_color_theme(os.path.join(os.path.dirname(__file__), "assets" , "alex_theme.json" ))
 ctk.set_window_scaling(1.0)
@@ -238,6 +239,8 @@ class MyApp(ctk.CTk):
             self.show_adb_bu()
         elif menu_name == "LogDump":
             self.show_logcat_dump()
+        elif menu_name == "LogLive":
+            self.show_logcat_live()
         elif menu_name == "Dumpsys":
             self.show_dumpsys_dump()
         elif menu_name == "AppOps":
@@ -610,11 +613,13 @@ class MyApp(ctk.CTk):
         self.skip.grid(row=0, column=0, columnspan=2, sticky="w")
         self.menu_buttons = [
             ctk.CTkButton(self.dynamic_frame, text="Logcat (Dump)", command=lambda: self.switch_menu("LogDump"), width=200, height=70, font=self.stfont),
+            ctk.CTkButton(self.dynamic_frame, text="Logcat (Live)", command=lambda: self.switch_menu("LogLive"), width=200, height=70, font=self.stfont),
             ctk.CTkButton(self.dynamic_frame, text="Dumpsys", command=lambda: self.switch_menu("Dumpsys"), width=200, height=70, font=self.stfont),
             ctk.CTkButton(self.dynamic_frame, text="Bugreport", command=lambda: self.switch_menu("BugReport"), width=200, height=70, font=self.stfont),
             ctk.CTkButton(self.dynamic_frame, text="App Ops", command=lambda: self.switch_menu("AppOps"), width=200, height=70, font=self.stfont),
         ]
         self.menu_text = ["Dump the saved logcat entries.\nData usually goes back to the last reboot.",
+                          "Capture the live logcat entries.",
                           "Extract Dumpsys informations.",
                           "Collect the Bugreport (Dumpstate)",
                           "Extract App Ops (App Permissions)"]
@@ -1003,6 +1008,25 @@ class MyApp(ctk.CTk):
         self.prog_text.pack_forget()
         self.progress.pack_forget()
         self.text.configure(text=f"The stored Logcat entries were saved under: logcat_{snr}.txt")
+        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("LogMenu")).pack(pady=40))
+
+    #Show the Live-Logcat-Dump Menu
+    def show_logcat_live(self):
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
+        ctk.CTkLabel(self.dynamic_frame, text="Logcat (Live)", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
+        self.text = ctk.CTkLabel(self.dynamic_frame, text="Capturing the Live Logcat Entries.\nPress \"Abort\" to stop.", width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        self.text.pack(anchor="center", pady=25)
+        self.change = ctk.IntVar(self, 0)
+        self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="", width=585, height=20, font=self.stfont, anchor="w", justify="left")
+        self.prog_text.pack(pady=30)
+        self.abortb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=lambda: stop_logcat_event.set())
+        self.abortb.pack()
+        self.get_logdump = threading.Thread(target=lambda: live_logcat(self.change, self.prog_text))
+        self.get_logdump.start()
+        self.wait_variable(self.change)
+        self.prog_text.pack_forget()
+        self.abortb.pack_forget()
+        self.text.configure(text=f"The stored Logcat entries were saved under: logcat_live_{snr}.txt")
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("LogMenu")).pack(pady=40))
 
     #Show the Dumpsys-Dump Menu
@@ -2335,7 +2359,7 @@ class MyApp(ctk.CTk):
             change.set(1)
 
 
-a_version = 0.3
+a_version = 0.4
 default_host = "127.0.0.1"
 default_port = 5037
 
@@ -2871,6 +2895,42 @@ def dump_logcat(change):
                     logcfile.flush()
     log("Extracted Logcat")
     change.set(1)
+
+def live_logcat(change, progtext):
+    stop_logcat_event.clear()
+    if int(software.split(".")[0]) < 10:
+        cmd = "logcat -T 1 -b all -v time"
+    else:
+        cmd = "logcat -T 1 -b all -v epoch"
+    logdump = device.shell(cmd, stream=True)
+    buffer = b""
+    i=0
+    try:
+        with open(f"logcat_live_{snr}.txt", "w", encoding="utf-8") as logcfile:
+            while not stop_logcat_event.is_set():
+                chunk = logdump.read(256)
+                if not chunk:
+                    break
+                buffer += chunk
+
+                while b"\n" in buffer:
+                    line, buffer = buffer.split(b"\n", 1)
+                    i+=1
+                    progtext.configure(text=f"{i} entries written.")
+                    logcfile.write(
+                        line.decode("utf-8", errors="replace") + "\n"
+                    )
+                    logcfile.flush()
+    finally:
+        try:
+            logdump.close()
+        except Exception:
+            pass
+
+    log("Captured Live-Logcat")
+    change.set(1)
+
+
 
 def dump_dumpsys(change):
     sysdump = device.shell("dumpsys", stream=True)
