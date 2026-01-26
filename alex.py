@@ -45,7 +45,6 @@ import pathlib
 import re
 import io
 
-stop_logcat_event = threading.Event()
 ctk.set_appearance_mode("dark")  # Dark Mode
 ctk.set_default_color_theme(os.path.join(os.path.dirname(__file__), "assets" , "alex_theme.json" ))
 ctk.set_window_scaling(1.0)
@@ -2362,6 +2361,8 @@ class MyApp(ctk.CTk):
 a_version = 0.4
 default_host = "127.0.0.1"
 default_port = 5037
+# Abort-Helper for the live logcat capture
+stop_logcat_event = threading.Event()
 
 def _adb_serve_running():
     s = socket.socket()
