@@ -1640,7 +1640,7 @@ class MyApp(ctk.CTk):
         self.progress.pack_forget()
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("LogMenu")).pack(pady=40)) 
 
-    #Show App-Ops-Screen (Dumpsys)
+    #Show App-Ops-Screen
     def show_app_ops(self):
         ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
         ctk.CTkLabel(self.dynamic_frame, text="Query App-Ops", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
