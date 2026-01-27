@@ -1100,7 +1100,7 @@ class MyApp(ctk.CTk):
         self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
         self.progress.pack()
         self.progress.start()
-        self.do_root_ffs = threading.Thread(target=lambda: devdump.su_root_ffs(outzip=zip_path, filetext=self.text, prog_text=self.prog_text, log=log, change=self.change, mtk_su=mtk_su, c_su=c_su))
+        self.do_root_ffs = threading.Thread(target=lambda: devdump.su_root_ffs(outzip=zip_path, filetext=self.text, prog_text=self.prog_text, log=log, change=self.change, mtk_su=mtk_su, c_su=c_su, has_exec_out=has_exec_out))
         self.do_root_ffs.start()
         self.wait_variable(self.change)
         self.text.configure(text="Data Extraction complete.")
@@ -3297,6 +3297,11 @@ def find_agent(change, text, app_text):
 #FFS Tar extraction:
 def tar_root_ffs(outtar, prog_text, change):
     global c_su
+    global has_exec_out
+    if has_exec_out:
+        out_cmd = "exec-out"
+    else:
+        out_cmd = "shell"
     tar_arch = getprop(device, "ro.product.cpu.abilist")
     localtar = False
     if "armeabi" in tar_arch.lower():
@@ -3322,25 +3327,25 @@ def tar_root_ffs(outtar, prog_text, change):
     if device_has_su():
         if c_su:
             cmd = [
-            "adb", "exec-out",
+            "adb", out_cmd,
             "su", "-c",
             f"{tar_remote} -cO /data 2>/dev/null"
             ]
         else:
             cmd = [
-                "adb", "exec-out",
+                "adb", out_cmd,
                 f"echo '{tar_remote} -cO /data 2>/dev/null' | su"
             ]
 
     elif mtk_su == True:
         cmd = [
-            "adb", "exec-out",
+            "adb", out_cmd,
             f"/data/local/tmp/mtk-su -c {tar_remote} -cO /data 2>/dev/null"
         ]
 
     else:
         cmd = [
-            "adb", "exec-out",
+            "adb", out_cmd,
             f"sh -c '{tar_remote} -cO /data 2>/dev/null'"
         ]
 
@@ -3363,23 +3368,23 @@ def tar_root_ffs(outtar, prog_text, change):
         if device_has_su():
             if c_su:
                 cmd = [
-                "adb", "exec-out",
+                "adb", out_cmd,
                 "su", "-c",
                 "tar -cO /data 2>/dev/null"
                 ]
             else:
                 cmd = [
-                    "adb", "exec-out",
+                    "adb", out_cmd,
                     "echo 'tar -cO /data 2>/dev/null' | su"
                 ]
         elif mtk_su == True:
             cmd = [
-                "adb", "exec-out",
+                "adb", out_cmd,
                 "/data/local/tmp/mtk-su -c tar -cO /data 2>/dev/null"
             ]
         else:
             cmd = [
-                "adb", "exec-out",
+                "adb", out_cmd,
                 "sh -c 'tar -cO /data 2>/dev/null'"
             ]
 
@@ -3405,6 +3410,11 @@ def tar_root_ffs(outtar, prog_text, change):
 #Physical Extraction for Android and Ubuntu Touch
 def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, back_button=None):
     global c_su
+    global has_exec_out
+    if has_exec_out:
+        out_cmd = "exec-out"
+    else:
+        out_cmd = "shell"
     if ut == True:
         sh_pwd = pw_box.get()
         pw_box.pack_forget()
@@ -3491,15 +3501,15 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                     if show_root == True:
                         if device_has_su():
                             if c_su:
-                                proc = subprocess.Popen(["adb", "exec-out", f"su -c 'cat /dev/{block + target} 2>/dev/null'"], stdout=subprocess.PIPE)
+                                proc = subprocess.Popen(["adb", out_cmd, f"su -c 'cat /dev/{block + target} 2>/dev/null'"], stdout=subprocess.PIPE)
                             else:
-                                proc = subprocess.Popen(["adb", "exec-out", f"echo 'cat /dev/{block + target} 2>/dev/null' | su"], stdout=subprocess.PIPE)
+                                proc = subprocess.Popen(["adb", out_cmd, f"echo 'cat /dev/{block + target} 2>/dev/null' | su"], stdout=subprocess.PIPE)
                         elif mtk_su == True:
                             proc = subprocess.Popen(["adb", "exec-out", f"/data/local/tmp/mtk-su -c cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
                         else:
                             proc = subprocess.Popen(["adb", "exec-out", f"cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
                     else:
-                        proc = subprocess.Popen(["adb", "exec-out", f"cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
+                        proc = subprocess.Popen(["adb", out_cmd, f"cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
                     stream = proc.stdout
                 while True:
                     chunk = stream.read(65536)
@@ -4077,10 +4087,13 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
 # Check for root via su
 def has_root(change, timeout=30):
     global c_su
+    global has_exec_out
     result_holder = {"value": None}
 
     def check_root():
         global c_su
+        global has_exec_out
+        has_exec_out = supports_exec_out()
         try:
             check_whoami = device.shell("echo 'whoami' | su").strip()
             if check_whoami == "whoami":
@@ -4118,6 +4131,21 @@ def device_has_su() -> bool:
         return result.stdout.strip() != ""
     except Exception:
         return False
+
+def supports_exec_out() -> bool:
+    cmd = ["adb", "exec-out", "echo", "OK"]
+
+    proc = subprocess.run(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        stdin=subprocess.DEVNULL,
+    )
+
+    if proc.returncode != 0:
+        return False
+
+    return proc.stdout.strip() == b"OK"
 
 def temp_mtk_su(change, timeout=30):
     result_holder = {"value": None}
@@ -4160,6 +4188,7 @@ state = None
 show_root = False
 mtk_su = False
 c_su = False
+has_exec_out = True
 case_number = ""
 case_name = ""
 evidence_number = ""

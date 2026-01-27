@@ -106,11 +106,15 @@ def push_temp_script(script_text, mtk_su=False, c_su=False):
     os.unlink(local_path)
     return remote_path
 
-def su_root_ffs(outzip=None, filetext=None, prog_text=None, log=None, change=None, mtk_su=False, c_su=False):
+def su_root_ffs(outzip=None, filetext=None, prog_text=None, log=None, change=None, mtk_su=False, c_su=False, has_exec_out=True):
     if outzip == None:
         outzip = "FFS.zip"
     root = "/"
     ffs_size = 0
+    if has_exec_out:
+        out_cmd = "exec-out"
+    else:
+        out_cmd = "shell"
 
     excludes = list(dict.fromkeys(DEFAULT_EXCLUDES))
     if change == None:
@@ -125,13 +129,13 @@ def su_root_ffs(outzip=None, filetext=None, prog_text=None, log=None, change=Non
 
     if device_has_su():
         if c_su:
-            cmd = ["adb", "exec-out", "su", "-c", f"sh {remote_script_path}"]
+            cmd = ["adb", out_cmd, "su", "-c", f"sh {remote_script_path}"]
         else:
-            cmd = ["adb", "exec-out", "sh", "-c", f"echo 'sh {remote_script_path}' | su"]
+            cmd = ["adb", out_cmd, "sh", "-c", f"echo 'sh {remote_script_path}' | su"]
     elif mtk_su == True:
-        cmd = ["adb", "exec-out", "/data/local/tmp/mtk-su", "-c", f"{remote_script_path}"]
+        cmd = ["adb", out_cmd, "/data/local/tmp/mtk-su", "-c", f"{remote_script_path}"]
     else:
-        cmd = ["adb", "exec-out", f"sh {remote_script_path}"]
+        cmd = ["adb", out_cmd, f"sh {remote_script_path}"]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL, bufsize=0)
 
     zf = zipfile.ZipFile(outzip, "w", allowZip64=True)
