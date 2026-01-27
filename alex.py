@@ -4086,6 +4086,10 @@ def has_root(change, timeout=30):
             if check_whoami == "whoami":
                 c_su = True
                 check_whoami = device.shell("su -c whoami").strip()
+            if "not found" in check_whoami:
+                check_id = device.shell("echo 'id' | su")
+                if "root" in check_id:
+                    check_whoami = "root"
             result_holder["value"] = check_whoami == "root"
             #print(result_holder["value"])
         except Exception:
