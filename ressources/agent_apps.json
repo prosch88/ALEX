@@ -1,0 +1,13 @@
+{
+    "com.client.appA": "Cellebrite UFED Client App",
+    "com.oxygen.forensicagent": "Oxygen Android Agent",
+    "com.compelson.mefconnector": "Compelson MOBILedit Connector",
+    "com.magnetforensics.acquire": "MAGNET Acquire",
+    "example.helloandroid": "MSAB XRY Agent",
+    "belkasoft.backup.agent": "Belkasoft Android Agent",
+    "com.belkasoft.sdcardagent": "Belkasoft SDCard Agent",
+    "com.viaforensics.android.aflogical_ose": "viaForensics AFLogical OSE",
+    "com.viaforensics.android.aflogical": "viaForensics AFLogical",
+    "com.alias.connector": "Avilla Forensics",
+    "dev.alex.cve_2024_0044": "ALEX CVE-2024-0044 Dummy App"
+}
