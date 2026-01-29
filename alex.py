@@ -2520,6 +2520,8 @@ def get_client(host=default_host, port=default_port, check=False):
                 aos = True
             else:
                 aos = False
+            global has_exec_out
+            has_exec_out = supports_exec_out()
             dev_state = "authorized ✔"
             snr = getprop(device, "ro.serialno")
             global brand
@@ -3302,7 +3304,7 @@ def tar_root_ffs(outtar, prog_text, change):
         out_cmd = "exec-out"
     else:
         out_cmd = "shell"
-    tar_arch = getprop(device, "ro.product.cpu.abilist")
+    tar_arch = getprop(device, "ro.product.cpu.abilist") + getprop(device, "ro.product.cpu.abi")
     localtar = False
     if "armeabi" in tar_arch.lower():
         tar_bin = os.path.join(os.path.dirname(__file__), "ressources" , "tar", "armhf", "tar")
@@ -4092,8 +4094,6 @@ def has_root(change, timeout=30):
 
     def check_root():
         global c_su
-        global has_exec_out
-        has_exec_out = supports_exec_out()
         try:
             check_whoami = device.shell("echo 'whoami' | su").strip()
             if check_whoami == "whoami":
