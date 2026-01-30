@@ -4,6 +4,7 @@
 
 import sys
 import os
+sys.path.insert(0, os.path.dirname(__file__))
 if sys.stdout is None:
     sys.stdout = open(os.devnull, "w")
 if sys.stderr is None:
@@ -19,7 +20,10 @@ from adbutils._utils import append_path
 from io import BytesIO
 from pathlib import Path
 from pdfme import build_pdf
-from alex import ufed_style, devdump, wifi_adb, exploits
+import alex.ufed_style as ufed_style
+import alex.devdump as devdump
+import alex.wifi_adb as wifi_adb
+import alex.exploits as exploits
 import numpy as np
 import ipaddress
 import sqlite3
@@ -2536,6 +2540,7 @@ def get_client(host=default_host, port=default_port, check=False):
             d_platform = getprop(device, "ro.board.platform").upper()
             global software
             software = getprop(device, "ro.build.version.release")
+            major_ver = int(software.split(".")[0])
             global sdk
             sdk = getprop(device, "ro.build.version.sdk")
             global build
@@ -2546,8 +2551,12 @@ def get_client(host=default_host, port=default_port, check=False):
             abi = getprop(device, "ro.product.cpu.abi")
             global locale
             locale = getprop(device, "persist.sys.locale")
-            if locale == "-" and whoami == "phablet":
-                locale = device.shell("echo $LANG")
+            if locale in ["","-"," "]:
+                prodlang = getprop(device, "ro.product.locale.language")
+                prodregi = getprop(device, "ro.product.locale.region")
+                locale = f"{prodlang}-{prodregi}".strip()
+                if locale == "-" and ut == True:
+                    locale = device.shell("echo %LANG")
             global imei
             imei = getprop(device, 'gsm.baseband.imei').replace("'","")
             if imei == "-":
@@ -2570,7 +2579,6 @@ def get_client(host=default_host, port=default_port, check=False):
                 else:
                     imei = "-"
             if imei == "-":
-                major_ver = int(software.split(".")[0])
                 if major_ver < 5:
                     pass
                 else:
@@ -2703,29 +2711,32 @@ def get_client(host=default_host, port=default_port, check=False):
 
             # SIM-Info
             global iccid
-            iccid = "-"
             global imsi
-            imsi = "-"
             global phone_number
-            phone_number = "-"
-            for i in range(8,16):
-                val = device.shell(f"service call iphonesubinfo {i} s16 com.android.shell | cut -c 50-66 | tr -d '.[:space:]'").replace("'","")
-                if re.fullmatch(r'\+?[0-9]+', val):
-                    if phone_number == "-" and val.startswith("+"):
-                        phone_number = val
-                    elif iccid == "-" and val.startswith("89") and len(val) > 17:
-                        iccid = val
-                    elif imsi == "-" and len(val) in range(13,16):
-                        imsi = val
-                    elif phone_number == "-" and len(val) in range(3,13):
-                        phone_number = val
-                    else:
-                        pass
             global sim_op
+            iccid = "-"
+            imsi = "-"
+            phone_number = "-"
             sim_op = "-"
-            sim_op = getprop(device, "gsm.sim.operator.alpha")
-            if 2 > len(sim_op) or len(sim_op) > 30:
-                sim_op = "-"
+            if major_ver < 5:
+                pass
+            else:
+                for i in range(8,16):
+                    val = device.shell(f"service call iphonesubinfo {i} s16 com.android.shell | cut -c 50-66 | tr -d '.[:space:]'").replace("'","")
+                    if re.fullmatch(r'\+?[0-9]+', val):
+                        if phone_number == "-" and val.startswith("+"):
+                            phone_number = val
+                        elif iccid == "-" and val.startswith("89") and len(val) > 17:
+                            iccid = val
+                        elif imsi == "-" and len(val) in range(13,16):
+                            imsi = val
+                        elif phone_number == "-" and len(val) in range(3,13):
+                            phone_number = val
+                        else:
+                            pass
+                sim_op = getprop(device, "gsm.sim.operator.alpha")
+                if 2 > len(sim_op) or len(sim_op) > 30:
+                    sim_op = "-"
 
             global apps
             global all_apps
