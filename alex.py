@@ -3995,7 +3995,7 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
     Modified function from adbutils for percentage output
     """
 
-    text.configure(text=f"Extracting: {src}")
+    text.configure(text=f"Extracting: {src[:60]}")
     rootf = src
     def rec_pull_contents(src: str, dst: typing.Union[str, pathlib.Path], rootf: str, rel_in_zip: str, prog_text, progress, exist_ok: bool = True) -> int:
         s = 0
