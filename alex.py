@@ -1358,7 +1358,8 @@ class MyApp(ctk.CTk):
             self.text.configure(text="Extracting Dumpsys Logs.")
             self.prfs_dumpsys = threading.Thread(target=lambda: dump_dumpsys(self.change))
             self.prfs_dumpsys.start()
-            self.wait_variable(self.change)   
+            self.wait_variable(self.change)
+            d_date = device.shell("date +%s")   
 
         if incl_sdcard == "on":
             self.change.set(0)
@@ -1477,7 +1478,7 @@ class MyApp(ctk.CTk):
             self.after(1000)
             # Dumpsys (in Backup)
             self.text.configure(text="Adding Dumpsys logs to the backup.")
-            self.prfs_zip_dumpsys = threading.Thread(target=lambda: self.zip_prfs_extra(zip_path, "dumpsys.txt", f"dumpsys_{snr}.txt", self.change))
+            self.prfs_zip_dumpsys = threading.Thread(target=lambda: self.zip_prfs_extra(zip_path, F"dumpsys_{d_date}.txt", f"dumpsys_{snr}.txt", self.change))
             self.prfs_zip_dumpsys.start()
             self.wait_variable(self.change)
             self.change.set(0)
