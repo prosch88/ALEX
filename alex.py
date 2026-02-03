@@ -2967,8 +2967,6 @@ def live_logcat(change, progtext):
     log("Captured Live-Logcat")
     change.set(1)
 
-
-
 def dump_dumpsys(change):
     sysdump = device.shell("dumpsys", stream=True)
     buffer = b""
@@ -2979,9 +2977,12 @@ def dump_dumpsys(change):
                 break
             buffer += chunk
             while b"\n" in buffer:
-                    line, buffer = buffer.split(b"\n", 1)
-                    dumpsfile.write(line.decode("utf-8", errors="surrogateescape") + "\n")
-                    dumpsfile.flush()
+                line, buffer = buffer.split(b"\n", 1)
+                line_str = line.decode("latin1")
+                outline = line_str.encode("latin1").decode("utf-8", errors="surrogateescape")
+                outline = ''.join(c if c.isprintable() else ' ' for c in outline) + "\n"
+                dumpsfile.write(outline)
+                dumpsfile.flush()
     log("Extracted Dumpsys")
     change.set(1)
 
@@ -4206,6 +4207,23 @@ case_name = ""
 evidence_number = ""
 examiner = ""
 device_info = ""
+
+# Problematic Characters for logs
+undict ={'â€¦': '…',"â€ž":"„" ,'â€“': '–', 'â€™': '’', "â€\x9d":"”",
+         "â€š":"„","â€°":"‰",
+         'â€œ': '“', "â€”":'—', "Â\xad":" ",'Ã©':"é",'â‚¬':'€',
+         "â€˜":"‘",'Â£':"£","Ã¢":"â","Â©":"©",'Ã£':"ã","Ãº":'ú',
+         'Ã¤':'ä',"â€¢":"•",'Ã¡':'á','Ã¼':'ü',"Â¢":'¢',"Ã±":"ñ",
+         'Â½':'Ž','Ã‰':'É','Â¥':'¥','Ã§':'ç','Ã´':'´','Â®':'®',
+         'Â¦':'¦',"Ã¯":"ï",'Ã¶':'ö','Â´':"´","Ëœ":"˜",'Â»':'»',
+         'Ã«':"ë","Ã‡":"Ç","Ã³":"ó","Ãµ":"õ","Ã®":"î","Â¾":'¾',
+         "Â¼":"¼","Â°":"°","Ã–":"Ö","Ã¥":'å',"Ã¨":"è","Â¯":"¯",
+         "Â¬":"¬","Ã„":"Ä","Â§":"§","Ãœ":"Ì","Â¤":"¤","Â·":'·',
+         "Â±":"±","Ã²":"ò","Ãƒ":"Ã","ÃŸ":"ß","Ã’":"Ò",'â': '—',
+         "Â¡":"¡","Ãª":"ê","Â«":"«",'â': '\u2009', 'â': '–',
+         "Ã\x8d":"Í","Ã\x81":'Á',"Ã\xad":"í","Ã¦":"æ","Â¿":"¿","Ã¸":"ø",
+         "Ã®":"î","Ã½":"ý","Ã»":"û","Ã¹":"ù","Å½":"Ž","Â¨":"¨","Âµ":"µ",
+         "Â²":"²","Â³":"³","Ã¨":"è","Â¹":"¹","â„¢":"™","Ã¤":"ä","Ã“":"Ó"}
 
 
 
