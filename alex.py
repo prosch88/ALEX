@@ -1343,10 +1343,10 @@ class MyApp(ctk.CTk):
         if incl_logs == "on":
             self.prog_text = ctk.CTkLabel(self.dynamic_frame, text=" ", width=585, height=20, font=self.stfont, anchor="w", justify="left")
             self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
+            self.prog_text.pack()
             self.progress.pack()
             self.progress.start()
-            self.prog_text.pack()
-            self.change.set(0)
+            self.prog_text.pack()            self.change.set(0)
             # Logcat
             self.text.configure(text="Dumping Logcat Logs.")
             self.prfs_logcat = threading.Thread(target=lambda: dump_logcat(self.change))
