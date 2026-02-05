@@ -1346,7 +1346,8 @@ class MyApp(ctk.CTk):
             self.prog_text.pack()
             self.progress.pack()
             self.progress.start()
-            self.prog_text.pack()            self.change.set(0)
+            self.prog_text.pack()            
+            self.change.set(0)
             # Logcat
             self.text.configure(text="Dumping Logcat Logs.")
             self.prfs_logcat = threading.Thread(target=lambda: dump_logcat(self.change))
