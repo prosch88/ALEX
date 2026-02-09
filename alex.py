@@ -2442,7 +2442,6 @@ def to_mb(text: str) -> float:
         return val
 
 def get_client(host=default_host, port=default_port, check=False):
-
     def smart_title(s: str) -> str:
         def transform_word(word: str) -> str:
             if re.search(r"[A-Za-z]", word) and re.search(r"\d", word):
@@ -2460,6 +2459,7 @@ def get_client(host=default_host, port=default_port, check=False):
             return word.title()
         return " ".join(transform_word(w) for w in s.split())
 
+    no_getprop = "getprop: not found"
     global adb
     global snr_id
     global snr
@@ -2530,23 +2530,29 @@ def get_client(host=default_host, port=default_port, check=False):
             has_exec_out = supports_exec_out()
             dev_state = "authorized ✔"
             snr = getprop(device, "ro.serialno")
+            snr = "generic" if no_getprop in snr else snr
             global brand
             global model
             brand = getprop(device, "ro.product.brand").capitalize()
             model = getprop(device, "ro.product.model").capitalize()
             global full_name   
             full_name = smart_title(f"{brand} {model}" if brand not in model else model)
+            full_name = "-" if no_getprop in brand else full_name
             global product 
             product = getprop(device, "ro.product.name").capitalize()
             global d_platform 
             d_platform = getprop(device, "ro.board.platform").upper()
             global software
             software = getprop(device, "ro.build.version.release")
-            major_ver = int(software.split(".")[0])
+            try:
+                major_ver = int(software.split(".")[0])
+            except:
+                major_ver = 4
             global sdk
             sdk = getprop(device, "ro.build.version.sdk")
             global build
             build = getprop(device, "ro.build.display.id").split(" ")[0]
+            build = "-" if "bin/sh" in build else build
             global spl
             spl = getprop(device, "ro.build.version.security_patch")
             global abi
@@ -2574,17 +2580,24 @@ def get_client(host=default_host, port=default_port, check=False):
             if imei == "-":
                 imei = getprop(device, 'ril.imei').replace("'","")
             if imei == "-":
-                dump_imei = device.shell("dumpsys iphonesubinfo")
-                match = re.search(r"Device ID\s*=\s*(\d+)", dump_imei)
-                if match:
-                    imei = match.group(1)
-                else:
+                try:
+                    dump_imei = device.shell("dumpsys iphonesubinfo")
+                    match = re.search(r"Device ID\s*=\s*(\d+)", dump_imei)
+                    if match:
+                        imei = match.group(1)
+                    else:
+                        imei = "-"
+                except:
                     imei = "-"
             if imei == "-":
                 if major_ver < 5:
                     pass
                 else:
-                    imei = device.shell("service call iphonesubinfo 1 s16 com.android.shell | cut -c 50-66 | tr -d '.[:space:]'").replace("'","")
+
+                    try:
+                        imei = device.shell("service call iphonesubinfo 1 s16 com.android.shell | cut -c 50-66 | tr -d '.[:space:]'").replace("'","")
+                    except:
+                        imei = "-"
             if "not found" in imei or "service" in imei or "000000" in imei or imei == "":
                 imei = "-"
             global b_mac
@@ -2618,8 +2631,12 @@ def get_client(host=default_host, port=default_port, check=False):
                     if "00:00:00" in w_mac:
                         w_mac = "-"
                     if w_mac == "-":
-                        w_mac = device.shell("ip addr show wlan0 | grep 'link/ether' | awk '{print $2}'").upper()
-                    if "NOT FOUND" in w_mac:
+                        try:
+                            w_mac = device.shell("ip addr show wlan0 | grep 'link/ether' | awk '{print $2}'").upper()
+                            print(w_mac)
+                        except:
+                            w_mac = "-"
+                    if "NOT FOUND" in w_mac or "PERMISSION DENIED" in w_mac or "UNKNOWN" in w_mac or "DOES NOT EXIST" in w_mac:
                         w_mac = "-"
             global d_name
             d_name = device.shell("settings get global device_name")
@@ -2679,6 +2696,9 @@ def get_client(host=default_host, port=default_port, check=False):
                     free = f"{add_space(avail)}B"
                 except:
                     data_s, used_s, free, use_percent = "-", "-", "-", "-"
+                if isinstance(use_percent, int) or use_percent.isdigit():
+                    if int(use_percent) > 100:
+                        old_dev = True
                 if old_dev == False:
                     try: graph_progress = "" + "▓" * int(26/100*int(use_percent.rstrip("%"))) + "░" * int(26/100*(100-int(use_percent.rstrip("%")))) + ""
                     except: graph_progress = "-"
@@ -2786,6 +2806,11 @@ def get_client(host=default_host, port=default_port, check=False):
                 build_s = build
             global recovery
             global rec_root
+            dev_values = [product, d_platform.lower(), software, build_s, spl, locale, imei, ad_id, crypt_on, crypt_type]
+            product, d_platform, software, build_s, spl, locale, imei, ad_id, crypt_on, crypt_type = [
+                "-" if no_getprop in value else value
+                for value in dev_values
+            ]
             recovery = False
             rec_root = False
             if state == "recovery":
@@ -4004,6 +4029,7 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
         s = 0
         global data_size
         global total_size
+
         items = list(self.iter_directory(src))
 
         items = list(filter(
@@ -4078,14 +4104,20 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
                 print(f"Error zipping {new_dst}: {e}")
 
             s += size
-            data_size += size   
-            if data_size > total_size:
-                data_size = total_size      
-            perc = (100 / total_size) * data_size
-            prog_text.configure(text=f"{round(perc)}%")  
-            progress.set(perc/100)
-            prog_text.update()
-            progress.update()
+            data_size += size
+            if total_size == 1:
+                progress.set((data_size % 100) / 100)
+                prog_text.configure(text=f"{data_size/1024/1024:.1f} MB written")
+                prog_text.update()
+                progress.update()
+            else:
+                if data_size > total_size:
+                    data_size = total_size      
+                perc = (100 / total_size) * data_size
+                prog_text.configure(text=f"{round(perc)}%")  
+                progress.set(perc/100)
+                prog_text.update()
+                progress.update()
 
         return s
 
