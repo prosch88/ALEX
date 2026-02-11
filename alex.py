@@ -2634,7 +2634,6 @@ def get_client(host=default_host, port=default_port, check=False):
                     if w_mac == "-":
                         try:
                             w_mac = device.shell("ip addr show wlan0 | grep 'link/ether' | awk '{print $2}'").upper()
-                            print(w_mac)
                         except:
                             w_mac = "-"
                     if "NOT FOUND" in w_mac or "PERMISSION DENIED" in w_mac or "UNKNOWN" in w_mac or "DOES NOT EXIST" in w_mac:
