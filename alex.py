@@ -317,8 +317,9 @@ class MyApp(ctk.CTk):
 
         try:
             get_client()
-        except:
+        except Exception as e:
             start_error = True
+            print(e)
 
         if start_error == True:
             self.text.configure(text="An error occured!\n\n" +
@@ -2696,9 +2697,12 @@ def get_client(host=default_host, port=default_port, check=False):
                     free = f"{add_space(avail)}B"
                 except:
                     data_s, used_s, free, use_percent = "-", "-", "-", "-"
-                if isinstance(use_percent, int) or use_percent.isdigit():
-                    if int(use_percent) > 100:
-                        old_dev = True
+                try:
+                    if isinstance(use_percent, int) or use_percent.isdigit():
+                        if int(use_percent) > 100:
+                            old_dev = True
+                except:
+                    pass
                 if old_dev == False:
                     try: graph_progress = "" + "▓" * int(26/100*int(use_percent.rstrip("%"))) + "░" * int(26/100*(100-int(use_percent.rstrip("%")))) + ""
                     except: graph_progress = "-"
@@ -2743,22 +2747,25 @@ def get_client(host=default_host, port=default_port, check=False):
             if major_ver < 5:
                 pass
             else:
-                for i in range(8,16):
-                    val = device.shell(f"service call iphonesubinfo {i} s16 com.android.shell | cut -c 50-66 | tr -d '.[:space:]'").replace("'","")
-                    if re.fullmatch(r'\+?[0-9]+', val):
-                        if phone_number == "-" and val.startswith("+"):
-                            phone_number = val
-                        elif iccid == "-" and val.startswith("89") and len(val) > 17:
-                            iccid = val
-                        elif imsi == "-" and len(val) in range(13,16):
-                            imsi = val
-                        elif phone_number == "-" and len(val) in range(3,13):
-                            phone_number = val
-                        else:
-                            pass
-                sim_op = getprop(device, "gsm.sim.operator.alpha")
-                if 2 > len(sim_op) or len(sim_op) > 30:
-                    sim_op = "-"
+                try:
+                    for i in range(8,16):
+                        val = device.shell(f"service call iphonesubinfo {i} s16 com.android.shell | cut -c 50-66 | tr -d '.[:space:]'").replace("'","")
+                        if re.fullmatch(r'\+?[0-9]+', val):
+                            if phone_number == "-" and val.startswith("+"):
+                                phone_number = val
+                            elif iccid == "-" and val.startswith("89") and len(val) > 17:
+                                iccid = val
+                            elif imsi == "-" and len(val) in range(13,16):
+                                imsi = val
+                            elif phone_number == "-" and len(val) in range(3,13):
+                                phone_number = val
+                            else:
+                                pass
+                    sim_op = getprop(device, "gsm.sim.operator.alpha")
+                    if 2 > len(sim_op) or len(sim_op) > 30:
+                        sim_op = "-"
+                except:
+                    pass
 
             global apps
             global all_apps
