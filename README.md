@@ -36,7 +36,7 @@ sudo pacman -S tk, android-tools
 ```
 Debian / Ubuntu:
 ```
-sudo apt-get install python3-tk libasound2-dev, adb
+sudo apt-get install python3-tk libasound2-dev adb
 ```
 CentOS / Red Hat:
 ```
