@@ -3324,7 +3324,7 @@ def find_agent(change, text, app_text):
     if agent_list != []:
         outtext = ""
         for agent in agent_list:
-            outtext += f"Agent:      {agent_name}\nPackage:    {agent_bundle}\nInstalled:  {agent_install}\n\n"
+            outtext += f"Agent:      {agent[0]}\nPackage:    {agent[1]}\nInstalled:  {agent[2]}\n\n"
         text.configure(text="Agent-App(s) found:")
         app_text.insert("0.0", outtext)
         app_text.configure(state="disabled")
