@@ -136,7 +136,7 @@ def su_root_ffs(outzip=None, filetext=None, prog_text=None, log=None, change=Non
         cmd = ["adb", out_cmd, "/data/local/tmp/mtk-su", "-c", f"{remote_script_path}"]
     else:
         cmd = ["adb", out_cmd, f"sh {remote_script_path}"]
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL, bufsize=0)
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, bufsize=0)
 
     zf = zipfile.ZipFile(outzip, "w", allowZip64=True)
     seen_inodes = set()
