@@ -3872,7 +3872,10 @@ def recreate_dbs(change, text, zip_path=None):
                     gids += [g.strip() for g in match.split(',') if g.strip()]
                 app_gids = sorted(set(gids), key=int) if gids else None
                 gid_str = ",".join(gids) if gids else "none"
-                pl.write(f"{app} {app_uid.group(1) if app_uid else 0} 0 {app_dir.group(1) if app_dir else 'none'} {pack_class}:targetSdkVersion={app_tar.group(1) if pack_class else 0} {gid_str} 0 {baseapk_value}\n")
+                try:
+                    pl.write(f"{app} {app_uid.group(1) if app_uid else 0} 0 {app_dir.group(1) if app_dir else 'none'} {pack_class}:targetSdkVersion={app_tar.group(1) if pack_class else 0} {gid_str} 0 {baseapk_value}\n")
+                except AttributeError:
+                    pass
         log("Recreated packages.list")
     else:
         log("packages.list already in Backup - skipped")
