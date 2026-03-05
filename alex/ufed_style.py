@@ -192,25 +192,37 @@ def ufd_report_xml(contact_dict, call_dict, calendar_dict, sms_dict, mms_dict, m
         cs_time = entry.get("dtstart")
         ce_time = entry.get("dtend")
         if cs_time:
-            try:
-                cal_start = datetime.fromtimestamp(int(cs_time) / 1000, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
-            except:
-                cal_start = ""
+            if int(cs_time) > 0:
+                try:
+                    ts = int(cs_time)
+                    if ts > 10_000_000_000:
+                        ts = ts / 1000
+                    cal_start = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+                except:
+                    cal_start = ""
         else:
             cal_start = ""
         if ce_time:
-            try:
-                cal_end = datetime.fromtimestamp(int(ce_time) / 1000, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
-            except:
-                cal_end = ""
+            if int(ce_time) > 0:
+                try:
+                    ts = int(ce_time)
+                    if ts > 10_000_000_000:
+                        ts = ts / 1000
+                    cal_end = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+                except:
+                    cal_end = ""
         else:
             cal_end = ""
         cal_alarm = entry.get("hasAlarm")
         if cal_alarm == 1:
-            try:
-                al_time = datetime.fromtimestamp((int(cs_time) / 1000) - 60, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
-            except:
-                al_time = ""
+            if int(cs_time) > 0:
+                try:
+                    ts = int(cs_time)
+                    if ts > 10_000_000_000:
+                        ts = ts / 1000
+                    al_time = datetime.fromtimestamp(ts - 60, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+                except:
+                    al_time = ""
         else:
             al_time = ""
 
