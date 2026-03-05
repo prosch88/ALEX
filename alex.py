@@ -3543,6 +3543,9 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                 amiroot = device.shell("whoami 2>/dev/null")
         if recovery == True:
             print("recovery")
+            prog_text.pack()
+            progress.pack()
+            current = 0
             out_file = f"{snr}_{target}.bin"
             device_path = f"/dev/{block + target}"
             proc = subprocess.Popen(
