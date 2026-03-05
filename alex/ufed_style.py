@@ -5,7 +5,7 @@ import json
 import secrets
 import hashlib
 import html
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 
 def add_separator_centered(parent, title: str, width: int = 30):
     parent.append(ET.Comment("=" * width))
@@ -192,28 +192,25 @@ def ufd_report_xml(contact_dict, call_dict, calendar_dict, sms_dict, mms_dict, m
         cs_time = entry.get("dtstart")
         ce_time = entry.get("dtend")
         if cs_time:
-            ts = int(cs_time) / 1000
-            cal_start = (
-                datetime(1970, 1, 1, tzinfo=timezone.utc) +
-                timedelta(seconds=ts)
-            ).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+            try:
+                cal_start = datetime.fromtimestamp(int(cs_time) / 1000, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+            except:
+                cal_start = ""
         else:
             cal_start = ""
         if ce_time:
-            ts = int(ce_time) / 1000
-            cal_end = (
-                datetime(1970, 1, 1, tzinfo=timezone.utc) +
-                timedelta(seconds=ts)
-            ).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+            try:
+                cal_end = datetime.fromtimestamp(int(ce_time) / 1000, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+            except:
+                cal_end = ""
         else:
             cal_end = ""
         cal_alarm = entry.get("hasAlarm")
         if cal_alarm == 1:
-            ts = int(al_time) / 1000
-            al_time = (
-                datetime(1970, 1, 1, tzinfo=timezone.utc) +
-                timedelta(seconds=ts)
-            ).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+            try:
+                al_time = datetime.fromtimestamp((int(cs_time) / 1000) - 60, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+            except:
+                al_time = ""
         else:
             al_time = ""
 
