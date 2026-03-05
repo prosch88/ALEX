@@ -5,7 +5,7 @@ import json
 import secrets
 import hashlib
 import html
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 def add_separator_centered(parent, title: str, width: int = 30):
     parent.append(ET.Comment("=" * width))
