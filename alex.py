@@ -3542,7 +3542,6 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             else:
                 amiroot = device.shell("whoami 2>/dev/null")
         if recovery == True:
-            print("recovery")
             prog_text.pack()
             progress.pack()
             current = 0
@@ -3570,7 +3569,6 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             text.configure(text="Physical Backup complete!")
 
         elif amiroot == "root":
-            print("not recovery")
             prog_text.pack()
             progress.pack()
             current = 0
