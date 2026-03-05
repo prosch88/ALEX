@@ -3541,13 +3541,36 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                 amiroot = "root"
             else:
                 amiroot = device.shell("whoami 2>/dev/null")
-        if amiroot == "root":
+        if recovery == True:
+            print("recovery")
+            device_path = f"/dev/{block + target}"
+            proc = subprocess.Popen(
+                ["adb", "pull", device_path, out_file],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+            while proc.poll() is None:
+                if os.path.exists(out_file):
+                    current = os.path.getsize(out_file)
+
+                    perc = (100 / size) * current
+                    prog_text.configure(text=f"{round(perc)}%")
+                    progress.set(perc/100)
+                    prog_text.update()
+                    progress.update()
+
+                text.configure(text="Physical Backup is running.\nThis may take some time.")
+                time.sleep(0.3)
+            prog_text.pack_forget()
+            progress.pack_forget()
+            text.configure(text="Physical Backup complete!")
+
+        elif amiroot == "root":
+            print("not recovery")
             prog_text.pack()
             progress.pack()
             current = 0
             out_file = f"{snr}_{target}.bin"
-            #if recovery == True:
-            #    target = f"block/{target}"
             with open(out_file, "wb") as f:
                 if ut == True:
                     proc = subprocess.Popen(["adb", "exec-out", f"echo {sh_pwd}| sudo -S cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
