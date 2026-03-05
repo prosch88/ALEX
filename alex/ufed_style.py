@@ -191,28 +191,27 @@ def ufd_report_xml(contact_dict, call_dict, calendar_dict, sms_dict, mms_dict, m
         cal_des = entry.get("description")
         cs_time = entry.get("dtstart")
         ce_time = entry.get("dtend")
+        cal_start = ""
         if cs_time:
             if int(cs_time) > 0:
                 try:
                     ts = int(cs_time)
                     if ts > 10_000_000_000:
                         ts = ts / 1000
-                    cal_start = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+                        cal_start = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
                 except:
                     cal_start = ""
-        else:
-            cal_start = ""
+        cal_end = ""
         if ce_time:
             if int(ce_time) > 0:
                 try:
                     ts = int(ce_time)
                     if ts > 10_000_000_000:
                         ts = ts / 1000
-                    cal_end = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+                        cal_end = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
                 except:
                     cal_end = ""
-        else:
-            cal_end = ""
+        al_time = ""
         cal_alarm = entry.get("hasAlarm")
         if cal_alarm == 1:
             if int(cs_time) > 0:
@@ -220,11 +219,9 @@ def ufd_report_xml(contact_dict, call_dict, calendar_dict, sms_dict, mms_dict, m
                     ts = int(cs_time)
                     if ts > 10_000_000_000:
                         ts = ts / 1000
-                    al_time = datetime.fromtimestamp(ts - 60, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+                        al_time = datetime.fromtimestamp(ts - 60, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
                 except:
                     al_time = ""
-        else:
-            al_time = ""
 
         calendar_entry = ET.SubElement(calendar_el, "entry")
         ET.SubElement(calendar_entry, "id").text = str(cal_id)
