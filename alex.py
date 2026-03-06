@@ -1156,7 +1156,7 @@ class MyApp(ctk.CTk):
         self.wait_variable(self.change)
         folder = f'Data_{snr}_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}'
         zip_path = f"{folder}.zip"
-        zip = zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=1)
+        zip = zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED, compresslevel=1)
         try: os.mkdir(folder)
         except: pass
         self.change.set(0)
@@ -1233,7 +1233,7 @@ class MyApp(ctk.CTk):
             return
         fname = f'{brand}_{model}'
         zip_path = f"{fname}.zip"
-        zip = zipfile.ZipFile(os.path.join(ufed_folder, zip_path), "w", compression=zipfile.ZIP_DEFLATED, compresslevel=1)
+        zip = zipfile.ZipFile(os.path.join(ufed_folder, zip_path), "w", compression=zipfile.ZIP_STORED, compresslevel=1)
         self.incl_shared = ctk.StringVar(value="off")
         self.incl_apps = ctk.StringVar(value="on")
         self.incl_system = ctk.StringVar(value="on")
@@ -1371,7 +1371,7 @@ class MyApp(ctk.CTk):
             self.wait_variable(self.change)
         folder = f'{snr}_prfs_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}'
         zip_path = f"{folder}.zip"
-        zip = zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=1)
+        zip = zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED, compresslevel=1)
         
         try: os.mkdir(folder)
         except: pass
@@ -3638,7 +3638,7 @@ def insert_data(cur, table_name, schema_defaults, data_rows):
 #Recreate Device Databases
 def recreate_dbs(change, text, zip_path=None):
     try:
-        with zipfile.ZipFile(zip_path, "a", compression=zipfile.ZIP_DEFLATED) as zf:
+        with zipfile.ZipFile(zip_path, "a", compression=zipfile.ZIP_STORED) as zf:
             existing_files = set(zf.namelist()) 
     except:
         existing_files = []
