@@ -1587,7 +1587,7 @@ class MyApp(ctk.CTk):
         #print(bu_options)
         try:
             with open(bu_file, "wb") as f:
-                proc = subprocess.Popen(["adb", "exec-out", f"bu backup{bu_options}"], stdout=subprocess.PIPE)
+                proc = Popen(["adb", "exec-out", f"bu backup{bu_options}"], stdout=subprocess.PIPE)
                 stdout=subprocess.PIPE
                 #stream = proc.stdout
                 #stream = device.shell(f"bu backup{bu_options}", stream=True)
@@ -2427,7 +2427,7 @@ def ensure_adb_server(timeout=10):
     if not adb_path:
         raise RuntimeError("adb not found.")
 
-    subprocess.Popen([adb_path, "start-server"],
+    Popen([adb_path, "start-server"],
                      stdout=subprocess.DEVNULL,
                      stderr=subprocess.DEVNULL)
     
@@ -3374,16 +3374,16 @@ def tar_root_ffs(outtar, prog_text, change):
         localtar = True
     if localtar == False:
         remote_path = "/data/local/tmp/tar"
-        subprocess.run(["adb", "push", tar_bin, remote_path], check=True)
+        run(["adb", "push", tar_bin, remote_path], check=True)
         log("Pushed tar binary to /data/local/tmp")
         if device_has_su():
             if c_su:
-                subprocess.run(["adb", "shell", "su", "-c", f"chmod 755 {remote_path}"], check=True)
+                run(["adb", "shell", "su", "-c", f"chmod 755 {remote_path}"], check=True)
             else:
-                subprocess.run(["adb", "shell", f"echo 'chmod 755 {remote_path}' | su"],
+                run(["adb", "shell", f"echo 'chmod 755 {remote_path}' | su"],
                               check=True, stdin=subprocess.DEVNULL)
         else:
-            subprocess.run(["adb", "shell", f"chmod 755 {remote_path}"], check=True)
+            run(["adb", "shell", f"chmod 755 {remote_path}"], check=True)
         tar_remote = remote_path
     else:
         tar_remote = "tar"
@@ -3414,7 +3414,7 @@ def tar_root_ffs(outtar, prog_text, change):
         ]
 
     with open(outtar, "wb") as f:
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL, bufsize=0)
+        proc = Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL, bufsize=0)
         total_bytes = 0
         try:
             while True:
@@ -3453,7 +3453,7 @@ def tar_root_ffs(outtar, prog_text, change):
             ]
 
         with open(outtar, "wb") as f:
-            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL, bufsize=0)
+            proc = Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL, bufsize=0)
             total_bytes = 0
             try:
                 while True:
@@ -3562,7 +3562,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             current = 0
             out_file = f"{snr}_{target}.bin"
             device_path = f"/dev/{block + target}"
-            proc = subprocess.Popen(
+            proc = Popen(
                 ["adb", "pull", device_path, out_file],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL
@@ -3590,21 +3590,21 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             out_file = f"{snr}_{target}.bin"
             with open(out_file, "wb") as f:
                 if ut == True:
-                    proc = subprocess.Popen(["adb", "exec-out", f"echo {sh_pwd}| sudo -S cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
+                    proc = Popen(["adb", "exec-out", f"echo {sh_pwd}| sudo -S cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
                     stream = proc.stdout
                 else:
                     if show_root == True:
                         if device_has_su():
                             if c_su:
-                                proc = subprocess.Popen(["adb", out_cmd, f"su -c 'cat /dev/{block + target} 2>/dev/null'"], stdout=subprocess.PIPE)
+                                proc = Popen(["adb", out_cmd, f"su -c 'cat /dev/{block + target} 2>/dev/null'"], stdout=subprocess.PIPE)
                             else:
-                                proc = subprocess.Popen(["adb", out_cmd, f"echo 'cat /dev/{block + target} 2>/dev/null' | su"], stdout=subprocess.PIPE)
+                                proc = Popen(["adb", out_cmd, f"echo 'cat /dev/{block + target} 2>/dev/null' | su"], stdout=subprocess.PIPE)
                         elif mtk_su == True:
-                            proc = subprocess.Popen(["adb", "exec-out", f"/data/local/tmp/mtk-su -c cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
+                            proc = Popen(["adb", "exec-out", f"/data/local/tmp/mtk-su -c cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
                         else:
-                            proc = subprocess.Popen(["adb", "exec-out", f"cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
+                            proc = Popen(["adb", "exec-out", f"cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
                     else:
-                        proc = subprocess.Popen(["adb", out_cmd, f"cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
+                        proc = Popen(["adb", out_cmd, f"cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
                     stream = proc.stdout
                 while True:
                     chunk = stream.read(65536)
@@ -4193,7 +4193,7 @@ def has_root(change, timeout=30):
 
 def device_has_su() -> bool:
     try:
-        result = subprocess.run(
+        result = run(
             ["adb", "shell", "which", "su"],
             capture_output=True, text=True
         )
@@ -4204,7 +4204,7 @@ def device_has_su() -> bool:
 def supports_exec_out() -> bool:
     cmd = ["adb", "exec-out", "echo", "OK"]
 
-    proc = subprocess.run(
+    proc = run(
         cmd,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -4224,11 +4224,11 @@ def temp_mtk_su(change, timeout=30):
         mtk_su_bin = os.path.join(os.path.dirname(__file__), "ressources" , "cve", "2020-0069", "arm64", "mtk-su")
     remote_path = "/data/local/tmp/mtk-su"
     try:
-        subprocess.run(["adb", "push", mtk_su_bin, remote_path], check=True)
+        run(["adb", "push", mtk_su_bin, remote_path], check=True)
         log("Pushed mtk-su binary to /data/local/tmp")
     except:
         pass
-    subprocess.run(["adb", "shell", f"chmod 755 {remote_path}"], check=True)
+    run(["adb", "shell", f"chmod 755 {remote_path}"], check=True)
     try:
         result_holder["value"] = device.shell(f"{remote_path} -c whoami").strip() == "root"
     except Exception:
@@ -4245,6 +4245,19 @@ def log(text):
     with open(f"ALEX_log_{snr}.log", 'a', encoding="utf-8") as logfile:
         logtime = str(datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
         logfile.write(f"{logtime}: {text}\n")
+
+#subprocess helper
+def run(cmd, **kwargs):
+    if sys.platform == "win32":
+        kwargs.setdefault("creationflags", subprocess.CREATE_NO_WINDOW)
+
+    return subprocess.run(cmd, **kwargs)
+
+def Popen(cmd, **kwargs):
+    if sys.platform == "win32":
+        kwargs.setdefault("creationflags", subprocess.CREATE_NO_WINDOW)
+
+    return subprocess.Popen(cmd, **kwargs)
 
 device = None
 zytotal =0
