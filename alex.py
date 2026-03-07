@@ -213,6 +213,21 @@ class MyApp(ctk.CTk):
             self.menu_textbox[i].configure(text=self.menu_text[i])
             r+=1
             i+=1
+    
+    # Print out exception
+    def global_exception_handler(self, type, value, tb):
+        try:
+            if self.text.winfo_ismapped():
+                self.text.configure(text=f"Uh-Oh, An error was raised! Check the file:\nufade_log_{udid}.log")
+            else:
+                self.text = ctk.CTkLabel(self.dynamic_frame, width=400, height=180, font=self.stfont, anchor="w", justify="left")
+                self.text.configure(text=f"Error: {value}")
+                self.text.pack(pady=50)
+        except:
+            self.text = ctk.CTkLabel(self.dynamic_frame, width=400, height=180, font=self.stfont, anchor="w", justify="left")
+            self.text.configure(text=f"Error: {value}")
+            self.text.pack(pady=50)
+        log(f"Error: {value}")
 
     def switch_menu(self, menu_name, **kwargs):
         # Erase content of dynamic frame
