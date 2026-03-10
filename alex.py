@@ -2112,7 +2112,8 @@ class MyApp(ctk.CTk):
                     i+=1
                     progr = 100/len(apps)*i
                     app_name = d_app[0][:40]
-                    app_version = device.app_info(d_app[0]).version_name[:28]
+                    try: app_version = device.app_info(d_app[0]).version_name[:28]
+                    except: app_version = ""
                     app_installer = "packageinstaller" if "packageinstaller" in d_app[1] else d_app[1][:25]
                     apps_info.append([app_name, app_version, app_installer])
                     self.prog_text.configure(text=f"{int(100/len(apps)*i)}%")
