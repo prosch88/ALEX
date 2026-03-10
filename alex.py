@@ -4076,7 +4076,7 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
             os.makedirs(new_dst, exist_ok=exist_ok)
             if mode == "ufed":
                 zip_dir_path = f'backup/{rootf.strip("/")}/{rel_in_zip}/{dir.path}/'.replace("//", "/")
-            if mode == "prfs":
+            elif mode == "prfs":
                 zip_dir_path = f'dump/{rootf.strip("/")}/{rel_in_zip}/{dir.path}/'.replace("//", "/")
             else:
                 zip_dir_path = f'{rootf.strip("/")}/{rel_in_zip}/{dir.path}/'.replace("//", "/")
