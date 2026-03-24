@@ -174,7 +174,7 @@ class MyApp(ctk.CTk):
             if rec_root == False:
                 self.menu_buttons = [
                 ctk.CTkButton(self.dynamic_frame, text="Reporting Options", command=lambda: self.switch_menu("ReportMenu"), width=200, height=70, font=self.stfont),
-                ctk.CTkButton(self.dynamic_frame, text="Acquisition Options", command=lambda: self.switch_menu("AcqMenu"), width=200, height=70, font=self.stfont, state ="disabled"),
+                ctk.CTkButton(self.dynamic_frame, text="Acquisition Options", command=lambda: self.switch_menu("AcqMenu"), width=200, height=70, font=self.stfont),
                 ctk.CTkButton(self.dynamic_frame, text="Logging Options", command=lambda: self.switch_menu("LogMenu"), width=200, height=70, font=self.stfont, state="disabled"),
                 ctk.CTkButton(self.dynamic_frame, text="Advanced Options", command=lambda: self.switch_menu("AdvMenu"), width=200, height=70, font=self.stfont, state="disabled"),
                 ctk.CTkButton(self.dynamic_frame, text="Exploit Options", command=lambda: self.switch_menu("Exploits"), width=200, height=70, font=self.stfont, state="disabled"),
@@ -2824,6 +2824,8 @@ def get_client(host=default_host, port=default_port, check=False):
             if state == "recovery":
                 recovery = True
                 if device.shell("whoami") == "root":
+                    rec_root = True
+                elif "root" in device.shell("id"):
                     rec_root = True
                 device_info = ("Device is in recovery mode" + "\n\n" +
                     '{:13}'.format("Model: ") + "\t" + fname_s +
