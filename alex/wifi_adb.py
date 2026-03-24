@@ -31,6 +31,19 @@ TCPIP_PORT = 5555
 device_ports = []
 ADDRESS = None
 
+#subprocess helper
+def run(cmd, **kwargs):
+    if sys.platform == "win32":
+        kwargs.setdefault("creationflags", subprocess.CREATE_NO_WINDOW)
+
+    return subprocess.run(cmd, **kwargs)
+
+def Popen(cmd, **kwargs):
+    if sys.platform == "win32":
+        kwargs.setdefault("creationflags", subprocess.CREATE_NO_WINDOW)
+
+    return subprocess.Popen(cmd, **kwargs)
+
 def generate_code(name: str, password: str):
     return f"WIFI:T:ADB;S:{name};P:{password};;"
 
@@ -65,7 +78,7 @@ def pair_device(address: str, port: int, password: str):
     global paired
     #print("in pairing")
     args = [ADB_PATH, "pair", f"{address}:{port}", password]
-    out = subprocess.run(args, capture_output=True)
+    out = run(args, capture_output=True)
     if out.returncode != 0:
         return
     paired = True
@@ -74,7 +87,7 @@ def pair_device(address: str, port: int, password: str):
 def connect_device(address: str, port: int):
     global connected, paired, exit, ADDRESS
     args = [ADB_PATH, "connect", f"{address}:{port}"]
-    out = subprocess.run(args, capture_output=True)
+    out = run(args, capture_output=True)
     if out.returncode != 0:
         return
     if paired:
@@ -82,14 +95,14 @@ def connect_device(address: str, port: int):
         if ADDRESS != None:
             ADDRESS = None
             args = [ADB_PATH, "disconnect", f"{address}:{port}"]
-            out = subprocess.run(args, capture_output=True)
+            out = run(args, capture_output=True)
             time.sleep(2)
         else:
             zc.close()
             devices = adb_devices()
             if not devices:
-                subprocess.run([ADB_PATH, "kill-server"], capture_output=False)
-                subprocess.run([ADB_PATH, "start-server"], capture_output=False)
+                run([ADB_PATH, "kill-server"], capture_output=False)
+                run([ADB_PATH, "start-server"], capture_output=False)
             exit.set(1)
             return
         

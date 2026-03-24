@@ -6,19 +6,32 @@ import re
 import numpy as np
 from PIL import Image
 
+#subprocess helper
+def run(cmd, **kwargs):
+    if sys.platform == "win32":
+        kwargs.setdefault("creationflags", subprocess.CREATE_NO_WINDOW)
+
+    return subprocess.run(cmd, **kwargs)
+
+def Popen(cmd, **kwargs):
+    if sys.platform == "win32":
+        kwargs.setdefault("creationflags", subprocess.CREATE_NO_WINDOW)
+
+    return subprocess.Popen(cmd, **kwargs)
+
 def adb_shell(cmd):
-    result = subprocess.run(['adb', 'shell'] + cmd, capture_output=True, text=True)
+    result = run(['adb', 'shell'] + cmd, capture_output=True, text=True)
     return result.stdout.strip()
 
 def adb_shell_raw(cmd):
-    result = subprocess.run(
+    result = run(
         ['adb', 'shell'] + cmd,
         capture_output=True
     )
     return result.stdout
 
 def adb_exec_out(cmd):
-    result = subprocess.run(['adb', 'exec-out'] + cmd, capture_output=True)
+    result = run(['adb', 'exec-out'] + cmd, capture_output=True)
     return result.stdout
 
 def shot():

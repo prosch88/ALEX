@@ -213,6 +213,21 @@ class MyApp(ctk.CTk):
             self.menu_textbox[i].configure(text=self.menu_text[i])
             r+=1
             i+=1
+    
+    # Print out exception
+    def global_exception_handler(self, type, value, tb):
+        try:
+            if self.text.winfo_ismapped():
+                self.text.configure(text=f"Uh-Oh, An error was raised! Check the file:\nufade_log_{udid}.log")
+            else:
+                self.text = ctk.CTkLabel(self.dynamic_frame, width=400, height=180, font=self.stfont, anchor="w", justify="left")
+                self.text.configure(text=f"Error: {value}")
+                self.text.pack(pady=50)
+        except:
+            self.text = ctk.CTkLabel(self.dynamic_frame, width=400, height=180, font=self.stfont, anchor="w", justify="left")
+            self.text.configure(text=f"Error: {value}")
+            self.text.pack(pady=50)
+        log(f"Error: {value}")
 
     def switch_menu(self, menu_name, **kwargs):
         # Erase content of dynamic frame
@@ -1156,7 +1171,7 @@ class MyApp(ctk.CTk):
         self.wait_variable(self.change)
         folder = f'Data_{snr}_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}'
         zip_path = f"{folder}.zip"
-        zip = zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=1)
+        zip = zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED, compresslevel=1)
         try: os.mkdir(folder)
         except: pass
         self.change.set(0)
@@ -1233,7 +1248,7 @@ class MyApp(ctk.CTk):
             return
         fname = f'{brand}_{model}'
         zip_path = f"{fname}.zip"
-        zip = zipfile.ZipFile(os.path.join(ufed_folder, zip_path), "w", compression=zipfile.ZIP_DEFLATED, compresslevel=1)
+        zip = zipfile.ZipFile(os.path.join(ufed_folder, zip_path), "w", compression=zipfile.ZIP_STORED, compresslevel=1)
         self.incl_shared = ctk.StringVar(value="off")
         self.incl_apps = ctk.StringVar(value="on")
         self.incl_system = ctk.StringVar(value="on")
@@ -1371,7 +1386,7 @@ class MyApp(ctk.CTk):
             self.wait_variable(self.change)
         folder = f'{snr}_prfs_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}'
         zip_path = f"{folder}.zip"
-        zip = zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=1)
+        zip = zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED, compresslevel=1)
         
         try: os.mkdir(folder)
         except: pass
@@ -1572,7 +1587,7 @@ class MyApp(ctk.CTk):
         #print(bu_options)
         try:
             with open(bu_file, "wb") as f:
-                proc = subprocess.Popen(["adb", "exec-out", f"bu backup{bu_options}"], stdout=subprocess.PIPE)
+                proc = Popen(["adb", "exec-out", f"bu backup{bu_options}"], stdout=subprocess.PIPE)
                 stdout=subprocess.PIPE
                 #stream = proc.stdout
                 #stream = device.shell(f"bu backup{bu_options}", stream=True)
@@ -2097,7 +2112,8 @@ class MyApp(ctk.CTk):
                     i+=1
                     progr = 100/len(apps)*i
                     app_name = d_app[0][:40]
-                    app_version = device.app_info(d_app[0]).version_name[:28]
+                    try: app_version = device.app_info(d_app[0]).version_name[:28]
+                    except: app_version = ""
                     app_installer = "packageinstaller" if "packageinstaller" in d_app[1] else d_app[1][:25]
                     apps_info.append([app_name, app_version, app_installer])
                     self.prog_text.configure(text=f"{int(100/len(apps)*i)}%")
@@ -2412,7 +2428,7 @@ def ensure_adb_server(timeout=10):
     if not adb_path:
         raise RuntimeError("adb not found.")
 
-    subprocess.Popen([adb_path, "start-server"],
+    Popen([adb_path, "start-server"],
                      stdout=subprocess.DEVNULL,
                      stderr=subprocess.DEVNULL)
     
@@ -3361,16 +3377,16 @@ def tar_root_ffs(outtar, prog_text, change):
         localtar = True
     if localtar == False:
         remote_path = "/data/local/tmp/tar"
-        subprocess.run(["adb", "push", tar_bin, remote_path], check=True)
+        run(["adb", "push", tar_bin, remote_path], check=True)
         log("Pushed tar binary to /data/local/tmp")
         if device_has_su():
             if c_su:
-                subprocess.run(["adb", "shell", "su", "-c", f"chmod 755 {remote_path}"], check=True)
+                run(["adb", "shell", "su", "-c", f"chmod 755 {remote_path}"], check=True)
             else:
-                subprocess.run(["adb", "shell", f"echo 'chmod 755 {remote_path}' | su"],
+                run(["adb", "shell", f"echo 'chmod 755 {remote_path}' | su"],
                               check=True, stdin=subprocess.DEVNULL)
         else:
-            subprocess.run(["adb", "shell", f"chmod 755 {remote_path}"], check=True)
+            run(["adb", "shell", f"chmod 755 {remote_path}"], check=True)
         tar_remote = remote_path
     else:
         tar_remote = "tar"
@@ -3401,7 +3417,7 @@ def tar_root_ffs(outtar, prog_text, change):
         ]
 
     with open(outtar, "wb") as f:
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL, bufsize=0)
+        proc = Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL, bufsize=0)
         total_bytes = 0
         try:
             while True:
@@ -3440,7 +3456,7 @@ def tar_root_ffs(outtar, prog_text, change):
             ]
 
         with open(outtar, "wb") as f:
-            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL, bufsize=0)
+            proc = Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL, bufsize=0)
             total_bytes = 0
             try:
                 while True:
@@ -3549,7 +3565,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             current = 0
             out_file = f"{snr}_{target}.bin"
             device_path = f"/dev/{block + target}"
-            proc = subprocess.Popen(
+            proc = Popen(
                 ["adb", "pull", device_path, out_file],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL
@@ -3577,21 +3593,21 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             out_file = f"{snr}_{target}.bin"
             with open(out_file, "wb") as f:
                 if ut == True:
-                    proc = subprocess.Popen(["adb", "exec-out", f"echo {sh_pwd}| sudo -S cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
+                    proc = Popen(["adb", "exec-out", f"echo {sh_pwd}| sudo -S cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
                     stream = proc.stdout
                 else:
                     if show_root == True:
                         if device_has_su():
                             if c_su:
-                                proc = subprocess.Popen(["adb", out_cmd, f"su -c 'cat /dev/{block + target} 2>/dev/null'"], stdout=subprocess.PIPE)
+                                proc = Popen(["adb", out_cmd, f"su -c 'cat /dev/{block + target} 2>/dev/null'"], stdout=subprocess.PIPE)
                             else:
-                                proc = subprocess.Popen(["adb", out_cmd, f"echo 'cat /dev/{block + target} 2>/dev/null' | su"], stdout=subprocess.PIPE)
+                                proc = Popen(["adb", out_cmd, f"echo 'cat /dev/{block + target} 2>/dev/null' | su"], stdout=subprocess.PIPE)
                         elif mtk_su == True:
-                            proc = subprocess.Popen(["adb", "exec-out", f"/data/local/tmp/mtk-su -c cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
+                            proc = Popen(["adb", "exec-out", f"/data/local/tmp/mtk-su -c cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
                         else:
-                            proc = subprocess.Popen(["adb", "exec-out", f"cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
+                            proc = Popen(["adb", "exec-out", f"cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
                     else:
-                        proc = subprocess.Popen(["adb", out_cmd, f"cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
+                        proc = Popen(["adb", out_cmd, f"cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
                     stream = proc.stdout
                 while True:
                     chunk = stream.read(65536)
@@ -3640,7 +3656,7 @@ def insert_data(cur, table_name, schema_defaults, data_rows):
 #Recreate Device Databases
 def recreate_dbs(change, text, zip_path=None):
     try:
-        with zipfile.ZipFile(zip_path, "a", compression=zipfile.ZIP_DEFLATED) as zf:
+        with zipfile.ZipFile(zip_path, "a", compression=zipfile.ZIP_STORED) as zf:
             existing_files = set(zf.namelist()) 
     except:
         existing_files = []
@@ -4062,7 +4078,7 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
             os.makedirs(new_dst, exist_ok=exist_ok)
             if mode == "ufed":
                 zip_dir_path = f'backup/{rootf.strip("/")}/{rel_in_zip}/{dir.path}/'.replace("//", "/")
-            if mode == "prfs":
+            elif mode == "prfs":
                 zip_dir_path = f'dump/{rootf.strip("/")}/{rel_in_zip}/{dir.path}/'.replace("//", "/")
             else:
                 zip_dir_path = f'{rootf.strip("/")}/{rel_in_zip}/{dir.path}/'.replace("//", "/")
@@ -4180,7 +4196,7 @@ def has_root(change, timeout=30):
 
 def device_has_su() -> bool:
     try:
-        result = subprocess.run(
+        result = run(
             ["adb", "shell", "which", "su"],
             capture_output=True, text=True
         )
@@ -4191,7 +4207,7 @@ def device_has_su() -> bool:
 def supports_exec_out() -> bool:
     cmd = ["adb", "exec-out", "echo", "OK"]
 
-    proc = subprocess.run(
+    proc = run(
         cmd,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -4211,11 +4227,11 @@ def temp_mtk_su(change, timeout=30):
         mtk_su_bin = os.path.join(os.path.dirname(__file__), "ressources" , "cve", "2020-0069", "arm64", "mtk-su")
     remote_path = "/data/local/tmp/mtk-su"
     try:
-        subprocess.run(["adb", "push", mtk_su_bin, remote_path], check=True)
+        run(["adb", "push", mtk_su_bin, remote_path], check=True)
         log("Pushed mtk-su binary to /data/local/tmp")
     except:
         pass
-    subprocess.run(["adb", "shell", f"chmod 755 {remote_path}"], check=True)
+    run(["adb", "shell", f"chmod 755 {remote_path}"], check=True)
     try:
         result_holder["value"] = device.shell(f"{remote_path} -c whoami").strip() == "root"
     except Exception:
@@ -4232,6 +4248,19 @@ def log(text):
     with open(f"ALEX_log_{snr}.log", 'a', encoding="utf-8") as logfile:
         logtime = str(datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
         logfile.write(f"{logtime}: {text}\n")
+
+#subprocess helper
+def run(cmd, **kwargs):
+    if sys.platform == "win32":
+        kwargs.setdefault("creationflags", subprocess.CREATE_NO_WINDOW)
+
+    return subprocess.run(cmd, **kwargs)
+
+def Popen(cmd, **kwargs):
+    if sys.platform == "win32":
+        kwargs.setdefault("creationflags", subprocess.CREATE_NO_WINDOW)
+
+    return subprocess.Popen(cmd, **kwargs)
 
 device = None
 zytotal =0
