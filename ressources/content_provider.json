@@ -114,7 +114,8 @@
     ],
     "com.google.android.gms.phenotype": [
         "com.google.android.gms.auth_account",
-        "com.google.android.gms.measurement"
+        "com.google.android.gms.measurement",
+        "com.google.android.gms.tflite"
     ],    
     "com.android.browser": [
         "accounts",
