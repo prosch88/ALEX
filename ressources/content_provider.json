@@ -16,6 +16,10 @@
         "draft",
         "outbox"
     ],
+    "com.android.voicemail": [
+        "status",
+        "voicemail"
+    ],
     "com.android.calendar": [
         "calendar_entities",
         "calendars",
@@ -30,7 +34,7 @@
     ],
     "com.android.contacts": [
         "raw_contacts",
-	"directories",
+	    "directories",
         "contacts_directories",
         "contacts_syncstate",
         "profile/syncstate",
@@ -108,7 +112,11 @@
         "bookmarks",
         "searches"
     ],
-    "com.google.android.gms.phenotype": "com.google.android.gms.auth_account",    
+    "com.google.android.gms.phenotype": [
+        "com.google.android.gms.auth_account",
+        "com.google.android.gms.measurement",
+        "com.google.android.gms.tflite"
+    ],    
     "com.android.browser": [
         "accounts",
         "accounts/account_name",
