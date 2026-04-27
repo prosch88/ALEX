@@ -25,6 +25,7 @@ import alex.devdump as devdump
 import alex.wifi_adb as wifi_adb
 import alex.exploits as exploits
 import alex.shot_ut as shot_ut
+import alex.ab_decrypt as ab_decrypt
 import numpy as np
 import uiautomator2 as u2
 import ipaddress
@@ -1230,6 +1231,7 @@ class MyApp(ctk.CTk):
         self.text.pack(pady=15)
         total_size = 1
         global data_size
+        global bu_pass
         data_size = 0
         log("Started UFED-Style Logical+ Backup")
         now = datetime.now()
@@ -1258,6 +1260,12 @@ class MyApp(ctk.CTk):
             self.adbu = threading.Thread(target=lambda: self.adb_bu(self.change, incl_shared=self.incl_shared.get(), incl_apps=self.incl_apps.get(), incl_system=self.incl_system.get(), auto_bu=True))
             self.adbu.start()
             self.wait_variable(self.change)
+            self.change.set(0)
+            self.check_header = threading.Thread(target=lambda: check_bu_pass(bu_file, self.change))
+            self.check_header.start()
+            self.wait_variable(self.change)
+            if self.change.get() == 1:
+                bu_pass = None
             self.prog_text.configure(text="")
             self.change.set(0)
             self.zip_backup = threading.Thread(target=lambda: self.zip_bu(zip, self.text, self.change))
@@ -1322,26 +1330,30 @@ class MyApp(ctk.CTk):
         data_path = "/sdcard/"
         self.change = ctk.IntVar(self, 0)
 
+        self.incl_adb_bu = ctk.StringVar(value="on")
+        self.incl_adb_bu_box = ctk.CTkCheckBox(self.dynamic_frame, text="Include the ADB Backup. (decrypted)", variable=self.incl_adb_bu, onvalue="on", offvalue="off")
+        #self.incl_adb_bu_box.pack(anchor="w", padx= 80, pady=4)
         self.incl_sdcard = ctk.StringVar(value="on")
         self.incl_sdcard_box = ctk.CTkCheckBox(self.dynamic_frame, text="Include the \"sdcard\" folder.", variable=self.incl_sdcard, onvalue="on", offvalue="off")
-        self.incl_sdcard_box.pack(anchor="w", padx= 80, pady=5)
+        self.incl_sdcard_box.pack(anchor="w", padx= 80, pady=4)
         self.incl_system = ctk.StringVar(value="on")
         self.incl_system_box = ctk.CTkCheckBox(self.dynamic_frame, text="Include available \"System\" folders", variable=self.incl_system, onvalue="on", offvalue="off")
-        self.incl_system_box.pack(anchor="w", padx= 80, pady=5)
+        self.incl_system_box.pack(anchor="w", padx= 80, pady=4)
         self.incl_cve = ctk.StringVar(value="on")
         self.incl_cve_box = ctk.CTkCheckBox(self.dynamic_frame, text="Try to perform exploits to acquire more Data.", variable=self.incl_cve, onvalue="on", offvalue="off")
-        self.incl_cve_box.pack(anchor="w", padx= 80, pady=5)
+        self.incl_cve_box.pack(anchor="w", padx= 80, pady=4)
         self.incl_dbfiles = ctk.StringVar(value="on")
         self.incl_dbfiles_box = ctk.CTkCheckBox(self.dynamic_frame, text="Include recreated Databases from Content Providers.", variable=self.incl_dbfiles, onvalue="on", offvalue="off")
-        self.incl_dbfiles_box.pack(anchor="w", padx= 80, pady=5)
+        self.incl_dbfiles_box.pack(anchor="w", padx= 80, pady=4)
         self.incl_logfiles = ctk.StringVar(value="on")
         self.incl_logs_box = ctk.CTkCheckBox(self.dynamic_frame, text="Include Logs and queried Data.", variable=self.incl_logfiles, onvalue="on", offvalue="off")
-        self.incl_logs_box.pack(anchor="w", padx= 80, pady=5)
+        self.incl_logs_box.pack(anchor="w", padx= 80, pady=4)
         self.startb = ctk.CTkButton(self.dynamic_frame, text="Start", font=self.stfont, command=lambda: self.change.set(1))
         self.startb.pack(pady=25) 
         self.backb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=lambda: self.switch_menu("AcqMenu"))
         self.backb.pack()
         self.wait_variable(self.change)
+        self.incl_adb_bu_box.pack_forget()
         self.incl_sdcard_box.pack_forget()
         self.incl_system_box.pack_forget()
         self.incl_cve_box.pack_forget()
@@ -1349,6 +1361,7 @@ class MyApp(ctk.CTk):
         self.incl_logs_box.pack_forget()
         self.startb.pack_forget()
         self.backb.pack_forget()
+        incl_adb_bu = self.incl_adb_bu.get()
         incl_sdcard = self.incl_sdcard.get()
         incl_system = self.incl_system.get()
         incl_cve = self.incl_cve.get()
@@ -1356,6 +1369,10 @@ class MyApp(ctk.CTk):
         incl_logs = self.incl_logfiles.get()
         self.text.configure(height=60)
         self.after(50)
+
+        folder = f'{snr}_prfs_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}'
+        zip_path = f"{folder}.zip"
+        zip = zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED, compresslevel=1)
 
         if incl_logs == "on":
             self.prog_text = ctk.CTkLabel(self.dynamic_frame, text=" ", width=585, height=20, font=self.stfont, anchor="w", justify="left")
@@ -1379,20 +1396,43 @@ class MyApp(ctk.CTk):
             self.wait_variable(self.change)
             d_date = device.shell("date +%s")   
 
+        """
+        if incl_adb_bu == "on":
+            self.change.set(0)
+            if incl_logs == "on":
+                self.progress.pack_forget()
+                self.prog_text.pack_forget()
+            self.incl_shared = ctk.StringVar(value="off")
+            self.incl_apps = ctk.StringVar(value="on")
+            self.incl_system = ctk.StringVar(value="on")
+            self.adbu = threading.Thread(target=lambda: self.adb_bu(self.change, incl_shared=self.incl_shared.get(), incl_apps=self.incl_apps.get(), incl_system=self.incl_system.get(), auto_bu=True))
+            self.adbu.start()
+            self.wait_variable(self.change)
+            self.change.set(0)
+            self.check_header = threading.Thread(target=lambda: check_bu_pass(bu_file, self.change))
+            self.check_header.start()
+            self.wait_variable(self.change)
+            if self.change.get() == 1:
+                bu_pass = None
+            self.prog_text.configure(text="")
+            self.change.set(0)
+            self.decrypt_backup = threading.Thread(target=lambda: self.zip_bu(zip, self.text, self.change))
+            self.decrypt_backup.start()
+            self.wait_variable(self.change)
+        """
+            
+
         if incl_sdcard == "on":
             self.change.set(0)
             self.text.configure(text="Preparing Data Extraction ...")
             self.get_dsize = threading.Thread(target=lambda: get_data_size(data_path, self.change))
             self.get_dsize.start()
             self.wait_variable(self.change)
-        folder = f'{snr}_prfs_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}'
-        zip_path = f"{folder}.zip"
-        zip = zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED, compresslevel=1)
         
         try: os.mkdir(folder)
         except: pass
         self.change.set(0)
-        if incl_logs == "on":
+        if incl_logs == "on": # or incl_adb_bu == "on":
             self.progress.pack_forget()
             self.prog_text.pack_forget()
         self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="0%", width=585, height=20, font=self.stfont, anchor="w", justify="left")
@@ -1574,12 +1614,15 @@ class MyApp(ctk.CTk):
 
     def call_backup(self, bu_file, bu_change, bu_options, auto_bu=False):
         def reader(pipe, q):
+            current_buffer_size = 1024
             try:
                 while True:
-                    data = pipe.read(65536)
+                    data = pipe.read(current_buffer_size)
                     if not data:
                         break
                     q.put(data)
+                    if current_buffer_size == 1024:
+                        current_buffer_size = 65536
             finally:
                 q.put(None)
 
@@ -4032,13 +4075,33 @@ def ufed_style_files(change, ufed_folder, zip, zipname, starttime, text):
         z_hash = " Error - Python >= 3.11 required"
 
     text.configure(text="Creating UFED-Style Report files.\nCreating UFD-File")
+    global bu_pass
+    print(bu_pass)
+    ufd_text = "[Backup]\nSharedBackupEnabled=True\nType=ZIP\nZIPLogicalPath=backup\n\n" + "[DeviceInfo]\nChipset=" + d_platform + "\nModel=" + model + "\nOS=" + software + "\nSecurityPatchLevel=" + spl + "\nVendor=" + brand + \
+    "\n\n[Dumps]\nBackup=" + zipname + ".zip\nXML=" + zipname + ".zip\n\n[ExtractionStatus]\nExtractionStatus=Success\n\n[General]\nADBPull=True\nAcquisitionTool=ALEX by Christian Peter\nAndroid_ID=" + ad_id 
+
+    if bu_pass != None:
+        ufd_text = ufd_text + "\nBackupPassword=12345"
+
+    ufd_text = ufd_text + "\nConnectionType=Cable No. 100 or 170\nDate=" + starttime + "\nDevice=Report\nEndTime=" + \
+        endtime + "\nExtractionMethod=ADB_BACKUP\nExtractionType=AdvancedLogical\nFullName=" + fname_s + "\nGUID=\nInternalBuild=\nMachineName=\nModel=" + model + \
+        "\nSuggested = Profile\nUfdVer=1.2\nUnitId=\nUserName=\nVendor=Detected Model\nVersion=other\n\n[InstalledApps]\nFile=InstalledAppsList.txt\n\n[SHA256]\n" + zipname + ".zip=" + z_hash.upper() + "\n\n[XML]\nType=ZIP\nZIPLogicalPath=logical/Report.xml"
+
+
     with open(f'{os.path.join(ufed_folder, zipname)}.ufd', "w") as ufdf:
-        ufdf.write("[Backup]\nSharedBackupEnabled=True\nType=ZIP\nZIPLogicalPath=backup\n\n" + "[DeviceInfo]\nChipset=" + d_platform + "\nModel=" + model + "\nOS=" + software + "\nSecurityPatchLevel=" + spl + "\nVendor=" + brand + "\n\n[Dumps]\nBackup=" + zipname +
-        ".zip\nXML=" + zipname + ".zip\n\n[ExtractionStatus]\nExtractionStatus=Success\n\n[General]\nADBPull=True\nAcquisitionTool=ALEX by Christian Peter\nAndroid_ID=" + ad_id + "\nBackupPassword=12345" + "\nConnectionType=Cable No. 100 or 170\nDate=" + starttime + "\nDevice=Report\nEndTime=" + 
-        endtime + "\nExtractionMethod=ADB_BACKUP\nExtractionType=AdvancedLogical\nFullName=" + fname_s + "\nGUID=\nInternalBuild=\nMachineName=\nModel=" + model + 
-        "\nSuggested = Profile\nUfdVer=1.2\nUnitId=\nUserName=\nVendor=Detected Model\nVersion=other\n\n[InstalledApps]\nFile=InstalledAppsList.txt\n\n[SHA256]\n" + zipname + ".zip=" + z_hash.upper() + "\n\n[XML]\nType=ZIP\nZIPLogicalPath=logical/Report.xml")
+        ufdf.write(ufd_text)
     
     change.set(1)
+
+def check_bu_pass(bu_file, change, password=None):
+    print(bu_file)
+    try:
+        with open(bu_file, "rb") as f:
+            ab_decrypt.parse_header(f, password)
+            change.set(1)
+    except Exception as e:
+        print(e)
+        change.set(2)
     
 
 def get_data_size(data_path, change):
