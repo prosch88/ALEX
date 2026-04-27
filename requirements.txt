@@ -1,6 +1,7 @@
 adbutils
 customtkinter
 crossfiledialog
+uiautomator2
 pdfme==0.4.12
 numpy
 imagehash

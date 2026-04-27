@@ -26,6 +26,7 @@ import alex.wifi_adb as wifi_adb
 import alex.exploits as exploits
 import alex.shot_ut as shot_ut
 import numpy as np
+import uiautomator2 as u2
 import ipaddress
 import sqlite3
 import shutil
@@ -1254,7 +1255,7 @@ class MyApp(ctk.CTk):
         self.incl_system = ctk.StringVar(value="on")
         self.change = ctk.IntVar(self, 0)
         if "watch" not in d_class:
-            self.adbu = threading.Thread(target=lambda: self.adb_bu(self.change, incl_shared=self.incl_shared.get(), incl_apps=self.incl_apps.get(), incl_system=self.incl_system.get()))
+            self.adbu = threading.Thread(target=lambda: self.adb_bu(self.change, incl_shared=self.incl_shared.get(), incl_apps=self.incl_apps.get(), incl_system=self.incl_system.get(), auto_bu=True))
             self.adbu.start()
             self.wait_variable(self.change)
             self.prog_text.configure(text="")
@@ -1527,7 +1528,7 @@ class MyApp(ctk.CTk):
         self.progress.pack_forget()
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
 
-    def adb_bu(self, change, incl_shared, incl_apps, incl_system):
+    def adb_bu(self, change, incl_shared, incl_apps, incl_system, auto_bu=False):
         global bu_file
         try:
             self.startb.pack_forget()
@@ -1538,7 +1539,10 @@ class MyApp(ctk.CTk):
         except:
             pass
         self.text.pack_forget()
-        self.text = ctk.CTkLabel(self.dynamic_frame, text="Please unlock the device and confirm \"Backup my Data\".", width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        if auto_bu == True:
+            self.text.configure(text="The system will attempt to start the backup automatically.\nIf this message is still displayed after 10 seconds,\nclick \"Back up my data.\" If a password is required, enter \"12345\".")
+        else:
+            self.text = ctk.CTkLabel(self.dynamic_frame, text="Please unlock the device and confirm \"Backup my Data\".", width=585, height=60, font=self.stfont, anchor="w", justify="left")
         self.text.pack(pady=25)
         bu_options = " -apk -obb"
         if incl_shared == "on":
@@ -1559,7 +1563,7 @@ class MyApp(ctk.CTk):
         self.progress.pack()
         self.progress.start()
         self.bu_change = ctk.IntVar(self, 0)
-        self.call_bu = threading.Thread(target=lambda: self.call_backup(bu_file=bu_file, bu_change=self.bu_change, bu_options=bu_options))
+        self.call_bu = threading.Thread(target=lambda: self.call_backup(bu_file=bu_file, bu_change=self.bu_change, bu_options=bu_options, auto_bu=auto_bu))
         self.call_bu.start()
         self.wait_variable(self.bu_change)
         if self.bu_change.get() == 1:
@@ -1568,8 +1572,7 @@ class MyApp(ctk.CTk):
             change.set(2)
 
 
-    def call_backup(self, bu_file, bu_change, bu_options):
-
+    def call_backup(self, bu_file, bu_change, bu_options, auto_bu=False):
         def reader(pipe, q):
             try:
                 while True:
@@ -1584,18 +1587,29 @@ class MyApp(ctk.CTk):
 
         TIMEOUT = 60
         q = queue.Queue()
-        #print(bu_options)
+        global bu_pass
         try:
             with open(bu_file, "wb") as f:
-                proc = Popen(["adb", "exec-out", f"bu backup{bu_options}"], stdout=subprocess.PIPE)
-                stdout=subprocess.PIPE
-                #stream = proc.stdout
-                #stream = device.shell(f"bu backup{bu_options}", stream=True)
+                proc = Popen(["adb", "exec-out", f"bu backup{bu_options}"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                #stdout=subprocess.PIPE
                 t = threading.Thread(target=reader, args=(proc.stdout, q))
                 t.daemon = True
                 t.start()
                 last_data = time.time()
-
+                if auto_bu == True and device_auto != None:
+                    output = device.shell("dumpsys trust")
+                    bu_pass = "12345"
+                    if "deviceLocked=true" in output or "deviceLocked=1" in output:
+                        self.text.configure(text="The device is locked. Unlock the device and tap \"Back up my data.\"\nIf a password is required, enter \"12345\".")
+                    else:
+                        time.sleep(2)
+                        device_auto(resourceId="com.android.backupconfirm:id/enc_password").set_text(bu_pass)
+                        time.sleep(2)
+                        bu_button = device_auto(resourceId="com.android.backupconfirm:id/button_allow")
+                        if bu_button.exists:
+                            bu_button.click()
+                else:
+                    pass
                 while True:
                     
                     try:
@@ -1613,13 +1627,6 @@ class MyApp(ctk.CTk):
                             proc.kill()
                             raise TimeoutError("ADB backup timed out")
 
-                    #chunk = stream.read(65536)
-                    #self.text.configure(text="ADB-Backup is running.\nThis may take some time.")
-                    #if not chunk:
-                    #    break
-                    #f.write(chunk)
-                    #total += len(chunk)
-                    #self.prog_text.configure(text=f"{total/1024/1024:.1f} MB written")
             log(f"Created Backup: {bu_file}")
             bu_change.set(1) 
         except Exception as e:
@@ -2483,6 +2490,7 @@ def get_client(host=default_host, port=default_port, check=False):
     global snr_id
     global snr
     global device
+    global device_auto
     global device_info
     global state
     global paired
@@ -2500,6 +2508,10 @@ def get_client(host=default_host, port=default_port, check=False):
             snr_id = adb.list(extended=True)[0].serial
             state = adb.list(extended=True)[0].state
             device = adb.device(snr_id)
+            try:
+                device_auto = u2.connect()
+            except:
+                device_auto = None
         except IndexError:
             snr = None
             state = None
@@ -4022,7 +4034,7 @@ def ufed_style_files(change, ufed_folder, zip, zipname, starttime, text):
     text.configure(text="Creating UFED-Style Report files.\nCreating UFD-File")
     with open(f'{os.path.join(ufed_folder, zipname)}.ufd', "w") as ufdf:
         ufdf.write("[Backup]\nSharedBackupEnabled=True\nType=ZIP\nZIPLogicalPath=backup\n\n" + "[DeviceInfo]\nChipset=" + d_platform + "\nModel=" + model + "\nOS=" + software + "\nSecurityPatchLevel=" + spl + "\nVendor=" + brand + "\n\n[Dumps]\nBackup=" + zipname +
-        ".zip\nXML=" + zipname + ".zip\n\n[ExtractionStatus]\nExtractionStatus=Success\n\n[General]\nADBPull=True\nAcquisitionTool=ALEX by Christian Peter\nAndroid_ID=" + ad_id + "\nConnectionType=Cable No. 100 or 170\nDate=" + starttime + "\nDevice=Report\nEndTime=" + 
+        ".zip\nXML=" + zipname + ".zip\n\n[ExtractionStatus]\nExtractionStatus=Success\n\n[General]\nADBPull=True\nAcquisitionTool=ALEX by Christian Peter\nAndroid_ID=" + ad_id + "\nBackupPassword=12345" + "\nConnectionType=Cable No. 100 or 170\nDate=" + starttime + "\nDevice=Report\nEndTime=" + 
         endtime + "\nExtractionMethod=ADB_BACKUP\nExtractionType=AdvancedLogical\nFullName=" + fname_s + "\nGUID=\nInternalBuild=\nMachineName=\nModel=" + model + 
         "\nSuggested = Profile\nUfdVer=1.2\nUnitId=\nUserName=\nVendor=Detected Model\nVersion=other\n\n[InstalledApps]\nFile=InstalledAppsList.txt\n\n[SHA256]\n" + zipname + ".zip=" + z_hash.upper() + "\n\n[XML]\nType=ZIP\nZIPLogicalPath=logical/Report.xml")
     
@@ -4263,6 +4275,7 @@ def Popen(cmd, **kwargs):
     return subprocess.Popen(cmd, **kwargs)
 
 device = None
+device_auto = None
 zytotal =0
 paired = False
 apps = []
@@ -4274,6 +4287,7 @@ show_root = False
 mtk_su = False
 c_su = False
 has_exec_out = True
+bu_pass = None
 case_number = ""
 case_name = ""
 evidence_number = ""
