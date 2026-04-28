@@ -1325,14 +1325,15 @@ class MyApp(ctk.CTk):
         sysfolders.extend(apps_path)
         global data_size
         global total_size
+        global bu_pass
         total_size = 1
         data_size = 0
         data_path = "/sdcard/"
         self.change = ctk.IntVar(self, 0)
 
         self.incl_adb_bu = ctk.StringVar(value="on")
-        self.incl_adb_bu_box = ctk.CTkCheckBox(self.dynamic_frame, text="Include the ADB Backup. (decrypted)", variable=self.incl_adb_bu, onvalue="on", offvalue="off")
-        #self.incl_adb_bu_box.pack(anchor="w", padx= 80, pady=4)
+        self.incl_adb_bu_box = ctk.CTkCheckBox(self.dynamic_frame, text="Include the ADB Backup. (May require user interaction)", variable=self.incl_adb_bu, onvalue="on", offvalue="off")
+        self.incl_adb_bu_box.pack(anchor="w", padx= 80, pady=4)
         self.incl_sdcard = ctk.StringVar(value="on")
         self.incl_sdcard_box = ctk.CTkCheckBox(self.dynamic_frame, text="Include the \"sdcard\" folder.", variable=self.incl_sdcard, onvalue="on", offvalue="off")
         self.incl_sdcard_box.pack(anchor="w", padx= 80, pady=4)
@@ -1396,7 +1397,6 @@ class MyApp(ctk.CTk):
             self.wait_variable(self.change)
             d_date = device.shell("date +%s")   
 
-        """
         if incl_adb_bu == "on":
             self.change.set(0)
             if incl_logs == "on":
@@ -1408,6 +1408,11 @@ class MyApp(ctk.CTk):
             self.adbu = threading.Thread(target=lambda: self.adb_bu(self.change, incl_shared=self.incl_shared.get(), incl_apps=self.incl_apps.get(), incl_system=self.incl_system.get(), auto_bu=True))
             self.adbu.start()
             self.wait_variable(self.change)
+            self.progress.pack_forget()
+            self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
+            self.progress.pack()
+            self.prog_text.configure(text=" ")
+            self.text.configure(text="Integrating the Android backup into the ZIP.")
             self.change.set(0)
             self.check_header = threading.Thread(target=lambda: check_bu_pass(bu_file, self.change))
             self.check_header.start()
@@ -1416,12 +1421,14 @@ class MyApp(ctk.CTk):
                 bu_pass = None
             self.prog_text.configure(text="")
             self.change.set(0)
-            self.decrypt_backup = threading.Thread(target=lambda: self.zip_bu(zip, self.text, self.change))
+            self.decrypt_backup = threading.Thread(target=lambda: ab_decrypt.backup_to_zip(bu_file, zip, bu_pass, self.change, self.prog_text))
             self.decrypt_backup.start()
             self.wait_variable(self.change)
-        """
+            try:
+                os.remove(bu_file)
+            except:
+                pass
             
-
         if incl_sdcard == "on":
             self.change.set(0)
             self.text.configure(text="Preparing Data Extraction ...")
@@ -1432,7 +1439,7 @@ class MyApp(ctk.CTk):
         try: os.mkdir(folder)
         except: pass
         self.change.set(0)
-        if incl_logs == "on": # or incl_adb_bu == "on":
+        if incl_logs == "on" or incl_adb_bu == "on":
             self.progress.pack_forget()
             self.prog_text.pack_forget()
         self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="0%", width=585, height=20, font=self.stfont, anchor="w", justify="left")
