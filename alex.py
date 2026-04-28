@@ -1157,8 +1157,8 @@ class MyApp(ctk.CTk):
         case_begin = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         log("Started FFS Backup")
         file_name = f'FFS_{snr}_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}'
-        tar_path = f'{filename}.tar'
-        case_json_name = f'{filename}.case_json'
+        tar_path = f'{file_name}.tar'
+        case_json_name = f'{file_name}.case_json'
         self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="", width=585, height=20, font=self.stfont, anchor="w", justify="left")
         self.prog_text.pack()
         self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
