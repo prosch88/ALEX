@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import subprocess, zipfile, time, os, argparse
+import subprocess, zipfile, time, os, argparse, sys
 from datetime import datetime
 import tempfile
 
@@ -78,15 +78,20 @@ def read_line(proc):
         if ch == b'\n':
             return bytes(line)
 
-def read_exact(proc, n):
+def read_exact(proc, n, timeout=5):
     buf = bytearray()
     remaining = n
     while remaining > 0:
         chunk = proc.stdout.read(min(512*1024, remaining))
-        if not chunk:
-            raise IOError("Unexpected EOF while reading bytes")
-        buf += chunk
-        remaining -= len(chunk)
+        if chunk:
+            buf += chunk
+            remaining -= len(chunk)
+            last_data = time.time()
+        else:
+            # nichts gelesen → prüfen ob Timeout
+            if time.time() - last_data > timeout:
+                raise TimeoutError("Read timeout")
+            time.sleep(0.01)
     return bytes(buf)
 
 def device_has_su() -> bool:

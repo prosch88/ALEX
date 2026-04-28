@@ -26,6 +26,7 @@ import alex.wifi_adb as wifi_adb
 import alex.exploits as exploits
 import alex.shot_ut as shot_ut
 import alex.ab_decrypt as ab_decrypt
+import alex.case_uco as case_uco
 import numpy as np
 import uiautomator2 as u2
 import ipaddress
@@ -1115,8 +1116,13 @@ class MyApp(ctk.CTk):
         self.text = ctk.CTkLabel(self.dynamic_frame, text="Extracting available files from the device filesystem.", width=585, height=60, font=self.stfont, anchor="w", justify="left")
         self.text.pack(anchor="center", pady=25)
         self.change = ctk.IntVar(self, 0)
+        now = datetime.now()
+        case_begin = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         log("Started FFS Backup")
-        zip_path = f'FFS_{snr}_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}.zip'
+        filename = f'FFS_{snr}_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}'
+        zip_path = f'{filename}.zip'
+        case_json_name = f'{filename}.case.json'
+
         self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="", width=585, height=20, font=self.stfont, anchor="w", justify="left")
         self.prog_text.pack()
         self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
@@ -1125,6 +1131,15 @@ class MyApp(ctk.CTk):
         self.do_root_ffs = threading.Thread(target=lambda: devdump.su_root_ffs(outzip=zip_path, filetext=self.text, prog_text=self.prog_text, log=log, change=self.change, mtk_su=mtk_su, c_su=c_su, has_exec_out=has_exec_out))
         self.do_root_ffs.start()
         self.wait_variable(self.change)
+        case_end = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        self.change = ctk.IntVar(self, 0)
+        self.text.configure(text="Calculating Zip-Hash. This may take a while.")
+        self.zip_ffs_hash = threading.Thread(target=lambda: do_hash_file(self.change, zip_path))
+        self.zip_ffs_hash.start()
+        self.wait_variable(self.change)
+        global f_hash
+        case_backup = create_case_backup(bu_fname=zip_path, bu_ext=".zip", bu_desc= "ALEX Full Filesystem (Zip)", type="Logical", method="Full Filesystem", bu_hash=f_hash, case_begin=case_begin, case_end=case_end)
+        call_case_json(case_device, case_backup, case_json_name, change=None)
         self.text.configure(text="Data Extraction complete.")
         self.prog_text.pack_forget()
         self.progress.pack_forget()
@@ -1138,8 +1153,12 @@ class MyApp(ctk.CTk):
         self.text = ctk.CTkLabel(self.dynamic_frame, text="Extracting available files from the device filesystem.", width=585, height=60, font=self.stfont, anchor="w", justify="left")
         self.text.pack(anchor="center", pady=25)
         self.change = ctk.IntVar(self, 0)
+        now = datetime.now()
+        case_begin = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         log("Started FFS Backup")
-        tar_path = f'FFS_{snr}_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}.tar'
+        file_name = f'FFS_{snr}_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}'
+        tar_path = f'{filename}.tar'
+        case_json_name = f'{filename}.case_json'
         self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="", width=585, height=20, font=self.stfont, anchor="w", justify="left")
         self.prog_text.pack()
         self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
@@ -1148,6 +1167,15 @@ class MyApp(ctk.CTk):
         self.do_root_ffs = threading.Thread(target=lambda: tar_root_ffs(outtar=tar_path, prog_text=self.prog_text, change=self.change))
         self.do_root_ffs.start()
         self.wait_variable(self.change)
+        case_end = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        self.change = ctk.IntVar(self, 0)
+        self.text.configure(text="Calculating Zip-Hash. This may take a while.")
+        self.tar_ffs_hash = threading.Thread(target=lambda: do_hash_file(self.change, tar_path))
+        self.tar_ffs_hash.start()
+        self.wait_variable(self.change)
+        global f_hash
+        case_backup = create_case_backup(bu_fname=tar_path, bu_ext=".tar", bu_desc= "ALEX Full Filesystem (Tar)", type="Logical", method="Full Filesystem", bu_hash=f_hash, case_begin=case_begin, case_end=case_end)
+        call_case_json(case_device, case_backup, case_json_name, change=None)
         self.text.configure(text="Data Extraction complete.")
         self.prog_text.pack_forget()
         self.progress.pack_forget()
@@ -1235,6 +1263,7 @@ class MyApp(ctk.CTk):
         data_size = 0
         log("Started UFED-Style Logical+ Backup")
         now = datetime.now()
+        case_begin = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         local_timezone = datetime.now(timezone.utc).astimezone().tzinfo
         utc_offset = now.astimezone().utcoffset()
         utc_offset_hours = utc_offset.total_seconds() / 3600
@@ -1250,8 +1279,13 @@ class MyApp(ctk.CTk):
         except: 
             return
         fname = f'{brand}_{model}'
-        zip_path = f"{fname}.zip"
-        zip = zipfile.ZipFile(os.path.join(ufed_folder, zip_path), "w", compression=zipfile.ZIP_STORED, compresslevel=1)
+        zip_name = f"{fname}.zip"
+        ufd_name = f"{fname}.ufd"
+        cjn_name = f"{fname}.case.json"
+        zip_path = os.path.join(ufed_folder, zip_name)
+        ufd_path = os.path.join(ufed_folder, ufd_name)
+        case_json_name = os.path.join(ufed_folder, cjn_name)
+        zip = zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED, compresslevel=1)
         self.incl_shared = ctk.StringVar(value="off")
         self.incl_apps = ctk.StringVar(value="on")
         self.incl_system = ctk.StringVar(value="on")
@@ -1306,6 +1340,9 @@ class MyApp(ctk.CTk):
         self.ufd_data = threading.Thread(target=lambda: ufed_style_files(self.change, ufed_folder, zip, fname, starttime, self.text))
         self.ufd_data.start()
         self.wait_variable(self.change)
+        case_end = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        case_backup = create_case_backup(bu_fname=zip_path, bu_ext=".zip", bu_desc= "ALEX Logical+ (UFED-Style) Backup", type="Logical", method="Advanced Logical", bu_hash=f_hash, case_begin=case_begin, case_end=case_end, ufd=ufd_path )
+        call_case_json(case_device, case_backup, case_json_name, change=None)
         self.text.configure(text="Advanced Logical Backup complete.")
         self.prog_text.pack_forget()
         self.progress.pack_forget()
@@ -1371,8 +1408,13 @@ class MyApp(ctk.CTk):
         self.text.configure(height=60)
         self.after(50)
 
+        now = datetime.now()
+        case_begin = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        log("Started PRFS Backup.")
+
         folder = f'{snr}_prfs_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}'
         zip_path = f"{folder}.zip"
+        case_json_name = f"{folder}.case.json"
         zip = zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED, compresslevel=1)
 
         if incl_logs == "on":
@@ -1569,6 +1611,20 @@ class MyApp(ctk.CTk):
             self.prfs_cp.start()
             self.wait_variable(self.change)
             self.change.set(0)
+        case_end = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        self.change = ctk.IntVar(self, 0)
+        self.progress.pack_forget()
+        self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
+        self.progress.pack()
+        self.prog_text.configure(text=" ")
+        self.text.configure(text="Calculating Zip-Hash. This may take a while.")
+        self.zip_ffs_hash = threading.Thread(target=lambda: do_hash_file(self.change, zip_path))
+        self.zip_ffs_hash.start()
+        self.wait_variable(self.change)
+        global f_hash
+        print(f_hash)
+        case_backup = create_case_backup(bu_fname=zip_path, bu_ext=".zip", bu_desc= "ALEX PRFS Backup", type="Logical", method="Advanced Logical", bu_hash=f_hash, case_begin=case_begin, case_end=case_end)
+        call_case_json(case_device, case_backup, case_json_name, change=None)
         self.text.configure(text="Data Extraction complete.")
         log(f"Created Backup: {zip_path}")
         self.prog_text.pack_forget()
@@ -2950,6 +3006,31 @@ def get_client(host=default_host, port=default_port, check=False):
                     if su_app != None:
                         device_info = device_info + "\n" + '{:13}'.format("root: ") + "\t" + "potentially rooted"
 
+            global case_device
+
+            if "default" in d_class or "nosdcard" in d_class:
+                dev_type = "phone"
+            else:
+                dev_type = d_class
+            if ut == True:
+                dev_type = "phablet"
+
+            case_device = {
+                "deviceType": d_class,
+                "brand": brand,
+                "model": model,
+                "Software": software,
+                "localeLanguage": locale,
+                "serialNumber": snr_id,
+                "storageCapacity": data_s,
+            }
+            if imei != "-":
+                case_device["IMEI"] = imei
+            if w_mac != "-":
+                case_device["WifiAddress"] = w_mac
+            if b_mac != "-":
+                case_device["BluetoothAddress"] = b_mac
+
 
     else:
         device = None
@@ -3539,6 +3620,7 @@ def tar_root_ffs(outtar, prog_text, change):
 #Physical Extraction for Android and Ubuntu Touch
 def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, back_button=None):
     global c_su
+    global f_hash
     global has_exec_out
     if has_exec_out:
         out_cmd = "exec-out"
@@ -3549,7 +3631,11 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
         pw_box.pack_forget()
         ok_button.pack_forget()
         back_button.pack_forget()
-
+    complete = False
+    case_backup = None
+    now = datetime.now()
+    case_begin = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    log("Started physical extraction.)")
     #Find block device
     block = ""
     if show_root == True:
@@ -3626,6 +3712,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             progress.pack()
             current = 0
             out_file = f"{snr}_{target}.bin"
+            case_json_name=f"{snr}_{target}.case.json"
             device_path = f"/dev/{block + target}"
             proc = Popen(
                 ["adb", "pull", device_path, out_file],
@@ -3644,6 +3731,16 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
 
                 text.configure(text="Physical Backup is running.\nThis may take some time.")
                 time.sleep(0.3)
+            case_end = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            progress.pack_forget()
+            progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
+            progress.pack()
+            prog_text.configure(text=" ")
+            text.configure(text="Calculating Image-Hash. This may take a while.")
+            do_hash_file(self.change, out_file, physical=True)
+            case_backup = create_case_backup(bu_fname=out_file, bu_ext=".bin", bu_desc= "ALEX Physical Extraction", type="Physical", method="Physical", bu_hash=f_hash, case_begin=case_begin, case_end=case_end)
+            call_case_json(case_device, case_backup, case_json_name, change=None)
+            complete = True
             prog_text.pack_forget()
             progress.pack_forget()
             text.configure(text="Physical Backup complete!")
@@ -3653,6 +3750,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             progress.pack()
             current = 0
             out_file = f"{snr}_{target}.bin"
+            case_json_name=f"{snr}_{target}.case.json"
             with open(out_file, "wb") as f:
                 if ut == True:
                     proc = Popen(["adb", "exec-out", f"echo {sh_pwd}| sudo -S cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
@@ -3684,12 +3782,23 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                     progress.set(perc/100)
                     prog_text.update()
                     progress.update()
+            case_end = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            progress.pack_forget()
+            progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
+            progress.pack()
+            prog_text.configure(text=" ")
+            text.configure(text="Calculating Image-Hash. This may take a while.")
+            do_hash_file(self.change, out_file, physical=True)
+            case_backup = create_case_backup(bu_fname=out_file, bu_ext=".bin", bu_desc= "ALEX Physical Extraction", type="Physical", method="Physical", bu_hash=f_hash, case_begin=case_begin, case_end=case_end)
+            call_case_json(case_device, case_backup, case_json_name, change=None)
+            complete = True
             prog_text.pack_forget()
             progress.pack_forget()
             text.configure(text="Physical Backup complete!")
         else:
             text.configure(text="Wrong password! Try again.")
-            log("Wrong password")
+            log("Wrong password")            
+
         change.set(1)
         return
 
@@ -4074,16 +4183,18 @@ def ufed_style_files(change, ufed_folder, zip, zipname, starttime, text):
     except: pass
 
     #UFD-File
+    global f_hash
+    f_hash = None
     text.configure(text="Creating UFED-Style Report files.\nCalculating Zip-Hash. This may take a while.")
     try:
         with open(f'{os.path.join(ufed_folder, zipname)}.zip', 'rb', buffering=0) as z:
             z_hash = hashlib.file_digest(z, 'sha256').hexdigest()
+            f_hash = z_hash
     except:
         z_hash = " Error - Python >= 3.11 required"
 
     text.configure(text="Creating UFED-Style Report files.\nCreating UFD-File")
     global bu_pass
-    print(bu_pass)
     ufd_text = "[Backup]\nSharedBackupEnabled=True\nType=ZIP\nZIPLogicalPath=backup\n\n" + "[DeviceInfo]\nChipset=" + d_platform + "\nModel=" + model + "\nOS=" + software + "\nSecurityPatchLevel=" + spl + "\nVendor=" + brand + \
     "\n\n[Dumps]\nBackup=" + zipname + ".zip\nXML=" + zipname + ".zip\n\n[ExtractionStatus]\nExtractionStatus=Success\n\n[General]\nADBPull=True\nAcquisitionTool=ALEX by Christian Peter\nAndroid_ID=" + ad_id 
 
@@ -4101,13 +4212,12 @@ def ufed_style_files(change, ufed_folder, zip, zipname, starttime, text):
     change.set(1)
 
 def check_bu_pass(bu_file, change, password=None):
-    print(bu_file)
     try:
         with open(bu_file, "rb") as f:
             ab_decrypt.parse_header(f, password)
             change.set(1)
     except Exception as e:
-        print(e)
+        #print(e)
         change.set(2)
     
 
@@ -4121,6 +4231,68 @@ def get_data_size(data_path, change):
         total_size = 1
     change.set(1)
 
+def do_hash_file(change, filename, physical=False):
+    global f_hash
+    f_hash = None
+    try:
+        with open(filename, 'rb') as f:
+            f_hash = hashlib.file_digest(f, 'sha256').hexdigest()
+    except Exception as e:
+        log(f"Error hashing file: {e}")
+        print(e)
+        f_hash = None
+    if physical == False:
+        change.set(1)
+
+def create_case_backup(bu_fname, bu_ext, bu_desc, type, method, bu_hash, case_begin, case_end, ufd=None):
+    bu_files = []
+    bu_size = os.path.getsize(bu_fname)
+    bu_file = {
+        "Type": "forensic-image",
+        "FileName": bu_fname,
+        "extension": bu_ext,
+        "Filesize": bu_size,
+        "isDirectory": False,
+        "SHA256": bu_hash
+    }
+    bu_files.append(bu_file)
+    if ufd:
+        ufd_fname = ufd
+        ufd_sha256 = None
+        with open(ufd, "rb") as f:
+                try:
+                    ufd_sha256 = hashlib.file_digest(f, 'sha256').hexdigest()
+                except Exception as e:
+                    log(f"Error hashing ufd-file: {e}")
+                    ufd_sha256 = None
+        ufd_size = os.path.getsize(ufd_fname)
+        ufd_file = {
+            "Type": "forensic-metadata",
+            "FileName": ufd_fname,
+            "extension": "ufd",
+            "Filesize": ufd_size,
+            "isDirectory": False,
+            "SHA256": ufd_sha256
+        }
+        bu_files.append(ufd_file)
+    
+    case_backup = {
+        "description": bu_desc,
+        "tool_version": a_version,
+        "ExtractionType": type,
+        "ExtractionMethod": method,
+        "Files": bu_files,
+        "startTime": case_begin,
+        "endTime": case_end
+        }
+    return case_backup
+
+def call_case_json(case_device, case_backup, case_json_name, change=None):
+        case_json = case_uco.backup_case_json(case_device, case_backup)
+        with open(case_json_name, "w", encoding="utf-8") as f:
+            json.dump(case_json, f, indent=4)
+        if change != None:
+            change.set(1)
 
 def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, prog_text, progress, change, exist_ok: bool = True, zip=None, mode="default") -> int:
     """Pull directory from device:src into local:dst
@@ -4358,6 +4530,7 @@ mtk_su = False
 c_su = False
 has_exec_out = True
 bu_pass = None
+f_hash = None
 case_number = ""
 case_name = ""
 evidence_number = ""
