@@ -3016,7 +3016,7 @@ def get_client(host=default_host, port=default_port, check=False):
                 dev_type = "phablet"
 
             case_device = {
-                "deviceType": d_class,
+                "deviceType": dev_type,
                 "brand": brand,
                 "model": model,
                 "Software": software,

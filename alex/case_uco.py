@@ -171,7 +171,7 @@ def backup_case_json(case_device, case_backup):
     for file in file_results:
         backup_case.append(file)
 
-    org_name = (case_device["brand"]).upper()
+    org_name = (case_device["brand"])
     org_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, org_name)
 
     organization = {
