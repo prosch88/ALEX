@@ -3754,24 +3754,24 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             case_json_name=f"{snr}_{target}.case.json"
             with open(out_file, "wb") as f:
                 if ut == True:
-                    proc = Popen(["adb", "exec-out", f"echo {sh_pwd}| sudo -S cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
+                    proc = Popen(["adb", "exec-out", f"echo {sh_pwd}| sudo -S cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
                     stream = proc.stdout
                 else:
                     if show_root == True:
                         if device_has_su():
                             if c_su:
-                                proc = Popen(["adb", out_cmd, f"su -c 'cat /dev/{block + target} 2>/dev/null'"], stdout=subprocess.PIPE)
+                                proc = Popen(["adb", out_cmd, f"su -c 'cat /dev/{block + target} 2>/dev/null'"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
                             else:
-                                proc = Popen(["adb", out_cmd, f"echo 'cat /dev/{block + target} 2>/dev/null' | su"], stdout=subprocess.PIPE)
+                                proc = Popen(["adb", out_cmd, f"echo 'cat /dev/{block + target} 2>/dev/null' | su"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
                         elif mtk_su == True:
-                            proc = Popen(["adb", "exec-out", f"/data/local/tmp/mtk-su -c cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
+                            proc = Popen(["adb", "exec-out", f"/data/local/tmp/mtk-su -c cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
                         else:
-                            proc = Popen(["adb", "exec-out", f"cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
+                            proc = Popen(["adb", "exec-out", f"cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
                     else:
-                        proc = Popen(["adb", out_cmd, f"cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE)
+                        proc = Popen(["adb", out_cmd, f"cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
                     stream = proc.stdout
                 while True:
-                    chunk = stream.read(65536)
+                    chunk = stream.read(1024 * 1024)
                     text.configure(text="Physical Backup is running.\nThis may take some time.")
                     if not chunk:
                         break
