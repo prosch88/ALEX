@@ -1158,7 +1158,7 @@ class MyApp(ctk.CTk):
         log("Started FFS Backup")
         file_name = f'FFS_{snr}_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}'
         tar_path = f'{file_name}.tar'
-        case_json_name = f'{file_name}.case_json'
+        case_json_name = f'{file_name}.case.json'
         self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="", width=585, height=20, font=self.stfont, anchor="w", justify="left")
         self.prog_text.pack()
         self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
@@ -3619,6 +3619,7 @@ def tar_root_ffs(outtar, prog_text, change):
 
 #Physical Extraction for Android and Ubuntu Touch
 def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, back_button=None):
+    parent = progress.master
     global c_su
     global f_hash
     global has_exec_out
@@ -3733,11 +3734,11 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                 time.sleep(0.3)
             case_end = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
             progress.pack_forget()
-            progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
+            progress = ctk.CTkProgressBar(parent, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
             progress.pack()
             prog_text.configure(text=" ")
             text.configure(text="Calculating Image-Hash. This may take a while.")
-            do_hash_file(self.change, out_file, physical=True)
+            do_hash_file(change=None, filename=out_file, physical=True)
             case_backup = create_case_backup(bu_fname=out_file, bu_ext=".bin", bu_desc= "ALEX Physical Extraction", type="Physical", method="Physical", bu_hash=f_hash, case_begin=case_begin, case_end=case_end)
             call_case_json(case_device, case_backup, case_json_name, change=None)
             complete = True
@@ -3784,11 +3785,11 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                     progress.update()
             case_end = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
             progress.pack_forget()
-            progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
+            progress = ctk.CTkProgressBar(parent, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
             progress.pack()
             prog_text.configure(text=" ")
             text.configure(text="Calculating Image-Hash. This may take a while.")
-            do_hash_file(self.change, out_file, physical=True)
+            do_hash_file(change=None, filename=out_file, physical=True)
             case_backup = create_case_backup(bu_fname=out_file, bu_ext=".bin", bu_desc= "ALEX Physical Extraction", type="Physical", method="Physical", bu_hash=f_hash, case_begin=case_begin, case_end=case_end)
             call_case_json(case_device, case_backup, case_json_name, change=None)
             complete = True
