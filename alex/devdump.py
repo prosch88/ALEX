@@ -78,20 +78,29 @@ def read_line(proc):
         if ch == b'\n':
             return bytes(line)
 
-def read_exact(proc, n, timeout=5):
+def read_exact(proc, n, timeout=5, min_progress=1024):
     buf = bytearray()
     remaining = n
+
+    last_progress_time = time.time()
+    last_len = 0
+
     while remaining > 0:
         chunk = proc.stdout.read(min(512*1024, remaining))
+
         if chunk:
             buf += chunk
             remaining -= len(chunk)
-            last_data = time.time()
+
+            if len(buf) - last_len >= min_progress:
+                last_progress_time = time.time()
+                last_len = len(buf)
         else:
-            # nichts gelesen → prüfen ob Timeout
-            if time.time() - last_data > timeout:
-                raise TimeoutError("Read timeout")
             time.sleep(0.01)
+
+        if time.time() - last_progress_time > timeout:
+            print("timeout")
+            raise TimeoutError("Stalled read")
     return bytes(buf)
 
 def device_has_su() -> bool:
@@ -238,7 +247,8 @@ def su_root_ffs(outzip=None, filetext=None, prog_text=None, log=None, change=Non
 
     zf.close()
     proc.stdout.close()
-    proc.stderr.close()
+    if proc.stderr:
+        proc.stderr.close()
     try: proc.wait(timeout=2)
     except: proc.kill()
 
