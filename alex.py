@@ -3760,7 +3760,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                     if show_root == True:
                         if device_has_su():
                             if c_su:
-                                proc = Popen(["adb", out_cmd, f"su -c 'cat /dev/{block + target} 2>/dev/null'"], stdout=f, stderr=subprocess.DEVNULL)
+                                proc = Popen(["adb", out_cmd, "su", "-c", f'cat /dev/{block + target} 2>/dev/null'], stdout=f, stderr=subprocess.DEVNULL)
                             else:
                                 proc = Popen(["adb", out_cmd, f"echo 'cat /dev/{block + target} 2>/dev/null' | su"], stdout=f, stderr=subprocess.DEVNULL)
                         elif mtk_su == True:
