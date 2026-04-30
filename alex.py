@@ -3736,6 +3736,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             progress.pack_forget()
             progress = ctk.CTkProgressBar(parent, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
             progress.pack()
+            self.progress.start()
             prog_text.configure(text=" ")
             text.configure(text="Calculating Image-Hash. This may take a while.")
             do_hash_file(change=None, filename=out_file, physical=True)
