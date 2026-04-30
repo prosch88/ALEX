@@ -3754,22 +3754,32 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             case_json_name=f"{snr}_{target}.case.json"
             with open(out_file, "wb") as f:
                 if ut == True:
-                    proc = Popen(["adb", "exec-out", f"echo {sh_pwd}| sudo -S cat /dev/{block + target} 2>/dev/null"], stdout=f, stderr=subprocess.DEVNULL)
-                    #stream = proc.stdout
+                    cmd = f'adb exec-out "echo {sh_pwd} | sudo -S cat {device_path} 2>/dev/null"'
                 else:
                     if show_root == True:
                         if device_has_su():
                             if c_su:
-                                proc = Popen(["adb", out_cmd, "su", "-c", f'cat /dev/{block + target} 2>/dev/null'], stdout=f, stderr=subprocess.DEVNULL)
+                                print("c_su")
+                                cmd = f'adb {out_cmd} "su -c \'cat {device_path} 2>/dev/null\'"'
                             else:
-                                proc = Popen(["adb", out_cmd, f"echo 'cat /dev/{block + target} 2>/dev/null' | su"], stdout=f, stderr=subprocess.DEVNULL)
+                                print("su without c")
+                                cmd = f'adb {out_cmd} "echo \'cat {device_path} 2>/dev/null\' | su"'
+
                         elif mtk_su == True:
-                            proc = Popen(["adb", "exec-out", f"/data/local/tmp/mtk-su -c cat /dev/{block + target} 2>/dev/null"], stdout=f, stderr=subprocess.DEVNULL)
+                            cmd = f'adb exec-out "/data/local/tmp/mtk-su -c cat {device_path} 2>/dev/null"'
+
                         else:
-                            proc = Popen(["adb", "exec-out", f"cat /dev/{block + target} 2>/dev/null"], stdout=f, stderr=subprocess.DEVNULL)
+                            cmd = f'adb exec-out "cat {device_path} 2>/dev/null"'
+
                     else:
-                        proc = Popen(["adb", out_cmd, f"cat /dev/{block + target} 2>/dev/null"], stdout=f, stderr=subprocess.DEVNULL)
-                    #stream = proc.stdout
+                        cmd = f'adb {out_cmd} "cat {device_path} 2>/dev/null"'
+
+                proc = Popen(
+                    cmd,
+                    stdout=f,
+                    stderr=subprocess.DEVNULL,
+                    shell=True
+                )
                 while proc.poll() is None:
                     if os.path.exists(out_file):
                         current = os.path.getsize(out_file)
