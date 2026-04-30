@@ -3754,35 +3754,34 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             case_json_name=f"{snr}_{target}.case.json"
             with open(out_file, "wb") as f:
                 if ut == True:
-                    proc = Popen(["adb", "exec-out", f"echo {sh_pwd}| sudo -S cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-                    stream = proc.stdout
+                    proc = Popen(["adb", "exec-out", f"echo {sh_pwd}| sudo -S cat /dev/{block + target} 2>/dev/null"], stdout=f, stderr=subprocess.DEVNULL)
+                    #stream = proc.stdout
                 else:
                     if show_root == True:
                         if device_has_su():
                             if c_su:
-                                proc = Popen(["adb", out_cmd, f"su -c 'cat /dev/{block + target} 2>/dev/null'"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                                proc = Popen(["adb", out_cmd, f"su -c 'cat /dev/{block + target} 2>/dev/null'"], stdout=f, stderr=subprocess.DEVNULL)
                             else:
-                                proc = Popen(["adb", out_cmd, f"echo 'cat /dev/{block + target} 2>/dev/null' | su"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                                proc = Popen(["adb", out_cmd, f"echo 'cat /dev/{block + target} 2>/dev/null' | su"], stdout=f, stderr=subprocess.DEVNULL)
                         elif mtk_su == True:
-                            proc = Popen(["adb", "exec-out", f"/data/local/tmp/mtk-su -c cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                            proc = Popen(["adb", "exec-out", f"/data/local/tmp/mtk-su -c cat /dev/{block + target} 2>/dev/null"], stdout=f, stderr=subprocess.DEVNULL)
                         else:
-                            proc = Popen(["adb", "exec-out", f"cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                            proc = Popen(["adb", "exec-out", f"cat /dev/{block + target} 2>/dev/null"], stdout=f, stderr=subprocess.DEVNULL)
                     else:
-                        proc = Popen(["adb", out_cmd, f"cat /dev/{block + target} 2>/dev/null"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-                    stream = proc.stdout
-                while True:
-                    chunk = stream.read(1024 * 1024)
-                    text.configure(text="Physical Backup is running.\nThis may take some time.")
-                    if not chunk:
-                        break
-                    f.write(chunk)
-                    current += len(chunk)
+                        proc = Popen(["adb", out_cmd, f"cat /dev/{block + target} 2>/dev/null"], stdout=f, stderr=subprocess.DEVNULL)
+                    #stream = proc.stdout
+                while proc.poll() is None:
+                    if os.path.exists(out_file):
+                        current = os.path.getsize(out_file)
 
-                    perc = (100 / size) * current
-                    prog_text.configure(text=f"{round(perc)}%")  
-                    progress.set(perc/100)
-                    prog_text.update()
-                    progress.update()
+                        perc = (100 / size) * current
+                        prog_text.configure(text=f"{round(perc)}%")
+                        progress.set(perc/100)
+                        prog_text.update()
+                        progress.update()
+
+                    text.configure(text="Physical Backup is running.\nThis may take some time.")
+                    time.sleep(0.3)
             case_end = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
             progress.pack_forget()
             progress = ctk.CTkProgressBar(parent, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
