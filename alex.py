@@ -4443,7 +4443,7 @@ def has_root(change, timeout=30):
                     check_whoami = "root"
             result_holder["value"] = check_whoami == "root"
             check_c_su = device.shell("su -c echo alex")
-            if check_c_su == alex:
+            if check_c_su == "alex":
                 c_su = True
             #print(result_holder["value"])
         except Exception:
