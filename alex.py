@@ -3753,6 +3753,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             out_file = f"{snr}_{target}.bin"
             case_json_name=f"{snr}_{target}.case.json"
             with open(out_file, "wb") as f:
+                device_path = f"/dev/{block + target}"
                 if ut == True:
                     cmd = f'adb exec-out "echo {sh_pwd} | sudo -S cat {device_path} 2>/dev/null"'
                 else:
