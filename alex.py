@@ -2670,13 +2670,19 @@ def get_client(host=default_host, port=default_port, check=False):
             snr = "generic" if no_getprop in snr else snr
             global brand
             global model
-            brand = getprop(device, "ro.product.brand").capitalize()
-            model = getprop(device, "ro.product.model").capitalize()
+            brand = getprop(device, "ro.product.vendor.manufacturer").capitalize()
+            if brand in ["","-"," "]:
+                brand = getprop(device, "ro.product.brand").capitalize()
+            model = getprop(device, "ro.product.odm.marketname").capitalize()
+            if model in ["","-"," "]:
+                model = getprop(device, "ro.product.model").capitalize()
             global full_name   
             full_name = smart_title(f"{brand} {model}" if brand not in model else model)
             full_name = "-" if no_getprop in brand else full_name
             global product 
-            product = getprop(device, "ro.product.name").capitalize()
+            product = getprop(device, "ro.product.vendor.name").capitalize()
+            if product in ["","-"," "]:
+                product = getprop(device, "ro.product.name").capitalize()
             global d_platform 
             d_platform = getprop(device, "ro.board.platform").upper()
             global software
@@ -2701,7 +2707,7 @@ def get_client(host=default_host, port=default_port, check=False):
                 prodregi = getprop(device, "ro.product.locale.region")
                 locale = f"{prodlang}-{prodregi}".strip()
                 if locale == "-" and ut == True:
-                    locale = device.shell("echo %LANG")
+                    locale = device.shell("echo $LANG")
             global imei
             imei = getprop(device, 'gsm.baseband.imei').replace("'","")
             if imei == "-":
@@ -2780,7 +2786,7 @@ def get_client(host=default_host, port=default_port, check=False):
                 d_name = "-"
                 name_s = d_name
             if "not found" in d_name or "permission denied" in d_name:
-                d_name = "NoName"
+                d_name = "-"
                 name_s = d_name
             if d_name == "-":
                 if whoami == "phablet" or aos == True:
