@@ -2574,6 +2574,7 @@ def to_mb(text: str) -> float:
         return val
 
 def get_client(host=default_host, port=default_port, check=False):
+    errors = ["not found", "permission denied", "not allowed", "null", "unknown", "does not exists"]
     def smart_title(s: str) -> str:
         def transform_word(word: str) -> str:
             if re.search(r"[A-Za-z]", word) and re.search(r"\d", word):
@@ -2747,7 +2748,7 @@ def get_client(host=default_host, port=default_port, check=False):
             b_mac = device.shell("settings get secure bluetooth_address")
             if b_mac == "":
                 b_mac = "-"
-            if "not found" in b_mac or "permission denied" in b_mac or "not allowed" in b_mac or "null" in b_mac:
+            if any(err in b_mac.lower() for err in errors):
                 b_mac = "-"
             if b_mac == "-":
                 if whoami == "phablet" or aos == True:
@@ -2778,14 +2779,14 @@ def get_client(host=default_host, port=default_port, check=False):
                             w_mac = device.shell("ip addr show wlan0 | grep 'link/ether' | awk '{print $2}'").upper()
                         except:
                             w_mac = "-"
-                    if "NOT FOUND" in w_mac or "PERMISSION DENIED" in w_mac or "UNKNOWN" in w_mac or "DOES NOT EXIST" in w_mac:
+                    if any(err in w_mac.lower() for err in errors):
                         w_mac = "-"
             global d_name
             d_name = device.shell("settings get global device_name")
             if d_name == "":
                 d_name = "-"
                 name_s = d_name
-            if "not found" in d_name or "permission denied" in d_name:
+            if any(err in d_name.lower() for err in errors):
                 d_name = "-"
                 name_s = d_name
             if d_name == "-":
@@ -2859,7 +2860,7 @@ def get_client(host=default_host, port=default_port, check=False):
                 graph_progress = "-"
             global ad_id
             ad_id = device.shell("settings get secure android_id")
-            if "not found" in ad_id or "permission denied" in ad_id:
+            if any(err in ad_id.lower() for err in errors):
                 ad_id = "-"
             if ad_id == "":
                 ad_id = "-"
