@@ -2591,6 +2591,25 @@ def get_client(host=default_host, port=default_port, check=False):
                 return word.upper()
             return word.title()
         return " ".join(transform_word(w) for w in s.split())
+    
+    def load_props():
+        result = device.shell("getprop")
+        props = {}
+
+        for line in result.splitlines():
+            if line.startswith("[") and "]: [" in line:
+                key, value = line.split("]: [", 1)
+                key = key[1:]
+                value = value[:-1]
+                props[key] = value
+        return props
+
+    def get_prop_fallback(props, *keys):
+        for key in keys:
+            value = props.get(key)
+            if value:
+                return value
+        return "-"
 
     no_getprop = "getprop: not found"
     global adb
@@ -2667,50 +2686,49 @@ def get_client(host=default_host, port=default_port, check=False):
             global has_exec_out
             has_exec_out = supports_exec_out()
             dev_state = "authorized ✔"
+            props = load_props()
+
             snr = getprop(device, "ro.serialno")
             snr = "generic" if no_getprop in snr else snr
+
             global brand
             global model
-            brand = getprop(device, "ro.product.vendor.manufacturer").capitalize()
-            if brand in ["","-"," "]:
-                brand = getprop(device, "ro.product.brand").capitalize()
-            model = getprop(device, "ro.product.odm.marketname").capitalize()
-            if model in ["","-"," "]:
-                model = getprop(device, "ro.product.model").capitalize()
+
+            brand = get_prop_fallback(props, "ro.product.vendor.manufacturer", "ro.product.odm.manufacturer", "ro.product.brand").capitalize()
+            model = get_prop_fallback(props, "ro.product.odm.marketname", "ro.product.odm.model", "ro.product.vendor.model", "ro.product.model").capitalize()
+
             global full_name   
             full_name = smart_title(f"{brand} {model}" if brand not in model else model)
             full_name = "-" if no_getprop in brand else full_name
-            global product 
-            product = getprop(device, "ro.product.vendor.name").capitalize()
-            if product in ["","-"," "]:
-                product = getprop(device, "ro.product.name").capitalize()
+            global product
+            product = get_prop_fallback(props, "ro.product.vendor.name", "ro.product.name").capitalize()
             global d_platform 
-            d_platform = getprop(device, "ro.board.platform").upper()
+            d_platform = get_prop_fallback(props, "ro.board.platform").upper()
             global software
-            software = getprop(device, "ro.build.version.release")
+            software = get_prop_fallback(props, "ro.build.version.release")
             try:
                 major_ver = int(software.split(".")[0])
             except:
                 major_ver = 4
             global sdk
-            sdk = getprop(device, "ro.build.version.sdk")
+            sdk = get_prop_fallback(props, "ro.build.version.sdk")
             global build
-            build = getprop(device, "ro.build.display.id").split(" ")[0]
+            build = get_prop_fallback(props, "ro.build.display.id").split(" ")[0]
             build = "-" if "bin/sh" in build else build
             global spl
-            spl = getprop(device, "ro.build.version.security_patch")
+            spl = get_prop_fallback(props, "ro.build.version.security_patch")
             global abi
-            abi = getprop(device, "ro.product.cpu.abi")
+            abi = get_prop_fallback(props, "ro.product.cpu.abi")
             global locale
-            locale = getprop(device, "persist.sys.locale")
-            if locale in ["","-"," "]:
-                prodlang = getprop(device, "ro.product.locale.language")
-                prodregi = getprop(device, "ro.product.locale.region")
-                locale = f"{prodlang}-{prodregi}".strip()
+            locale = get_prop_fallback(props, "persist.sys.locale")
+            if locale in [None,"","-"," "]:
+                prodlang = get_prop_fallback(props, "ro.product.locale.language")
+                prodregi = get_prop_fallback(props, "ro.product.locale.region")
+                locale = f"{prodlang or ''}-{prodregi or ''}".strip()
                 if locale == "-" and ut == True:
                     locale = device.shell("echo $LANG")
             global imei
-            imei = getprop(device, 'gsm.baseband.imei').replace("'","")
+            imei = get_prop_fallback(props, 'gsm.baseband.imei').replace("'","")
             if imei == "-":
                 if whoami == "phablet":
                     imei_cmd = device.shell('dbus-send --system --print-reply --dest=org.ofono /ril_0 org.ofono.Modem.GetProperties')
@@ -2720,9 +2738,9 @@ def get_client(host=default_host, port=default_port, check=False):
                     else:
                         imei = "-"
                 else:
-                    imei = getprop(device, 'ro.gsm.imei').replace("'","")
+                    imei = get_prop_fallback(props, 'ro.gsm.imei').replace("'","")
             if imei == "-":
-                imei = getprop(device, 'ril.imei').replace("'","")
+                imei = get_prop_fallback(props, 'ril.imei').replace("'","")
             if imei == "-":
                 try:
                     dump_imei = device.shell("dumpsys iphonesubinfo")
@@ -2754,7 +2772,7 @@ def get_client(host=default_host, port=default_port, check=False):
                 if whoami == "phablet" or aos == True:
                     b_mac = device.shell(f"busctl --system get-property org.bluez /org/bluez/hci0 org.bluez.Adapter1 Address | tr -d 's\" '")
             global w_mac
-            w_mac = getprop(device, "ro.boot.wifimacaddr")
+            w_mac = get_prop_fallback(props, "ro.boot.wifimacaddr")
             if w_mac == "-":
                 if whoami == "phablet":
                     w_mac = device.shell("cat /sys/class/net/wlan0/address")
@@ -2865,13 +2883,13 @@ def get_client(host=default_host, port=default_port, check=False):
             if ad_id == "":
                 ad_id = "-"
             global d_class
-            d_class = getprop(device, "ro.build.characteristics")
+            d_class = get_prop_fallback(props, "ro.build.characteristics")
             global d_features
             d_features = device.shell("pm list features")
             global crypt_on
             global crypt_type
-            crypt_on = getprop(device, "ro.crypto.state")
-            crypt_type = getprop(device, "ro.crypto.type")
+            crypt_on = get_prop_fallback(props, "ro.crypto.state")
+            crypt_type = get_prop_fallback(props, "ro.crypto.type")
             if crypt_type not in ["", "-"]:
                 crypt_type = f"({crypt_type})"
             else:
@@ -2903,7 +2921,7 @@ def get_client(host=default_host, port=default_port, check=False):
                                 phone_number = val
                             else:
                                 pass
-                    sim_op = getprop(device, "gsm.sim.operator.alpha")
+                    sim_op = get_prop_fallback(props, "gsm.sim.operator.alpha")
                     if 2 > len(sim_op) or len(sim_op) > 30:
                         sim_op = "-"
                 except:
