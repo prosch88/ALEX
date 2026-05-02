@@ -2698,7 +2698,7 @@ def get_client(host=default_host, port=default_port, check=False):
             model = get_prop_fallback(props, "ro.product.odm.marketname", "ro.product.odm.model", "ro.product.vendor.model", "ro.product.model").capitalize()
 
             global full_name   
-            full_name = smart_title(f"{brand} {model}" if brand not in model else model)
+            full_name = smart_title(f"{brand} {model}" if brand.lower() not in model.lower() else model)
             full_name = "-" if no_getprop in brand else full_name
             global product
             product = get_prop_fallback(props, "ro.product.vendor.name", "ro.product.name").capitalize()
