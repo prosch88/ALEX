@@ -3392,7 +3392,7 @@ def query_content(change, text, progress, prog_text, json_out=False, zip_path=No
             if json_out == False:
                 content_path = Path(f'{out}/{key}/{key}.txt')
                 content_path.parent.mkdir(parents=True, exist_ok=True)
-                content_path.write_text(content_out)
+                content_path.write_text(content_out, encoding="utf-8")
             else:
                 cjson = content_to_json(content_out)
                 json_out = json.dumps(cjson, ensure_ascii=False, indent=2)
@@ -3420,7 +3420,7 @@ def query_content(change, text, progress, prog_text, json_out=False, zip_path=No
                     if json_out == False:
                         content_path = Path(f'{out}/{key}/{key}_{item.replace("/","_")}.txt')
                         content_path.parent.mkdir(parents=True, exist_ok=True)
-                        content_path.write_text(content_out)
+                        content_path.write_text(content_out, encoding="utf-8")
                     else:
                         cjson = content_to_json(content_out)
                         json_out = json.dumps(cjson, ensure_ascii=False, indent=2)
@@ -3451,7 +3451,7 @@ def query_content(change, text, progress, prog_text, json_out=False, zip_path=No
                     if json_out == False:
                         content_path = Path(f'{out}/{key}/{key}_{value.replace("/","_")}.txt')
                         content_path.parent.mkdir(parents=True, exist_ok=True)
-                        content_path.write_text(content_out)
+                        content_path.write_text(content_out, encoding="utf-8")
                     else:
                         cjson = content_to_json(content_out)
                         json_out = json.dumps(cjson, ensure_ascii=False, indent=2)
