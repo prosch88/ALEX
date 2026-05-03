@@ -53,54 +53,6 @@ import re
 import io
 import unicodedata
 
-# Map of known problematic look-alike / exotic Unicode characters to safe PDF replacements
-_CHAR_REPLACEMENTS = {
-    '\uFE6B': '@',   # ﹫ SMALL COMMERCIAL AT
-    '\uFF20': '@',   # ＠ FULLWIDTH COMMERCIAL AT
-    '\uFE50': ',',   # ﹐ SMALL COMMA
-    '\uFE51': ',',   # ﹑ SMALL IDEOGRAPHIC COMMA
-    '\uFE52': '.',   # ﹒ SMALL FULL STOP
-    '\uFE54': ';',   # ﹔ SMALL SEMICOLON
-    '\uFE55': ':',   # ﹕ SMALL COLON
-    '\uFE56': '?',   # ﹖ SMALL QUESTION MARK
-    '\uFE57': '!',   # ﹗ SMALL EXCLAMATION MARK
-    '\uFE58': '-',   # ﹘ SMALL EM DASH
-    '\uFF01': '!',   # ！ FULLWIDTH EXCLAMATION MARK
-    '\uFF0C': ',',   # ， FULLWIDTH COMMA
-    '\uFF0E': '.',   # ． FULLWIDTH FULL STOP
-    '\uFF1A': ':',   # ： FULLWIDTH COLON
-    '\uFF1B': ';',   # ； FULLWIDTH SEMICOLON
-    '\uFF1F': '?',   # ？ FULLWIDTH QUESTION MARK
-    '\uFF3B': '[',   # ［ FULLWIDTH LEFT SQUARE BRACKET
-    '\uFF3D': ']',   # ］ FULLWIDTH RIGHT SQUARE BRACKET
-    '\uFF08': '(',   # （ FULLWIDTH LEFT PARENTHESIS
-    '\uFF09': ')',   # ） FULLWIDTH RIGHT PARENTHESIS
-    '\uFF0D': '-',   # － FULLWIDTH HYPHEN-MINUS
-    '\uFF3F': '_',   # ＿ FULLWIDTH LOW LINE
-    '\u2026': '...', # … HORIZONTAL ELLIPSIS
-    '\u2013': '-',   # – EN DASH
-    '\u2014': '-',   # — EM DASH
-    '\u2018': "'",   # ' LEFT SINGLE QUOTATION MARK
-    '\u2019': "'",   # ' RIGHT SINGLE QUOTATION MARK
-    '\u201C': '"',   # " LEFT DOUBLE QUOTATION MARK
-    '\u201D': '"',   # " RIGHT DOUBLE QUOTATION MARK
-}
-
-def sanitize_for_pdf(text) -> str:
-    """Replace characters unsupported by standard PDF fonts with safe ASCII equivalents."""
-    if not isinstance(text, str):
-        text = str(text) if text is not None else ""
-    result = []
-    for ch in text:
-        if ch in _CHAR_REPLACEMENTS:
-            result.append(_CHAR_REPLACEMENTS[ch])
-        elif ord(ch) > 0x017E and unicodedata.category(ch).startswith('C'):
-            # Drop control/format characters outside Latin Extended-B
-            pass
-        else:
-            result.append(ch)
-    return ''.join(result)
-
 ctk.set_appearance_mode("dark")  # Dark Mode
 ctk.set_default_color_theme(os.path.join(os.path.dirname(__file__), "assets" , "alex_theme.json" ))
 ctk.set_window_scaling(1.0)
@@ -4610,6 +4562,21 @@ def Popen(cmd, **kwargs):
 
     return subprocess.Popen(cmd, **kwargs)
 
+def sanitize_for_pdf(text) -> str:
+    """Replace characters unsupported by standard PDF fonts with safe ASCII equivalents."""
+    if not isinstance(text, str):
+        text = str(text) if text is not None else ""
+    result = []
+    for ch in text:
+        if ch in _CHAR_REPLACEMENTS:
+            result.append(_CHAR_REPLACEMENTS[ch])
+        elif ord(ch) > 0x017E and unicodedata.category(ch).startswith('C'):
+            # Drop control/format characters outside Latin Extended-B
+            pass
+        else:
+            result.append(ch)
+    return ''.join(result)
+
 device = None
 device_auto = None
 zytotal =0
@@ -4630,6 +4597,39 @@ case_name = ""
 evidence_number = ""
 examiner = ""
 device_info = ""
+
+# Map of known problematic look-alike / exotic Unicode characters to safe PDF replacements
+_CHAR_REPLACEMENTS = {
+    '\uFE6B': '@',   # ﹫ SMALL COMMERCIAL AT
+    '\uFF20': '@',   # ＠ FULLWIDTH COMMERCIAL AT
+    '\uFE50': ',',   # ﹐ SMALL COMMA
+    '\uFE51': ',',   # ﹑ SMALL IDEOGRAPHIC COMMA
+    '\uFE52': '.',   # ﹒ SMALL FULL STOP
+    '\uFE54': ';',   # ﹔ SMALL SEMICOLON
+    '\uFE55': ':',   # ﹕ SMALL COLON
+    '\uFE56': '?',   # ﹖ SMALL QUESTION MARK
+    '\uFE57': '!',   # ﹗ SMALL EXCLAMATION MARK
+    '\uFE58': '-',   # ﹘ SMALL EM DASH
+    '\uFF01': '!',   # ！ FULLWIDTH EXCLAMATION MARK
+    '\uFF0C': ',',   # ， FULLWIDTH COMMA
+    '\uFF0E': '.',   # ． FULLWIDTH FULL STOP
+    '\uFF1A': ':',   # ： FULLWIDTH COLON
+    '\uFF1B': ';',   # ； FULLWIDTH SEMICOLON
+    '\uFF1F': '?',   # ？ FULLWIDTH QUESTION MARK
+    '\uFF3B': '[',   # ［ FULLWIDTH LEFT SQUARE BRACKET
+    '\uFF3D': ']',   # ］ FULLWIDTH RIGHT SQUARE BRACKET
+    '\uFF08': '(',   # （ FULLWIDTH LEFT PARENTHESIS
+    '\uFF09': ')',   # ） FULLWIDTH RIGHT PARENTHESIS
+    '\uFF0D': '-',   # － FULLWIDTH HYPHEN-MINUS
+    '\uFF3F': '_',   # ＿ FULLWIDTH LOW LINE
+    '\u2026': '...', # … HORIZONTAL ELLIPSIS
+    '\u2013': '-',   # – EN DASH
+    '\u2014': '-',   # — EM DASH
+    '\u2018': "'",   # ' LEFT SINGLE QUOTATION MARK
+    '\u2019': "'",   # ' RIGHT SINGLE QUOTATION MARK
+    '\u201C': '"',   # " LEFT DOUBLE QUOTATION MARK
+    '\u201D': '"',   # " RIGHT DOUBLE QUOTATION MARK
+}
 
 # Problematic Characters for logs
 undict ={'â€¦': '…',"â€ž":"„" ,'â€“': '–', 'â€™': '’', "â€\x9d":"”",
