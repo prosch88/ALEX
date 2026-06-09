@@ -1708,9 +1708,9 @@ class MyApp(ctk.CTk):
                     if "deviceLocked=true" in output or "deviceLocked=1" in output:
                         self.text.configure(text="The device is locked. Unlock the device and tap \"Back up my data.\"\nIf a password is required, enter \"12345\".")
                     else:
-                        time.sleep(2)
+                        time.sleep(3)
                         device_auto(resourceId="com.android.backupconfirm:id/enc_password").set_text(bu_pass)
-                        time.sleep(2)
+                        time.sleep(3)
                         bu_button = device_auto(resourceId="com.android.backupconfirm:id/button_allow")
                         if bu_button.exists:
                             bu_button.click()
@@ -3681,11 +3681,136 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
     else:
         target = None
     if target == None:
-        text.configure(text="Block Device not found!")
-        log("No Block Device found")
-        change.set(1)
-        return
+        if "nanda" in dev_cmd:
+            if show_root == True:
+                amiroot = "root"
+            else:
+                amiroot = device.shell("whoami 2>/dev/null")
+            case_json_name=f"{snr}_nand.case.json"
+            bu_files = []
+            bu_sizes = {}
+            check_id = device.shell("id")
+            nand_target = device.shell("ls /dev/block/")
+            targets = nand_target.strip().split()
+            full_size = 0
+            last_current = 0
+            for target in targets:
+                if "nand" in target:
+                    if show_root == True:
+                        if device_has_su():
+                            if c_su:
+                                target_size = int(device.shell(f"su -c 'cat /sys/block/{target}/size'"))*512
+                            else:
+                                target_size = int(device.shell(f"echo 'cat /sys/block/{target}/size' | su"))*512
+                        elif mtk_su == True:
+                            target_size = int(device.shell(f"/data/local/tmp/mtk-su -c cat /sys/block/{target}/size"))*512
+                        else:
+                            target_size = int(device.shell(f"cat /sys/block/{target}/size"))*512
+                    else:
+                        target_size = int(device.shell(f"cat /sys/block/{target}/size"))*512
+                    bu_sizes[target] = target_size
+                    full_size += target_size
+            for target, size in bu_sizes.items():
+                prog_text.pack()
+                progress.pack()
+                if "root" in check_id:
+                    current = last_current
+                    out_file = f"{snr}_{target}.bin"
+                    try: os.remove(out_file)
+                    except: pass
+                    device_path = f"/dev/{block + target}"
+                    proc = Popen(
+                        ["adb", "pull", device_path, out_file],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL
+                    )
+                    while proc.poll() is None:
+                        if os.path.exists(out_file):
+                            current = os.path.getsize(out_file) + last_current
+                            perc = (100 / full_size) * current
+                            prog_text.configure(text=f"{round(perc)}%")
+                            progress.set(perc/100)
+                            prog_text.update()
+                            progress.update()
+                        text.configure(text=f"Physical Backup is running.\nThis may take some time. Current: {device_path}")
+                        time.sleep(0.3)
+                    last_current += size
+                
+                elif amiroot == "root":
+                    current = last_current
+                    out_file = f"{snr}_{target}.bin"
+                    try: os.remove(out_file)
+                    except: pass
+                    with open(out_file, "wb") as f:
+                        device_path = f"/dev/{block + target}"
+                        if show_root == True:
+                            if device_has_su():
+                                if c_su:
+                                    cmd = f'adb {out_cmd} "su -c \'cat {device_path} 2>/dev/null\'"'
+                                else:
+                                    cmd = f'adb {out_cmd} "echo \'cat {device_path} 2>/dev/null\' | su"'
 
+                            elif mtk_su == True:
+                                cmd = f'adb exec-out "/data/local/tmp/mtk-su -c cat {device_path} 2>/dev/null"'
+
+                            else:
+                                cmd = f'adb exec-out "cat {device_path} 2>/dev/null"'
+
+                        else:
+                            cmd = f'adb {out_cmd} "cat {device_path} 2>/dev/null"'
+
+                        proc = Popen(
+                            cmd,
+                            stdout=f,
+                            stderr=subprocess.DEVNULL,
+                            shell=True
+                        )
+                        while proc.poll() is None:
+                            if os.path.exists(out_file):
+                                current = os.path.getsize(out_file) + last_current
+
+                                perc = (100 / full_size) * current
+                                prog_text.configure(text=f"{round(perc)}%")
+                                progress.set(perc/100)
+                                prog_text.update()
+                                progress.update()
+
+                            text.configure(text=f"Physical Backup is running.\nThis may take some time. Current: {device_path}")
+                            time.sleep(0.3)
+                    last_current += size
+
+                else:    
+                    text.configure(text="Permission Error!")
+                    log("Permission denied!")
+                    change.set(1)
+                    return
+
+            case_end = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            progress.pack_forget()
+            progress = ctk.CTkProgressBar(parent, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
+            progress.pack()
+            progress.start()
+            prog_text.configure(text=" ")
+            text.configure(text="Calculating Image-Hash. This may take a while.")
+            for target in bu_sizes.keys():
+                out_file = f"{snr}_{target}.bin"
+                do_hash_file(change=None, filename=out_file, physical=True)
+                bu_files.append({"bu_fname": f"{snr}_{target}.bin", "bu_ext": ".bin", "bu_hash": f_hash})
+            case_backup = create_multi_file_case_backup(bu_files=bu_files, type="Physical", method="Physical", bu_desc= "ALEX Physical Extraction", case_begin=case_begin, case_end=case_end)
+            call_case_json(case_device, case_backup, case_json_name, change=None)
+            complete = True
+            prog_text.pack_forget()
+            progress.pack_forget()
+            text.configure(text="Physical Backup complete!")
+                    
+            change.set(1)
+            return
+            
+        else:    
+            text.configure(text="Block Device not found!")
+            log("No Block Device found")
+            change.set(1)
+            return
     else:
         if show_root == True:
             if device_has_su():
@@ -4304,12 +4429,37 @@ def create_case_backup(bu_fname, bu_ext, bu_desc, type, method, bu_hash, case_be
         }
     return case_backup
 
+def create_multi_file_case_backup(bu_files, type, method, bu_desc, case_begin, case_end):
+    bu_case_files = []
+    for bu_file in bu_files:
+        bu_size = os.path.getsize(bu_file['bu_fname'])
+        bu_case_file = {
+            "Type": "forensic-image",
+            "FileName": bu_file['bu_fname'],
+            "extension": bu_file['bu_ext'],
+            "Filesize": bu_size,
+            "isDirectory": False,
+            "SHA256": bu_file['bu_hash']
+        }
+        bu_case_files.append(bu_case_file)
+    
+    case_backup = {
+        "description": bu_desc,
+        "tool_version": a_version,
+        "ExtractionType": type,
+        "ExtractionMethod": method,
+        "Files": bu_case_files,
+        "startTime": case_begin,
+        "endTime": case_end
+        }
+    return case_backup
+
 def call_case_json(case_device, case_backup, case_json_name, change=None):
-        case_json = case_uco.backup_case_json(case_device, case_backup)
-        with open(case_json_name, "w", encoding="utf-8") as f:
-            json.dump(case_json, f, indent=4)
-        if change != None:
-            change.set(1)
+    case_json = case_uco.backup_case_json(case_device, case_backup)
+    with open(case_json_name, "w", encoding="utf-8") as f:
+        json.dump(case_json, f, indent=4)
+    if change != None:
+        change.set(1)
 
 def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, prog_text, progress, change, exist_ok: bool = True, zip=None, mode="default") -> int:
     """Pull directory from device:src into local:dst
