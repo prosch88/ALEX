@@ -180,7 +180,7 @@ def backup_case_json(case_device, case_backup):
         "uco-core:name": org_name
     }
     backup_case.append(organization)
-    #The DeviceID is calculated from the SNR
+    #The DeviceID is calculated from the SNR and the string "alex"
     device = {
         "@id": "kb:device-" + str(device_uuid),
         "@type": "uco-observable:Device",
@@ -215,7 +215,9 @@ def backup_case_json(case_device, case_backup):
     }
     if has_imei:
         md_facet["uco-observable:IMEI"] = imei
-    md_facet["drafting:localeLanguage"] = case_device["localeLanguage"]
+    local_lang = case_device["localeLanguage"]
+    if local_lang not in ["", " ", "-", "---"]:
+        md_facet["drafting:localeLanguage"] = case_device["localeLanguage"]
 
     storage_in = case_device["storageCapacity"]
     storage_out = 0

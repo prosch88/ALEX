@@ -51,6 +51,7 @@ import typing
 import pathlib
 import re
 import io
+import unicodedata
 
 ctk.set_appearance_mode("dark")  # Dark Mode
 ctk.set_default_color_theme(os.path.join(os.path.dirname(__file__), "assets" , "alex_theme.json" ))
@@ -2251,11 +2252,11 @@ class MyApp(ctk.CTk):
                             [
                                 {
                                     "style": {"cell_fill": row_bg}, 
-                                    ".": account.get("type")
+                                    ".": sanitize_for_pdf(account.get("type", ""))
                                 }, 
                                 {
                                     "style": {"cell_fill": row_bg}, 
-                                    ".": account.get("name")
+                                    ".": sanitize_for_pdf(account.get("name", ""))
                                 }
                             ]
                         ]
@@ -2276,9 +2277,9 @@ class MyApp(ctk.CTk):
                     },
                     "table": [
                         [
-                            {"style": {"cell_fill": row_bg}, ".": d_app[0]},
-                            {"style": {"cell_fill": row_bg}, ".": d_app[1]},
-                            {"style": {"cell_fill": row_bg}, ".": d_app[2]}
+                            {"style": {"cell_fill": row_bg}, ".": sanitize_for_pdf(d_app[0])},
+                            {"style": {"cell_fill": row_bg}, ".": sanitize_for_pdf(d_app[1])},
+                            {"style": {"cell_fill": row_bg}, ".": sanitize_for_pdf(d_app[2])}
                         ]
                     ]
                 }
@@ -2574,6 +2575,7 @@ def to_mb(text: str) -> float:
         return val
 
 def get_client(host=default_host, port=default_port, check=False):
+    errors = ["not found", "permission denied", "not allowed", "null", "unknown", "does not exists"]
     def smart_title(s: str) -> str:
         def transform_word(word: str) -> str:
             if re.search(r"[A-Za-z]", word) and re.search(r"\d", word):
@@ -2590,6 +2592,25 @@ def get_client(host=default_host, port=default_port, check=False):
                 return word.upper()
             return word.title()
         return " ".join(transform_word(w) for w in s.split())
+    
+    def load_props():
+        result = device.shell("getprop")
+        props = {}
+
+        for line in result.splitlines():
+            if line.startswith("[") and "]: [" in line:
+                key, value = line.split("]: [", 1)
+                key = key[1:]
+                value = value[:-1]
+                props[key] = value
+        return props
+
+    def get_prop_fallback(props, *keys):
+        for key in keys:
+            value = props.get(key)
+            if value:
+                return value
+        return "-"
 
     no_getprop = "getprop: not found"
     global adb
@@ -2666,44 +2687,49 @@ def get_client(host=default_host, port=default_port, check=False):
             global has_exec_out
             has_exec_out = supports_exec_out()
             dev_state = "authorized ✔"
+            props = load_props()
+
             snr = getprop(device, "ro.serialno")
             snr = "generic" if no_getprop in snr else snr
+
             global brand
             global model
-            brand = getprop(device, "ro.product.brand").capitalize()
-            model = getprop(device, "ro.product.model").capitalize()
+
+            brand = get_prop_fallback(props, "ro.product.vendor.manufacturer", "ro.product.odm.manufacturer", "ro.product.brand").capitalize()
+            model = get_prop_fallback(props, "ro.product.odm.marketname", "ro.product.odm.model", "ro.product.vendor.model", "ro.product.model").capitalize()
+
             global full_name   
-            full_name = smart_title(f"{brand} {model}" if brand not in model else model)
+            full_name = smart_title(f"{brand} {model}" if brand.lower() not in model.lower() else model)
             full_name = "-" if no_getprop in brand else full_name
-            global product 
-            product = getprop(device, "ro.product.name").capitalize()
+            global product
+            product = get_prop_fallback(props, "ro.product.vendor.name", "ro.product.name").capitalize()
             global d_platform 
-            d_platform = getprop(device, "ro.board.platform").upper()
+            d_platform = get_prop_fallback(props, "ro.board.platform").upper()
             global software
-            software = getprop(device, "ro.build.version.release")
+            software = get_prop_fallback(props, "ro.build.version.release")
             try:
                 major_ver = int(software.split(".")[0])
             except:
                 major_ver = 4
             global sdk
-            sdk = getprop(device, "ro.build.version.sdk")
+            sdk = get_prop_fallback(props, "ro.build.version.sdk")
             global build
-            build = getprop(device, "ro.build.display.id").split(" ")[0]
+            build = get_prop_fallback(props, "ro.build.display.id").split(" ")[0]
             build = "-" if "bin/sh" in build else build
             global spl
-            spl = getprop(device, "ro.build.version.security_patch")
+            spl = get_prop_fallback(props, "ro.build.version.security_patch")
             global abi
-            abi = getprop(device, "ro.product.cpu.abi")
+            abi = get_prop_fallback(props, "ro.product.cpu.abi")
             global locale
-            locale = getprop(device, "persist.sys.locale")
-            if locale in ["","-"," "]:
-                prodlang = getprop(device, "ro.product.locale.language")
-                prodregi = getprop(device, "ro.product.locale.region")
-                locale = f"{prodlang}-{prodregi}".strip()
+            locale = get_prop_fallback(props, "persist.sys.locale")
+            if locale in [None,"","-"," "]:
+                prodlang = get_prop_fallback(props, "ro.product.locale.language")
+                prodregi = get_prop_fallback(props, "ro.product.locale.region")
+                locale = f"{prodlang or ''}-{prodregi or ''}".strip()
                 if locale == "-" and ut == True:
-                    locale = device.shell("echo %LANG")
+                    locale = device.shell("echo $LANG")
             global imei
-            imei = getprop(device, 'gsm.baseband.imei').replace("'","")
+            imei = get_prop_fallback(props, 'gsm.baseband.imei').replace("'","")
             if imei == "-":
                 if whoami == "phablet":
                     imei_cmd = device.shell('dbus-send --system --print-reply --dest=org.ofono /ril_0 org.ofono.Modem.GetProperties')
@@ -2713,9 +2739,9 @@ def get_client(host=default_host, port=default_port, check=False):
                     else:
                         imei = "-"
                 else:
-                    imei = getprop(device, 'ro.gsm.imei').replace("'","")
+                    imei = get_prop_fallback(props, 'ro.gsm.imei').replace("'","")
             if imei == "-":
-                imei = getprop(device, 'ril.imei').replace("'","")
+                imei = get_prop_fallback(props, 'ril.imei').replace("'","")
             if imei == "-":
                 try:
                     dump_imei = device.shell("dumpsys iphonesubinfo")
@@ -2741,13 +2767,13 @@ def get_client(host=default_host, port=default_port, check=False):
             b_mac = device.shell("settings get secure bluetooth_address")
             if b_mac == "":
                 b_mac = "-"
-            if "not found" in b_mac or "permission denied" in b_mac or "not allowed" in b_mac or "null" in b_mac:
+            if any(err in b_mac.lower() for err in errors):
                 b_mac = "-"
             if b_mac == "-":
                 if whoami == "phablet" or aos == True:
                     b_mac = device.shell(f"busctl --system get-property org.bluez /org/bluez/hci0 org.bluez.Adapter1 Address | tr -d 's\" '")
             global w_mac
-            w_mac = getprop(device, "ro.boot.wifimacaddr")
+            w_mac = get_prop_fallback(props, "ro.boot.wifimacaddr")
             if w_mac == "-":
                 if whoami == "phablet":
                     w_mac = device.shell("cat /sys/class/net/wlan0/address")
@@ -2772,15 +2798,15 @@ def get_client(host=default_host, port=default_port, check=False):
                             w_mac = device.shell("ip addr show wlan0 | grep 'link/ether' | awk '{print $2}'").upper()
                         except:
                             w_mac = "-"
-                    if "NOT FOUND" in w_mac or "PERMISSION DENIED" in w_mac or "UNKNOWN" in w_mac or "DOES NOT EXIST" in w_mac:
+                    if any(err in w_mac.lower() for err in errors):
                         w_mac = "-"
             global d_name
             d_name = device.shell("settings get global device_name")
             if d_name == "":
                 d_name = "-"
                 name_s = d_name
-            if "not found" in d_name or "permission denied" in d_name:
-                d_name = "NoName"
+            if any(err in d_name.lower() for err in errors):
+                d_name = "-"
                 name_s = d_name
             if d_name == "-":
                 if whoami == "phablet" or aos == True:
@@ -2853,18 +2879,18 @@ def get_client(host=default_host, port=default_port, check=False):
                 graph_progress = "-"
             global ad_id
             ad_id = device.shell("settings get secure android_id")
-            if "not found" in ad_id or "permission denied" in ad_id:
+            if any(err in ad_id.lower() for err in errors):
                 ad_id = "-"
             if ad_id == "":
                 ad_id = "-"
             global d_class
-            d_class = getprop(device, "ro.build.characteristics")
+            d_class = get_prop_fallback(props, "ro.build.characteristics")
             global d_features
             d_features = device.shell("pm list features")
             global crypt_on
             global crypt_type
-            crypt_on = getprop(device, "ro.crypto.state")
-            crypt_type = getprop(device, "ro.crypto.type")
+            crypt_on = get_prop_fallback(props, "ro.crypto.state")
+            crypt_type = get_prop_fallback(props, "ro.crypto.type")
             if crypt_type not in ["", "-"]:
                 crypt_type = f"({crypt_type})"
             else:
@@ -2896,7 +2922,7 @@ def get_client(host=default_host, port=default_port, check=False):
                                 phone_number = val
                             else:
                                 pass
-                    sim_op = getprop(device, "gsm.sim.operator.alpha")
+                    sim_op = get_prop_fallback(props, "gsm.sim.operator.alpha")
                     if 2 > len(sim_op) or len(sim_op) > 30:
                         sim_op = "-"
                 except:
@@ -3366,7 +3392,7 @@ def query_content(change, text, progress, prog_text, json_out=False, zip_path=No
             if json_out == False:
                 content_path = Path(f'{out}/{key}/{key}.txt')
                 content_path.parent.mkdir(parents=True, exist_ok=True)
-                content_path.write_text(content_out)
+                content_path.write_text(content_out, encoding="utf-8")
             else:
                 cjson = content_to_json(content_out)
                 json_out = json.dumps(cjson, ensure_ascii=False, indent=2)
@@ -3394,7 +3420,7 @@ def query_content(change, text, progress, prog_text, json_out=False, zip_path=No
                     if json_out == False:
                         content_path = Path(f'{out}/{key}/{key}_{item.replace("/","_")}.txt')
                         content_path.parent.mkdir(parents=True, exist_ok=True)
-                        content_path.write_text(content_out)
+                        content_path.write_text(content_out, encoding="utf-8")
                     else:
                         cjson = content_to_json(content_out)
                         json_out = json.dumps(cjson, ensure_ascii=False, indent=2)
@@ -3425,7 +3451,7 @@ def query_content(change, text, progress, prog_text, json_out=False, zip_path=No
                     if json_out == False:
                         content_path = Path(f'{out}/{key}/{key}_{value.replace("/","_")}.txt')
                         content_path.parent.mkdir(parents=True, exist_ok=True)
-                        content_path.write_text(content_out)
+                        content_path.write_text(content_out, encoding="utf-8")
                     else:
                         cjson = content_to_json(content_out)
                         json_out = json.dumps(cjson, ensure_ascii=False, indent=2)
@@ -4686,6 +4712,21 @@ def Popen(cmd, **kwargs):
 
     return subprocess.Popen(cmd, **kwargs)
 
+def sanitize_for_pdf(text) -> str:
+    """Replace characters unsupported by standard PDF fonts with safe ASCII equivalents."""
+    if not isinstance(text, str):
+        text = str(text) if text is not None else ""
+    result = []
+    for ch in text:
+        if ch in _CHAR_REPLACEMENTS:
+            result.append(_CHAR_REPLACEMENTS[ch])
+        elif ord(ch) > 0x017E and unicodedata.category(ch).startswith('C'):
+            # Drop control/format characters outside Latin Extended-B
+            pass
+        else:
+            result.append(ch)
+    return ''.join(result)
+
 device = None
 device_auto = None
 zytotal =0
@@ -4706,6 +4747,39 @@ case_name = ""
 evidence_number = ""
 examiner = ""
 device_info = ""
+
+# Map of known problematic look-alike / exotic Unicode characters to safe PDF replacements
+_CHAR_REPLACEMENTS = {
+    '\uFE6B': '@',   # ﹫ SMALL COMMERCIAL AT
+    '\uFF20': '@',   # ＠ FULLWIDTH COMMERCIAL AT
+    '\uFE50': ',',   # ﹐ SMALL COMMA
+    '\uFE51': ',',   # ﹑ SMALL IDEOGRAPHIC COMMA
+    '\uFE52': '.',   # ﹒ SMALL FULL STOP
+    '\uFE54': ';',   # ﹔ SMALL SEMICOLON
+    '\uFE55': ':',   # ﹕ SMALL COLON
+    '\uFE56': '?',   # ﹖ SMALL QUESTION MARK
+    '\uFE57': '!',   # ﹗ SMALL EXCLAMATION MARK
+    '\uFE58': '-',   # ﹘ SMALL EM DASH
+    '\uFF01': '!',   # ！ FULLWIDTH EXCLAMATION MARK
+    '\uFF0C': ',',   # ， FULLWIDTH COMMA
+    '\uFF0E': '.',   # ． FULLWIDTH FULL STOP
+    '\uFF1A': ':',   # ： FULLWIDTH COLON
+    '\uFF1B': ';',   # ； FULLWIDTH SEMICOLON
+    '\uFF1F': '?',   # ？ FULLWIDTH QUESTION MARK
+    '\uFF3B': '[',   # ［ FULLWIDTH LEFT SQUARE BRACKET
+    '\uFF3D': ']',   # ］ FULLWIDTH RIGHT SQUARE BRACKET
+    '\uFF08': '(',   # （ FULLWIDTH LEFT PARENTHESIS
+    '\uFF09': ')',   # ） FULLWIDTH RIGHT PARENTHESIS
+    '\uFF0D': '-',   # － FULLWIDTH HYPHEN-MINUS
+    '\uFF3F': '_',   # ＿ FULLWIDTH LOW LINE
+    '\u2026': '...', # … HORIZONTAL ELLIPSIS
+    '\u2013': '-',   # – EN DASH
+    '\u2014': '-',   # — EM DASH
+    '\u2018': "'",   # ' LEFT SINGLE QUOTATION MARK
+    '\u2019': "'",   # ' RIGHT SINGLE QUOTATION MARK
+    '\u201C': '"',   # " LEFT DOUBLE QUOTATION MARK
+    '\u201D': '"',   # " RIGHT DOUBLE QUOTATION MARK
+}
 
 # Problematic Characters for logs
 undict ={'â€¦': '…',"â€ž":"„" ,'â€“': '–', 'â€™': '’', "â€\x9d":"”",
