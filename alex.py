@@ -3036,6 +3036,8 @@ def get_client(host=default_host, port=default_port, check=False):
 
             if "default" in d_class or "nosdcard" in d_class:
                 dev_type = "phone"
+                if "watch" in d_class:
+                    dev_type = "watch"
             else:
                 dev_type = d_class
             if ut == True:
