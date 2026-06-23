@@ -2520,7 +2520,7 @@ class MyApp(ctk.CTk):
             change.set(1)
 
 
-a_version = 0.5
+a_version = 0.6
 default_host = "127.0.0.1"
 default_port = 5037
 # Abort-Helper for the live logcat capture
