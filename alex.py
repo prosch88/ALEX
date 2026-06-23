@@ -4,6 +4,7 @@
 
 import sys
 import os
+os.environ["PATH"] += os.pathsep + "/usr/local/bin"
 sys.path.insert(0, os.path.dirname(__file__))
 if sys.stdout is None:
     sys.stdout = open(os.devnull, "w")
