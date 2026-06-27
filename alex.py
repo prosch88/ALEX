@@ -3936,9 +3936,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                 proc = Popen(
                     cmd,
                     stdout=f,
-                    stderr=subprocess.DEVNULL,
-                    shell=True
-                )
+                    stderr=subprocess.DEVNULL,                )
                 while proc.poll() is None:
                     if os.path.exists(out_file):
                         current = os.path.getsize(out_file)
