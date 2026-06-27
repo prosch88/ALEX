@@ -3775,18 +3775,18 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                         if show_root == True:
                             if device_has_su():
                                 if c_su:
-                                    cmd = f'adb {out_cmd} "su -c \'cat {device_path} 2>/dev/null\'"'
+                                    cmd = ['adb', out_cmd, f"su -c \'cat {device_path} 2>/dev/null\'"]
                                 else:
-                                    cmd = f'adb {out_cmd} "echo \'cat {device_path} 2>/dev/null\' | su"'
+                                    cmd = ['adb', out_cmd, f"echo \'cat {device_path} 2>/dev/null\' | su"]
 
                             elif mtk_su == True:
-                                cmd = f'adb exec-out "/data/local/tmp/mtk-su -c cat {device_path} 2>/dev/null"'
+                                cmd = ['adb', "exec-out", f"/data/local/tmp/mtk-su -c cat {device_path} 2>/dev/null"] 
 
                             else:
-                                cmd = f'adb exec-out "cat {device_path} 2>/dev/null"'
+                                cmd = ['adb', "exec-out", f"cat {device_path} 2>/dev/null"]
 
                         else:
-                            cmd = f'adb {out_cmd} "cat {device_path} 2>/dev/null"'
+                            cmd = ['adb', out_cmd, f"cat {device_path} 2>/dev/null"]
 
                         proc = Popen(
                             cmd,
@@ -3913,30 +3913,30 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             with open(out_file, "wb") as f:
                 device_path = f"/dev/{block + target}"
                 if ut == True:
-                    cmd = f'adb exec-out "echo {sh_pwd} | sudo -S cat {device_path} 2>/dev/null"'
+                    cmd = ['adb', "exec-out",  f"echo {sh_pwd} | sudo -S cat {device_path} 2>/dev/null"]
                 else:
                     if show_root == True:
                         if device_has_su():
                             if c_su:
                                 print("c_su")
-                                cmd = f'adb {out_cmd} "su -c \'cat {device_path} 2>/dev/null\'"'
+                                cmd = ['adb', out_cmd, f"su -c \'cat {device_path} 2>/dev/null\'"]
                             else:
                                 print("su without c")
-                                cmd = f'adb {out_cmd} "echo \'cat {device_path} 2>/dev/null\' | su"'
+                                cmd = ['adb', {out_cmd}, f"echo \'cat {device_path} 2>/dev/null\' | su"]
 
                         elif mtk_su == True:
-                            cmd = f'adb exec-out "/data/local/tmp/mtk-su -c cat {device_path} 2>/dev/null"'
+                            cmd = ['adb', "exec-out", f"/data/local/tmp/mtk-su -c cat {device_path} 2>/dev/null"]
 
                         else:
-                            cmd = f'adb exec-out "cat {device_path} 2>/dev/null"'
+                            cmd = ['adb', "exec-out", f"cat {device_path} 2>/dev/null"]
 
                     else:
-                        cmd = f'adb {out_cmd} "cat {device_path} 2>/dev/null"'
+                        cmd = ['adb', out_cmd, f"cat {device_path} 2>/dev/null"]
 
                 proc = Popen(
                     cmd,
                     stdout=f,
-                    stderr=subprocess.DEVNULL,                )
+                    stderr=subprocess.DEVNULL)
                 while proc.poll() is None:
                     if os.path.exists(out_file):
                         current = os.path.getsize(out_file)
