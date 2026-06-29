@@ -1464,13 +1464,16 @@ class MyApp(ctk.CTk):
             if self.change.get() == 1:
                 bu_pass = None
             self.prog_text.configure(text="")
-            self.change.set(0)
-            self.decrypt_backup = threading.Thread(target=lambda: ab_decrypt.backup_to_zip(bu_file, zip, bu_pass, self.change, self.prog_text))
-            self.decrypt_backup.start()
-            self.wait_variable(self.change)
-            try:
-                os.remove(bu_file)
-            except:
+            if change.get() != 3:
+                self.change.set(0)
+                self.decrypt_backup = threading.Thread(target=lambda: ab_decrypt.backup_to_zip(bu_file, zip, bu_pass, self.change, self.prog_text))
+                self.decrypt_backup.start()
+                self.wait_variable(self.change)
+                try:
+                    os.remove(bu_file)
+                except:
+                    pass
+            else:
                 pass
             
         if incl_sdcard == "on":
@@ -4385,8 +4388,10 @@ def check_bu_pass(bu_file, change, password=None):
             ab_decrypt.parse_header(f, password)
             change.set(1)
     except Exception as e:
-        #print(e)
-        change.set(2)
+        if "no android backup file" in e.lower():
+            change.set(3)
+        else:
+            change.set(2)
     
 
 def get_data_size(data_path, change):
