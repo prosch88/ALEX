@@ -2576,7 +2576,7 @@ def to_mb(text: str) -> float:
         return val
 
 def get_client(host=default_host, port=default_port, check=False):
-    errors = ["not found", "permission denied", "not allowed", "null", "unknown", "does not exists"]
+    errors = ["not found", "permission denied", "not allowed", "null", "unknown", "does not exist"]
     def smart_title(s: str) -> str:
         def transform_word(word: str) -> str:
             if re.search(r"[A-Za-z]", word) and re.search(r"\d", word):
