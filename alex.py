@@ -4388,7 +4388,7 @@ def check_bu_pass(bu_file, change, password=None):
             ab_decrypt.parse_header(f, password)
             change.set(1)
     except Exception as e:
-        if "no android backup file" in e.lower():
+        if "no android backup file" in str(e).lower():
             change.set(3)
         else:
             change.set(2)
