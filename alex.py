@@ -2214,6 +2214,7 @@ class MyApp(ctk.CTk):
             apps_info = []
             i = 0
             accounts = []
+            account_set = set()
             acc_pattern = re.compile(
                 r'Account\s*\{\s*name=([^,}]+)\s*,\s*type=([^}]+)\s*\}'
             )
@@ -2221,10 +2222,13 @@ class MyApp(ctk.CTk):
                 for line in device.shell("dumpsys account").splitlines():
                     m = acc_pattern.search(line)
                     if m:
-                        accounts.append({
-                            "name": m.group(1),
-                            "type": m.group(2)
-                        })
+                        key = (m.group(1), m.group(2))
+                        if key not in account_set:
+                            account_set.add(key)
+                            accounts.append({
+                                "name": key[0],
+                                "type": key[1]
+                            })
 
                 for d_app in apps:
                     i+=1
