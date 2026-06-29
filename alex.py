@@ -1464,7 +1464,7 @@ class MyApp(ctk.CTk):
             if self.change.get() == 1:
                 bu_pass = None
             self.prog_text.configure(text="")
-            if change.get() != 3:
+            if self.change.get() != 3:
                 self.change.set(0)
                 self.decrypt_backup = threading.Thread(target=lambda: ab_decrypt.backup_to_zip(bu_file, zip, bu_pass, self.change, self.prog_text))
                 self.decrypt_backup.start()
