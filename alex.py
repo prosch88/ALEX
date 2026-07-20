@@ -738,6 +738,7 @@ class MyApp(ctk.CTk):
         global c_su
         mtk_su = False
         self.change = ctk.IntVar(self, 0)
+        print(show_root)
         if show_root == False:
             if whoami == "root":
                 show_root = True
@@ -757,19 +758,8 @@ class MyApp(ctk.CTk):
                     self.text.configure(text="Root access has not been confirmed.")
                     self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
                     return
-            elif su_app == None:
-                log("No su-manager found.")
-                self.text.configure(text="Please allow the following superuser request on the device.")
-                check_su = threading.Thread(target=lambda:has_root(self.change))
-                check_su.start()
-                self.wait_variable(self.change)
-                if self.change.get() == 1:
-                    show_root = True
-                else:
-                    self.text.configure(text="Root access has not been confirmed.")
-                    self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
-                    return
-            elif d_platform.upper().startswith(mtk_vers):
+            elif any(d_platform.upper().startswith(mtk_vers) for mtk_ver in mtk_vers):
+                print("mtk")
                 if int(software.split(".")[0]) < 10 and spl < "2020-03-01":
                     self.choose = ctk.BooleanVar(self, False)
                     self.text.configure(text="This device may be vulnerable to CVE-2020-0069 (mtk-su).\nFor temporary root access, mtk-su can be copied to the device's\ntmp directory and executed.\n\nDo you want to continue?")
@@ -796,6 +786,18 @@ class MyApp(ctk.CTk):
                     else:
                         self.switch_menu("AcqMenu")
                         return
+            elif su_app == None:
+                log("No su-manager found.")
+                self.text.configure(text="Please allow the following superuser request on the device.")
+                check_su = threading.Thread(target=lambda:has_root(self.change))
+                check_su.start()
+                self.wait_variable(self.change)
+                if self.change.get() == 1:
+                    show_root = True
+                else:
+                    self.text.configure(text="Root access has not been confirmed.")
+                    self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
+                    return
         if show_root == True:
             self.after(100, lambda: self.switch_menu("RootAcq"))
             return
@@ -836,6 +838,8 @@ class MyApp(ctk.CTk):
                     if self.change.get() == 1:
                         show_root = True
                         mtk_su = True
+                        self.after(100, lambda: self.switch_menu("RootAcq"))
+                        return
                     else:
                         self.text.configure(text="Root access has not been gained.\nDue to the nature of this process, another attempt may be successful.")
                         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("Exploits")).pack(pady=40))
@@ -4688,14 +4692,19 @@ def temp_mtk_su(change, timeout=30):
     try:
         run(["adb", "push", mtk_su_bin, remote_path], check=True)
         log("Pushed mtk-su binary to /data/local/tmp")
-    except:
+    except Exception as e:
+        print(e)
         pass
     run(["adb", "shell", f"chmod 755 {remote_path}"], check=True)
     try:
         result_holder["value"] = device.shell(f"{remote_path} -c whoami").strip() == "root"
-    except Exception:
+
+    except Exception as e:
+        print(e)
         result_holder["value"] = False
+        print(result_holder["value"])
     if result_holder["value"] == True:
+        print(result_holder["value"])
         change.set(1)
         return True
     else:
