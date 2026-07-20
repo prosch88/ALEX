@@ -759,7 +759,6 @@ class MyApp(ctk.CTk):
                     self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
                     return
             elif any(d_platform.upper().startswith(mtk_vers) for mtk_ver in mtk_vers):
-                print("mtk")
                 if int(software.split(".")[0]) < 10 and spl < "2020-03-01":
                     self.choose = ctk.BooleanVar(self, False)
                     self.text.configure(text="This device may be vulnerable to CVE-2020-0069 (mtk-su).\nFor temporary root access, mtk-su can be copied to the device's\ntmp directory and executed.\n\nDo you want to continue?")
@@ -4702,9 +4701,7 @@ def temp_mtk_su(change, timeout=30):
     except Exception as e:
         print(e)
         result_holder["value"] = False
-        print(result_holder["value"])
     if result_holder["value"] == True:
-        print(result_holder["value"])
         change.set(1)
         return True
     else:
