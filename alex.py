@@ -1716,12 +1716,16 @@ class MyApp(ctk.CTk):
                     if "deviceLocked=true" in output or "deviceLocked=1" in output:
                         self.text.configure(text="The device is locked. Unlock the device and tap \"Back up my data.\"\nIf a password is required, enter \"12345\".")
                     else:
-                        time.sleep(3)
-                        device_auto(resourceId="com.android.backupconfirm:id/enc_password").set_text(bu_pass)
-                        time.sleep(3)
-                        bu_button = device_auto(resourceId="com.android.backupconfirm:id/button_allow")
-                        if bu_button.exists:
-                            bu_button.click()
+                        try:
+                            time.sleep(3)
+                            device_auto(resourceId="com.android.backupconfirm:id/enc_password").set_text(bu_pass)
+                            time.sleep(3)
+                            bu_button = device_auto(resourceId="com.android.backupconfirm:id/button_allow")
+                            if bu_button.exists:
+                                bu_button.click()
+                        except Exception as e:
+                            self.text.configure(text="Unlock the device and tap \"Back up my data.\"\nIf a password is required, enter \"12345\".")
+                            log(f"Error with uiautomator: {e}")
                 else:
                     pass
                 while True:
