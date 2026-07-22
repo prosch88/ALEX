@@ -2711,13 +2711,13 @@ def get_client(host=default_host, port=default_port, check=False):
             global model
 
             brand = get_prop_fallback(props, "ro.product.vendor.manufacturer", "ro.product.odm.manufacturer", "ro.product.brand").capitalize()
-            model = get_prop_fallback(props, "ro.product.odm.marketname", "ro.product.odm.model", "ro.product.vendor.model", "ro.product.model").capitalize()
+            model = get_prop_fallback(props, "ro.product.odm.marketname", "ro.product.odm.model", "ro.product.model", "ro.product.vendor.model").capitalize()
 
             global full_name   
             full_name = smart_title(f"{brand} {model}" if brand.lower() not in model.lower() else model)
             full_name = "-" if no_getprop in brand else full_name
             global product
-            product = get_prop_fallback(props, "ro.product.vendor.name", "ro.product.name").capitalize()
+            product = get_prop_fallback(props, "ro.product.odm.name", "ro.product.vendor.name", "ro.product.name").capitalize()
             global d_platform 
             d_platform = get_prop_fallback(props, "ro.board.platform").upper()
             global software
