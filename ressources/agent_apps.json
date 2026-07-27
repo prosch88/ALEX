@@ -3,6 +3,7 @@
     "com.oxygen.forensicagent": "Oxygen Android Agent",
     "com.compelson.mefconnector": "Compelson MOBILedit Connector",
     "com.magnetforensics.acquire": "MAGNET Acquire",
+    "com.magnetforensics.lplus": "MAGNET Graykey/Verakey (Logical+)",
     "example.helloandroid": "MSAB XRY Agent",
     "belkasoft.backup.agent": "Belkasoft Android Agent",
     "com.belkasoft.sdcardagent": "Belkasoft SDCard Agent",
