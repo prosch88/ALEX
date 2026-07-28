@@ -266,6 +266,8 @@ def ufd_report_xml(contact_dict, call_dict, calendar_dict, sms_dict, mms_dict, m
         ET.SubElement(sms_entry, "id").text = str(new_id)
 
         address = sms.get("address", "")
+        if address == None:
+            address = " "
         name_value = "N/A"
         number_value = ""
 
@@ -274,7 +276,7 @@ def ufd_report_xml(contact_dict, call_dict, calendar_dict, sms_dict, mms_dict, m
             number_value = address.strip()
             #Try to find a contact to the number
             for stored_num, contact_name in contact_map.items():
-                if stored_num.endswith(number_value[-7:]):  # letzte Ziffern vergleichen
+                if stored_num.endswith(number_value[-7:]):
                     name_value = contact_name
                     break
         elif address:
