@@ -62,6 +62,8 @@ from tkinter import StringVar
 if os.name == "posix":
     from alex.linux_dpi import get_linux_scale_factor
     scaling = get_linux_scale_factor()
+    if scaling == 1.5:
+        scaling += 0.04
 else:
     scaling = 1.0
 
