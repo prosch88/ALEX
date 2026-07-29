@@ -10,12 +10,8 @@ if sys.stdout is None:
     sys.stdout = open(os.devnull, "w")
 if sys.stderr is None:
     sys.stderr = open(os.devnull, "w")
-import customtkinter as ctk
 from PIL import ImageTk, Image, ExifTags, ImageDraw, ImageFont
-import tkinter.ttk as ttk
-import tkinter as tk
 from datetime import datetime, timedelta, timezone, date
-from tkinter import StringVar
 from importlib.metadata import version
 from adbutils._utils import append_path
 from io import BytesIO
@@ -54,10 +50,25 @@ import re
 import io
 import unicodedata
 
+if os.name == "posix":
+    dpi_file = pathlib.Path(__file__).parent / "assets" / "dpi96"
+    os.environ["XENVIRONMENT"] = str(dpi_file)
+from PIL import ImageTk, Image, ExifTags, ImageDraw, ImageFont
+
+import customtkinter as ctk
+import tkinter.ttk as ttk
+from tkinter import StringVar
+
+if os.name == "posix":
+    from alex.linux_dpi import get_linux_scale_factor
+    scaling = get_linux_scale_factor()
+else:
+    scaling = 1.0
+
 ctk.set_appearance_mode("dark")  # Dark Mode
 ctk.set_default_color_theme(os.path.join(os.path.dirname(__file__), "assets" , "alex_theme.json" ))
-ctk.set_window_scaling(1.0)
-ctk.set_widget_scaling(1.0) 
+ctk.set_window_scaling(scaling)
+ctk.set_widget_scaling(scaling) 
 
 class MyApp(ctk.CTk):
     def __init__(self):
