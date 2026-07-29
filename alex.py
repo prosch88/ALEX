@@ -125,12 +125,12 @@ class MyApp(ctk.CTk):
 
         # Widgets (left Frame))
         if platform.uname().system == 'Windows':
-            self.info_text = ctk.CTkTextbox(self.left_frame, height=resy, width=leftx, fg_color="#2E2E2E", corner_radius=0, font=self.monofont, activate_scrollbars=False)
+            self.info_text = ctk.CTkTextbox(self.left_frame, height=resy, width=leftx, fg_color="#2E2E2E", corner_radius=0, font=self.monofont, activate_scrollbars=False, wrap='none')
             
         elif platform.uname().system == 'Darwin':
-            self.info_text = ctk.CTkTextbox(self.left_frame, height=resy, width=leftx, fg_color="#2E2E2E", corner_radius=0, font=("Menlo", fsize), activate_scrollbars=False)
+            self.info_text = ctk.CTkTextbox(self.left_frame, height=resy, width=leftx, fg_color="#2E2E2E", corner_radius=0, font=("Menlo", fsize), activate_scrollbars=False, wrap='none')
         else:
-            self.info_text = ctk.CTkTextbox(self.left_frame, height=resy, width=leftx, fg_color="#2E2E2E", corner_radius=0, font=("monospace", fsize), activate_scrollbars=False)
+            self.info_text = ctk.CTkTextbox(self.left_frame, height=resy, width=leftx, fg_color="#2E2E2E", corner_radius=0, font=("monospace", fsize), activate_scrollbars=False, wrap='none')
         if state != None:
             self.info_text.configure(text_color="#abb3bd")
         else:
