@@ -158,6 +158,38 @@ class MyApp(ctk.CTk):
         self.show_noadbserver()
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
+        self.menu_registry = {
+            "ReportMenu": self.show_report_menu,
+            "AcqMenu": self.show_acquisition_menu,
+            "LogMenu": self.show_log_menu,
+            "AdvMenu": self.show_advanced_menu,
+            "PDF": self.show_pdf_report,
+            "DevInfo": self.show_save_device_info,
+            "PullData": self.show_pull_data,
+            "AdvUFED": self.show_ufed_bu,
+            "PRFS": self.show_prfs,
+            "ADBBU": self.show_adb_bu,
+            "LogDump": self.show_logcat_dump,
+            "LogLive": self.show_logcat_live,
+            "Dumpsys": self.show_dumpsys_dump,
+            "AppOps": self.show_app_ops,
+            "ScreenDevice": self.screen_device,
+            "ShotLoop": self.chat_shotloop,
+            "FindAgent": self.show_find_agent,
+            "BugReport": self.show_bugreport,
+            "Content": self.show_content_dump,
+            "CheckRoot": self.show_check_root,
+            "RootAcq": self.show_root_acq_menu,
+            "RootFFS": self.show_root_ffs,
+            "TarRootFFS": self.show_root_tar_ffs,
+            "Exploits": self.show_exploit_menu,
+            "2020_0069": self.show_2020_0069,
+            "2024_31317": self.show_2024_31317,
+            "2024_0044": self.show_2024_0044,
+            "Physical": self.show_physical,
+        }
+
+    
     def on_close(self):          
         self.destroy()
         os._exit(0)
@@ -248,68 +280,14 @@ class MyApp(ctk.CTk):
         log(f"Error: {value}")
 
     def switch_menu(self, menu_name, **kwargs):
-        # Erase content of dynamic frame
         for widget in self.dynamic_frame.winfo_children():
             widget.destroy()
-        # Switch to chosen menu
         self.current_menu = menu_name
-        if menu_name == "ReportMenu":
-            self.show_report_menu()
-        elif menu_name == "AcqMenu":
-            self.show_acquisition_menu()
-        elif menu_name == "LogMenu":
-            self.show_log_menu()
-        elif menu_name == "AdvMenu":
-            self.show_advanced_menu()
-        elif menu_name == "PDF":
-            self.show_pdf_report()
-        elif menu_name == "DevInfo":
-            self.show_save_device_info()
-        elif menu_name == "PullData":
-            self.show_pull_data()
-        elif menu_name == "AdvUFED":
-            self.show_ufed_bu()
-        elif menu_name == "PRFS":
-            self.show_prfs()
-        elif menu_name == "ADBBU":
-            self.show_adb_bu()
-        elif menu_name == "LogDump":
-            self.show_logcat_dump()
-        elif menu_name == "LogLive":
-            self.show_logcat_live()
-        elif menu_name == "Dumpsys":
-            self.show_dumpsys_dump()
-        elif menu_name == "AppOps":
-            self.show_app_ops()
-        elif menu_name == "ScreenDevice":
-            self.screen_device()
-        elif menu_name == "ShotLoop":
-            self.chat_shotloop()
-        elif menu_name == "FindAgent":
-            self.show_find_agent()
-        elif menu_name == "BugReport":
-            self.show_bugreport()
-        elif menu_name == "Content":
-            self.show_content_dump()
-        elif menu_name == "CheckRoot":
-            self.show_check_root()
-        elif menu_name == "RootAcq":
-            self.show_root_acq_menu()
-        elif menu_name == "RootFFS":
-            self.show_root_ffs()
-        elif menu_name == "TarRootFFS":
-            self.show_root_tar_ffs()
-        elif menu_name == "Exploits":
-            self.show_exploit_menu()
-        elif menu_name == "2020_0069":
-            self.show_2020_0069()
-        elif menu_name == "2024_31317":
-            self.show_2024_31317()
-        elif menu_name == "2024_0044":
-            self.show_2024_0044()
-        #UT Options:
-        elif menu_name == "Physical":
-            self.show_physical()
+        menu = self.menu_registry.get(menu_name)
+        if menu:
+            menu(**kwargs)
+        else:
+            print(f"Unknown menu: {menu_name}")
 
 
     # Function to check for adb-binary and device:
@@ -723,6 +701,7 @@ class MyApp(ctk.CTk):
         self.menu_text = ["Android 12 & 13 with SPL < 03/2024 - Gains access\nto app sandboxes by installing a dummy app.",
                           "Android 9 - 11 with SPL < 06/2024 - Gains system-user\nshell access through a zygote attack.",
                           "Android < 10 with SPL < 03/2020 - Gains temp-root on\nMediaTek devices. (MT67xx, MT816x, MT817x, MT6580)"]
+
         self.menu_textbox = []
         for btn in self.menu_buttons:
             self.menu_textbox.append(ctk.CTkLabel(self.dynamic_frame, width=right_content, height=50, font=self.stfont, anchor="w", justify="left"))
