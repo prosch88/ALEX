@@ -15,7 +15,7 @@ from datetime import datetime, timedelta, timezone, date
 from importlib.metadata import version
 from adbutils._utils import append_path
 from io import BytesIO
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from pdfme import build_pdf
 import alex.ufed_style as ufed_style
 import alex.devdump as devdump
@@ -173,6 +173,7 @@ class MyApp(ctk.CTk):
             "LogLive": self.show_logcat_live,
             "Dumpsys": self.show_dumpsys_dump,
             "AppOps": self.show_app_ops,
+            "Intrusion": self.show_intrusion,
             "ScreenDevice": self.screen_device,
             "ShotLoop": self.chat_shotloop,
             "FindAgent": self.show_find_agent,
@@ -629,20 +630,22 @@ class MyApp(ctk.CTk):
         self.skip = ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont)
         self.skip.grid(row=0, column=0, columnspan=2, sticky="w")
         self.menu_buttons = [
-            ctk.CTkButton(self.dynamic_frame, text="Logcat (Dump)", command=lambda: self.switch_menu("LogDump"), width=200, height=70, font=self.stfont),
-            ctk.CTkButton(self.dynamic_frame, text="Logcat (Live)", command=lambda: self.switch_menu("LogLive"), width=200, height=70, font=self.stfont),
-            ctk.CTkButton(self.dynamic_frame, text="Dumpsys", command=lambda: self.switch_menu("Dumpsys"), width=200, height=70, font=self.stfont),
-            ctk.CTkButton(self.dynamic_frame, text="Bugreport", command=lambda: self.switch_menu("BugReport"), width=200, height=70, font=self.stfont),
-            ctk.CTkButton(self.dynamic_frame, text="App Ops", command=lambda: self.switch_menu("AppOps"), width=200, height=70, font=self.stfont),
+            ctk.CTkButton(self.dynamic_frame, text="Logcat (Dump)", command=lambda: self.switch_menu("LogDump"), width=200, height=50, font=self.stfont),
+            ctk.CTkButton(self.dynamic_frame, text="Logcat (Live)", command=lambda: self.switch_menu("LogLive"), width=200, height=50, font=self.stfont),
+            ctk.CTkButton(self.dynamic_frame, text="Dumpsys", command=lambda: self.switch_menu("Dumpsys"), width=200, height=50, font=self.stfont),
+            ctk.CTkButton(self.dynamic_frame, text="Bugreport", command=lambda: self.switch_menu("BugReport"), width=200, height=50, font=self.stfont),
+            ctk.CTkButton(self.dynamic_frame, text="App Ops", command=lambda: self.switch_menu("AppOps"), width=200, height=50, font=self.stfont),
+            ctk.CTkButton(self.dynamic_frame, text="Intrusion Logs", command=lambda: self.switch_menu("Intrusion"), width=200, height=50, font=self.stfont),
         ]
         self.menu_text = ["Dump the saved logcat entries.\nData usually goes back to the last reboot.",
                           "Capture the live logcat entries.",
                           "Extract Dumpsys informations.",
                           "Collect the Bugreport (Dumpstate)",
-                          "Extract App Ops (App Permissions)"]
+                          "Extract App Ops (App Permissions)",
+                          "Download the Intrusion Logs from the device.\nThis might require user biometrics."]
         self.menu_textbox = []
         for btn in self.menu_buttons:
-            self.menu_textbox.append(ctk.CTkLabel(self.dynamic_frame, width=right_content, height=70, font=self.stfont, anchor="w", justify="left"))
+            self.menu_textbox.append(ctk.CTkLabel(self.dynamic_frame, width=right_content, height=50, font=self.stfont, anchor="w", justify="left"))
         r=1
         i=0
         for btn in self.menu_buttons:
@@ -1071,6 +1074,79 @@ class MyApp(ctk.CTk):
         self.progress.pack_forget()
         self.text.configure(text=f"Dumpsys saved under: dumpsys_{snr}.txt")
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("LogMenu")).pack(pady=40))
+
+    #Show the Intrusion Logs Screen
+    def show_intrusion(self):
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
+        ctk.CTkLabel(self.dynamic_frame, text="Intrusion Logs", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
+        if aapm == "1":
+            self.text = ctk.CTkLabel(self.dynamic_frame, text="On the device, please scroll to the bottom of the now open settings page and\ntap “Access Logs”. On the next page, tap “Download and decrypt.” Confirm with\nuser biometrics or PIN.", width=585, height=40, font=self.stfont, anchor="w", justify="left")
+            self.text.pack(anchor="center", pady=15)
+            self.intrusion_image = ctk.CTkImage(dark_image=Image.open(os.path.join(os.path.dirname(__file__), "assets" , "intrusion.png")), size=(540, 235))
+            self.intrusionlabel = ctk.CTkLabel(self.dynamic_frame, image=self.intrusion_image, text=" ", width=540, height=235, font=self.stfont, anchor="w", justify="left")
+            self.intrusionlabel.pack()
+            self.change = ctk.IntVar(self, 0)
+            self.backb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, command=lambda: (self.change.set(2), self.switch_menu("LogMenu")))
+            self.backb.pack(pady=20)
+            self.get_intrusion = threading.Thread(target=lambda: self.capture_intrusion())
+            self.get_intrusion.start()
+
+            
+        else:
+            self.text = ctk.CTkLabel(self.dynamic_frame, text="Advanced Protection Mode is inactive.\nIntrusion Logs are not available for this device.", width=585, height=60, font=self.stfont, anchor="w", justify="left")
+            self.text.pack(anchor="center", pady=25)
+            self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("LogMenu")).pack(pady=40))
+
+    def capture_intrusion(self):
+        device.shell("am start -n com.google.android.gms/.intrusiondetection.ui.retrieval.IntrusionDetectionRetrievalActivity")
+        def pull_logs(logfiles):
+            self.change.set(1)
+            for file in logfiles:
+                fileout = PurePosixPath(file).name
+                device.sync.pull(file, fileout)
+            self.after(100)
+            self.text.configure(text="All log files have been downloaded.")
+            self.backb.pack_forget()
+            self.pull_button.pack_forget()
+            self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("LogMenu")).pack(pady=40))
+            return
+
+        files_before = set(device.shell(r"find '/sdcard/Download/Intrusion Logging/'").splitlines())
+        new_file = False
+        filenames = ""
+        logfiles = []
+        self.filelist = ctk.CTkTextbox(self.dynamic_frame, width=585, height=100)
+        while self.change.get() == 0:
+            time.sleep(1)
+            files = set(device.shell(r"find '/sdcard/Download/Intrusion Logging/'").splitlines())
+            new_files = files - files_before
+            if new_files:
+                for file in sorted(new_files):
+                    if file not in logfiles:
+                        if filenames:
+                            filenames += "\n"
+                        filenames += PurePosixPath(file).name
+                        logfiles.append(file)
+                        self.text.configure(text=f"A new intrusion log file has been generated. If you want\nto generate logs for other listed devices, you can do so now.\nOnce the desired logs have been generated, click Pull Logs.”\n\nFound Logfiles:", height=40)
+                        self.filelist.configure(state="normal")
+                        self.filelist.delete("1.0", "end")
+                        self.filelist.update()
+                        self.filelist.insert("end", filenames)
+                        self.filelist.configure(state="disabled")
+                        self.filelist.update()
+                if new_file == False:
+                    self.intrusionlabel.pack_forget()
+                    self.backb.pack_forget()
+                    self.filelist.pack(pady=10)
+                    self.filelist.delete("1.0", "end")
+                    self.filelist.insert("end", "")
+                    self.filelist.configure(state="disabled")
+                    self.pull_button = ctk.CTkButton(self.dynamic_frame, text="Pull Logfiles", font=self.stfont, command=lambda: pull_logs(logfiles))
+                    self.backb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, command=lambda: (self.change.set(2), self.switch_menu("LogMenu")))
+                    self.pull_button.pack(pady=10)
+                    self.backb.pack(pady=10)
+                    new_file = True
+
 
     #Show the Content Provider screen
     def show_content_dump(self):
@@ -2902,6 +2978,12 @@ def get_client(host=default_host, port=default_port, check=False):
                 crypt_type = f"({crypt_type})"
             else:
                 crypt_type = ""
+            global aapm
+            aapm = device.shell("settings get secure advanced_protection_mode")
+            if any(err in ad_id.lower() for err in errors):
+                aapm = 0
+            if aapm == "":
+                aapm = 0
 
             # SIM-Info
             global iccid
