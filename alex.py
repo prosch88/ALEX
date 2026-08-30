@@ -188,6 +188,8 @@ class MyApp(ctk.CTk):
             "2024_31317": self.show_2024_31317,
             "2024_0044": self.show_2024_0044,
             "Physical": self.show_physical,
+            "DataMenu": self.show_data_menu,
+            "AbToPrfs": self.show_ab_to_prfs,
         }
 
     
@@ -339,6 +341,7 @@ class MyApp(ctk.CTk):
             self.text.pack(pady=50)
             ctk.CTkButton(self.dynamic_frame, text="Check again", command=self.show_noadbserver).pack(pady=10)
             ctk.CTkButton(self.dynamic_frame, text="WiFi Pairing", command=self.show_wifi_pairing).pack(pady=10)
+            ctk.CTkButton(self.dynamic_frame, text="Data Operations", fg_color="#2d2d35", command=lambda: self.show_cwd(data=True)).pack(pady=10)
             itext = device_info
             self.info_text.configure(state="normal")
             self.info_text.delete("0.0", "end")
@@ -352,6 +355,7 @@ class MyApp(ctk.CTk):
                                 "Make sure ADB is installed (e.g. via Platform Tools)\nand available in PATH.")
                 self.text.pack(pady=50)
                 ctk.CTkButton(self.dynamic_frame, text="Check again", command=self.show_noadbserver).pack(pady=10)
+                ctk.CTkButton(self.dynamic_frame, text="Data Operations", fg_color="#2d2d35", command=lambda: self.show_cwd(data=True)).pack(pady=10)
                 itext = device_info
                 self.info_text.configure(state="normal")
                 self.info_text.delete("0.0", "end")
@@ -364,6 +368,7 @@ class MyApp(ctk.CTk):
                 self.text.pack(pady=50)
                 ctk.CTkButton(self.dynamic_frame, text="Check again", command=self.show_noadbserver).pack(pady=10)
                 ctk.CTkButton(self.dynamic_frame, text="WiFi Pairing", command=self.show_wifi_pairing).pack(pady=10)
+                ctk.CTkButton(self.dynamic_frame, text="Data Operations", fg_color="#2d2d35", command=lambda: self.show_cwd(data=True)).pack(pady=10)
                 itext = device_info
                 self.info_text.configure(state="normal")
                 self.info_text.delete("0.0", "end")
@@ -376,6 +381,7 @@ class MyApp(ctk.CTk):
                 self.text.pack(pady=50)
                 ctk.CTkButton(self.dynamic_frame, text="Check again", command=self.show_noadbserver).pack(pady=10)
                 ctk.CTkButton(self.dynamic_frame, text="WiFi Pairing", command=self.show_wifi_pairing).pack(pady=10)
+                ctk.CTkButton(self.dynamic_frame, text="Data Operations", fg_color="#2d2d35", command=lambda: self.show_cwd(data=True)).pack(pady=10)
                 itext = device_info
                 self.info_text.configure(state="normal")
                 self.info_text.delete("0.0", "end")
@@ -481,7 +487,7 @@ class MyApp(ctk.CTk):
 
 
     # Select the working directory
-    def show_cwd(self):
+    def show_cwd(self, data=False):
         for widget in self.dynamic_frame.winfo_children():
             widget.destroy()
         global dir
@@ -494,14 +500,14 @@ class MyApp(ctk.CTk):
         self.browsebutton = ctk.CTkButton(self.dynamic_frame, text="Browse", text_color="#DCE4EE", font=self.stfont, command=lambda: self.browse_cwd(self.outputbox), width=60, fg_color="#2d2d35")
         self.browsebutton.pack(side="bottom", pady=(0,b_button_offset_y), padx=(0,b_button_offset_x))
         self.outputbox = ctk.CTkEntry(self.dynamic_frame, width=360, height=20, corner_radius=0, placeholder_text=[dir])
-        self.outputbox.bind(sequence="<Return>", command=lambda x: self.choose_cwd(self.outputbox))
+        self.outputbox.bind(sequence="<Return>", command=lambda x: self.choose_cwd(self.outputbox, data))
         self.outputbox.insert(0, string=dir)
         self.outputbox.pack(side="left", pady=(110,0), padx=(130,0))  
-        self.okbutton = ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.choose_cwd(self.outputbox))
+        self.okbutton = ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.choose_cwd(self.outputbox, data))
         self.okbutton.pack(side="left", pady=(110,0), padx=(10,120))
     
     # Function to choose the working directoy
-    def choose_cwd(self, outputbox):
+    def choose_cwd(self, outputbox, data=False):
         global dir
         global dir_top
         user_input = outputbox.get()
@@ -519,7 +525,10 @@ class MyApp(ctk.CTk):
             dir_top = f"{dir[:45]}..."
         else:
             dir_top = dir
-        self.show_main_menu()
+        if data == False:
+            self.show_main_menu()
+        else:
+            self.show_data_menu()
 
     # Filebrowser for working direcory
     def browse_cwd(self, outputbox):
@@ -545,6 +554,187 @@ class MyApp(ctk.CTk):
         outputbox.configure(state="normal")    
         outputbox.delete(0, "end")
         outputbox.insert(0, string=dir)
+
+    # Data Options Menu
+    def show_data_menu(self):
+        for widget in self.dynamic_frame.winfo_children():
+            widget.destroy()
+        global snr
+        snr = "data_operations"
+        self.skip = ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont)
+        self.skip.grid(row=0, column=0, columnspan=2, sticky="w")
+        self.menu_buttons = [
+            ctk.CTkButton(self.dynamic_frame, text="Reconstruct PRFS\nfrom AB", command=lambda: self.switch_menu("AbToPrfs"), width=200, height=70, font=self.stfont),
+            ctk.CTkButton(self.dynamic_frame, text="Switch to\nLive Operations", fg_color="#2d2d35", command=self.show_noadbserver, width=200, height=70, font=self.stfont),
+        ]
+        self.menu_text = [
+            "Decrypt an Android Backup (.ab) and restore\na PRFS-style filesystem into a ZIP.",
+            "Restart ALEX to work with a Device.",
+        ]
+        self.menu_textbox = []
+        for btn in self.menu_buttons:
+            self.menu_textbox.append(ctk.CTkLabel(self.dynamic_frame, width=right_content, height=70, font=self.stfont, anchor="w", justify="left"))
+        r = 1
+        i = 0
+        for btn in self.menu_buttons:
+            btn.grid(row=r, column=0, padx=30, pady=10)
+            self.menu_textbox[i].grid(row=r, column=1, padx=10, pady=10)
+            self.menu_textbox[i].configure(text=self.menu_text[i])
+            r += 1
+            i += 1
+
+    def show_ab_to_prfs(self):
+        for widget in self.dynamic_frame.winfo_children():
+            widget.destroy()
+        self.ab_file = None
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
+        ctk.CTkLabel(self.dynamic_frame, text="Reconstruct PRFS from AB", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
+        self.text = ctk.CTkLabel(self.dynamic_frame, text="Choose an Android Backup (.ab) file and provide\nthe Backup Password (if encrypted):", width=585, height=40, font=self.stfont, anchor="w", justify="left")
+        self.text.pack(anchor="center", pady=25)
+        self.backup_text = ctk.CTkLabel(self.dynamic_frame, text="Chosen Backup:    < no backup chosen >", width=585, height=20, font=self.stfont, anchor="w", justify="left")
+        self.backup_text.pack(anchor="center", pady=5)
+        self.browsebutton = ctk.CTkButton(self.dynamic_frame, text="Browse", font=self.stfont, command=lambda: self.choose_ab_file())
+        self.browsebutton.pack(anchor="w", padx=80, pady=15)
+        self.pw_text = ctk.CTkLabel(self.dynamic_frame, text="Enter the Backup Password: ", width=585, height=15, font=self.stfont, anchor="w", justify="left")
+        self.pw_text.pack(anchor="center", pady=15)
+        self.passwordbox = ctk.CTkEntry(self.dynamic_frame, width=200, height=20, corner_radius=0, show="*")
+        self.passwordbox.bind(sequence="<Return>", command=lambda x: self.perf_ab_to_prfs())
+        self.passwordbox.pack(anchor="w", padx=80, pady=5)
+        self.passwordbox.configure(state="disabled")
+        self.okbutton = ctk.CTkButton(self.dynamic_frame, text="Unback", font=self.stfont, command=lambda: self.perf_ab_to_prfs())
+        self.okbutton.pack(anchor="w", padx=80, pady=15)
+        self.okbutton.configure(state="disabled")
+        self.backbutton = ctk.CTkButton(self.dynamic_frame, text="Back", command=lambda: self.switch_menu("DataMenu"))
+        self.backbutton.pack(anchor="e", pady=10, padx=(0,65))
+
+    def choose_ab_file(self):
+        self.browsebutton.configure(state="disabled")
+        if platform.uname().system == 'Linux':
+            import crossfiledialog
+            ab_path = crossfiledialog.open_file(filter="*.ab")
+        else:
+            ab_path = ctk.filedialog.askopenfilename(filetypes=[("Android Backup", "*.ab")])
+        if not ab_path:
+            self.backup_text.configure(text="Chosen Backup:    < no backup chosen >")
+            self.ab_file = None
+            self.passwordbox.configure(state="disabled")
+            self.okbutton.configure(state="disabled")
+            self.browsebutton.configure(state="enabled")
+            return
+        self.ab_file = ab_path
+        self.backup_text.configure(text=f"Chosen Backup:    {os.path.basename(ab_path)}")
+        self.passwordbox.configure(state="normal")
+        self.okbutton.configure(state="enabled")
+        self.browsebutton.configure(state="enabled")
+
+    def perf_ab_to_prfs(self):
+        try:
+            self._perf_ab_to_prfs_impl()
+        except Exception as e:
+            log(f"perf_ab_to_prfs crashed: {e}")
+            try:
+                self.text.configure(text=f"An error occurred.\n{e}", height=60)
+            except Exception:
+                pass
+            try:
+                self.after(
+                    100,
+                    lambda: ctk.CTkButton(
+                        self.dynamic_frame,
+                        text="OK",
+                        font=self.stfont,
+                        command=lambda: self.switch_menu("DataMenu"),
+                    ).pack(pady=40),
+                )
+            except Exception:
+                pass
+
+    def _perf_ab_to_prfs_impl(self):
+        ab_path = self.ab_file
+        if not ab_path or not os.path.isfile(ab_path):
+            self.text.configure(text="No valid Android Backup file selected.", height=60)
+            self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("DataMenu")).pack(pady=40))
+            return
+
+        # Capture before widgets are removed; empty means "no password entered"
+        entered = (self.passwordbox.get() or "").strip()
+
+        self.text.configure(text="Checking Backup. This might take a while.", height=60)
+        self.backup_text.pack_forget()
+        self.okbutton.pack_forget()
+        self.passwordbox.pack_forget()
+        self.pw_text.pack_forget()
+        self.browsebutton.pack_forget()
+        self.backbutton.pack_forget()
+
+        self.change = ctk.IntVar(self, 0)
+        self.prog_text = ctk.CTkLabel(self.dynamic_frame, text=" ", width=585, height=20, font=self.stfont, anchor="w", justify="left")
+        self.prog_text.pack()
+        self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
+        self.progress.pack()
+        self.progress.start()
+
+        # Same approach as live PRFS: probe with no password first (unencrypted .ab)
+        self.check_header = threading.Thread(target=lambda: check_bu_pass(ab_path, self.change, None))
+        self.check_header.start()
+        self.wait_variable(self.change)
+
+        if self.change.get() == 3:
+            self.progress.pack_forget()
+            self.prog_text.pack_forget()
+            self.text.configure(text="The selected file is not a valid Android Backup.", height=60)
+            self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("DataMenu")).pack(pady=40))
+            return
+
+        if self.change.get() == 1:
+            bu_pass = None
+        else:
+            # Encrypted backup — require and verify the entered password
+            if not entered:
+                self.progress.pack_forget()
+                self.prog_text.pack_forget()
+                self.text.configure(text="This backup is encrypted.\nEnter the Backup Password and try again.", height=60)
+                self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AbToPrfs")).pack(pady=40))
+                return
+            bu_pass = entered
+            self.change.set(0)
+            self.check_header = threading.Thread(target=lambda: check_bu_pass(ab_path, self.change, bu_pass))
+            self.check_header.start()
+            self.wait_variable(self.change)
+            if self.change.get() != 1:
+                self.progress.pack_forget()
+                self.prog_text.pack_forget()
+                self.text.configure(text="Wrong password.\nEnter the correct Backup Password and try again.", height=60)
+                self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AbToPrfs")).pack(pady=40))
+                return
+
+        stem = Path(ab_path).stem
+        zip_path = f'{stem}_prfs_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}.zip'
+        log(f"Started offline AB to PRFS: {ab_path} -> {zip_path}")
+        self.text.configure(text="Decrypting Android Backup into PRFS ZIP.")
+        self.prog_text.configure(text="")
+        self.change.set(0)
+        zip = zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED, compresslevel=1)
+        try:
+            self.decrypt_backup = threading.Thread(target=lambda: ab_decrypt.backup_to_zip(ab_path, zip, bu_pass, self.change, self.prog_text))
+            self.decrypt_backup.start()
+            self.wait_variable(self.change)
+        finally:
+            zip.close()
+
+        self.change.set(0)
+        self.text.configure(text="Calculating Zip-Hash. This may take a while.")
+        self.prog_text.configure(text=" ")
+        self.zip_hash = threading.Thread(target=lambda: do_hash_file(self.change, zip_path))
+        self.zip_hash.start()
+        self.wait_variable(self.change)
+        global f_hash
+        log(f"Created PRFS ZIP: {zip_path} SHA256={f_hash}")
+        self.progress.pack_forget()
+        self.prog_text.pack_forget()
+        hash_line = f"\nSHA256: {f_hash}" if f_hash else ""
+        self.text.configure(text=f"PRFS reconstruction complete.\n{zip_path}{hash_line}", height=80)
+        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("DataMenu")).pack(pady=40))
 
     def show_save_device_info(self):
         save_info()
@@ -667,17 +857,26 @@ class MyApp(ctk.CTk):
                 ctk.CTkButton(self.dynamic_frame, text="Chat Capture", command=lambda: self.switch_menu("ShotLoop"), width=200, height=70, font=self.stfont),
                 ctk.CTkButton(self.dynamic_frame, text="Query Content\nProviders", command=lambda: self.switch_menu("Content"), width=200, height=70, font=self.stfont),
                 ctk.CTkButton(self.dynamic_frame, text="Identify Forensic\nAgent-Apps", command=lambda: self.switch_menu("FindAgent"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Switch to\nFile Operations", fg_color="#2d2d35", command=lambda: self.switch_menu("DataMenu"), width=200, height=70, font=self.stfont),
             ]
         else:
             self.menu_buttons = [
             ctk.CTkButton(self.dynamic_frame, text="Take screenshots", command=lambda: self.switch_menu("ScreenDevice"), width=200, height=70, font=self.stfont),
             ctk.CTkButton(self.dynamic_frame, text="Chat Capture", command=lambda: self.switch_menu("ShotLoop"), width=200, height=70, font=self.stfont, state="disabled"),
             ctk.CTkButton(self.dynamic_frame, text="Query Content\nProviders", command=lambda: self.switch_menu("Content"), width=200, height=70, font=self.stfont, state="disabled"),
+            ctk.CTkButton(self.dynamic_frame, text="Switch to\nFile Operations", fg_color="#2d2d35", command=lambda: self.switch_menu("DataMenu"), width=200, height=70, font=self.stfont),
             ]
-        self.menu_text = ["Take screenshots from device screen.\nScreenshots will be saved under \"screenshots\"\nas PNG.",
-                          "Loop through a chat taking screenshots.",
-                          "Query Data from Content Providers\nas txt or json. (calls, sms, contacts, ...)",
-                          "Find known Agent-Apps used by forensic\nsoftware products."]
+        if ut == False and aos == False:
+            self.menu_text = ["Take screenshots from device screen.\nScreenshots will be saved under \"screenshots\"\nas PNG.",
+                              "Loop through a chat taking screenshots.",
+                              "Query Data from Content Providers\nas txt or json. (calls, sms, contacts, ...)",
+                              "Find known Agent-Apps used by forensic\nsoftware products.",
+                              "Show options for operations with\nexisting backups."]
+        else:
+            self.menu_text = ["Take screenshots from device screen.\nScreenshots will be saved under \"screenshots\"\nas PNG.",
+                              "Loop through a chat taking screenshots.",
+                              "Query Data from Content Providers\nas txt or json. (calls, sms, contacts, ...)",
+                              "Show options for operations with\nexisting backups."]
         self.menu_textbox = []
         for btn in self.menu_buttons:
             self.menu_textbox.append(ctk.CTkLabel(self.dynamic_frame, width=right_content, height=70, font=self.stfont, anchor="w", justify="left"))
