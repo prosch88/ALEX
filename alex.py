@@ -610,8 +610,11 @@ class MyApp(ctk.CTk):
     def choose_ab_file(self):
         self.browsebutton.configure(state="disabled")
         if platform.uname().system == 'Linux':
-            import crossfiledialog
-            ab_path = crossfiledialog.open_file(filter="*.ab")
+            try:
+                import crossfiledialog
+                ab_path = crossfiledialog.open_file(filter="*.ab")
+            except:
+                ab_path = ctk.filedialog.askopenfilename(filetypes=[("Android Backup", "*.ab")])
         else:
             ab_path = ctk.filedialog.askopenfilename(filetypes=[("Android Backup", "*.ab")])
         if not ab_path:
