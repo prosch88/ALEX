@@ -347,7 +347,7 @@ class MyApp(ctk.CTk):
             self.text.pack(pady=50)
             ctk.CTkButton(self.dynamic_frame, text="Check again", command=self.show_noadbserver).pack(pady=10)
             ctk.CTkButton(self.dynamic_frame, text="WiFi Pairing", command=self.show_wifi_pairing).pack(pady=10)
-            ctk.CTkButton(self.dynamic_frame, text="Data Operations", fg_color="#2d2d35", command=lambda: self.show_cwd(data=True)).pack(pady=10)
+            ctk.CTkButton(self.dynamic_frame, text="Data Operations", fg_color="#2E2E2E", text_color="#DCE4EE", command=lambda: self.show_cwd(data=True)).pack(pady=10)
             itext = device_info
             self.info_text.configure(state="normal")
             self.info_text.delete("0.0", "end")
@@ -361,7 +361,7 @@ class MyApp(ctk.CTk):
                                 "Make sure ADB is installed (e.g. via Platform Tools)\nand available in PATH.")
                 self.text.pack(pady=50)
                 ctk.CTkButton(self.dynamic_frame, text="Check again", command=self.show_noadbserver).pack(pady=10)
-                ctk.CTkButton(self.dynamic_frame, text="Data Operations", fg_color="#2d2d35", command=lambda: self.show_cwd(data=True)).pack(pady=10)
+                ctk.CTkButton(self.dynamic_frame, text="Data Operations", fg_color="#2E2E2E", text_color="#DCE4EE", command=lambda: self.show_cwd(data=True)).pack(pady=10)
                 itext = device_info
                 self.info_text.configure(state="normal")
                 self.info_text.delete("0.0", "end")
@@ -374,7 +374,7 @@ class MyApp(ctk.CTk):
                 self.text.pack(pady=50)
                 ctk.CTkButton(self.dynamic_frame, text="Check again", command=self.show_noadbserver).pack(pady=10)
                 ctk.CTkButton(self.dynamic_frame, text="WiFi Pairing", command=self.show_wifi_pairing).pack(pady=10)
-                ctk.CTkButton(self.dynamic_frame, text="Data Operations", fg_color="#2d2d35", command=lambda: self.show_cwd(data=True)).pack(pady=10)
+                ctk.CTkButton(self.dynamic_frame, text="Data Operations", fg_color="#2E2E2E", text_color="#DCE4EE", command=lambda: self.show_cwd(data=True)).pack(pady=10)
                 itext = device_info
                 self.info_text.configure(state="normal")
                 self.info_text.delete("0.0", "end")
@@ -387,7 +387,7 @@ class MyApp(ctk.CTk):
                 self.text.pack(pady=50)
                 ctk.CTkButton(self.dynamic_frame, text="Check again", command=self.show_noadbserver).pack(pady=10)
                 ctk.CTkButton(self.dynamic_frame, text="WiFi Pairing", command=self.show_wifi_pairing).pack(pady=10)
-                ctk.CTkButton(self.dynamic_frame, text="Data Operations", fg_color="#2d2d35", command=lambda: self.show_cwd(data=True)).pack(pady=10)
+                ctk.CTkButton(self.dynamic_frame, text="Data Operations", fg_color="#2E2E2E", text_color="#DCE4EE", command=lambda: self.show_cwd(data=True)).pack(pady=10)
                 itext = device_info
                 self.info_text.configure(state="normal")
                 self.info_text.delete("0.0", "end")
@@ -571,7 +571,7 @@ class MyApp(ctk.CTk):
         self.skip.grid(row=0, column=0, columnspan=2, sticky="w")
         self.menu_buttons = [
             ctk.CTkButton(self.dynamic_frame, text="Reconstruct PRFS\nfrom AB", command=lambda: self.switch_menu("AbToPrfs"), width=200, height=70, font=self.stfont),
-            ctk.CTkButton(self.dynamic_frame, text="Switch to\nLive Operations", fg_color="#2d2d35", command=self.show_noadbserver, width=200, height=70, font=self.stfont),
+            ctk.CTkButton(self.dynamic_frame, text="Switch to\nLive Operations", fg_color="#2E2E2E", text_color="#DCE4EE", command=self.show_noadbserver, width=200, height=70, font=self.stfont),
         ]
         self.menu_text = [
             "Decrypt an Android Backup (.ab) and restore\na PRFS-style filesystem into a ZIP.",
@@ -866,14 +866,14 @@ class MyApp(ctk.CTk):
                 ctk.CTkButton(self.dynamic_frame, text="Chat Capture", command=lambda: self.switch_menu("ShotLoop"), width=200, height=70, font=self.stfont),
                 ctk.CTkButton(self.dynamic_frame, text="Query Content\nProviders", command=lambda: self.switch_menu("Content"), width=200, height=70, font=self.stfont),
                 ctk.CTkButton(self.dynamic_frame, text="Identify Forensic\nAgent-Apps", command=lambda: self.switch_menu("FindAgent"), width=200, height=70, font=self.stfont),
-                ctk.CTkButton(self.dynamic_frame, text="Switch to\nFile Operations", fg_color="#2d2d35", command=lambda: self.switch_menu("DataMenu"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Switch to\nFile Operations", fg_color="#2E2E2E", text_color="#DCE4EE", command=lambda: self.switch_menu("DataMenu"), width=200, height=70, font=self.stfont),
             ]
         else:
             self.menu_buttons = [
             ctk.CTkButton(self.dynamic_frame, text="Take screenshots", command=lambda: self.switch_menu("ScreenDevice"), width=200, height=70, font=self.stfont),
             ctk.CTkButton(self.dynamic_frame, text="Chat Capture", command=lambda: self.switch_menu("ShotLoop"), width=200, height=70, font=self.stfont, state="disabled"),
             ctk.CTkButton(self.dynamic_frame, text="Query Content\nProviders", command=lambda: self.switch_menu("Content"), width=200, height=70, font=self.stfont, state="disabled"),
-            ctk.CTkButton(self.dynamic_frame, text="Switch to\nFile Operations", fg_color="#2d2d35", command=lambda: self.switch_menu("DataMenu"), width=200, height=70, font=self.stfont),
+            ctk.CTkButton(self.dynamic_frame, text="Switch to\nFile Operations", fg_color="#2E2E2E", text_color="#DCE4EE", command=lambda: self.switch_menu("DataMenu"), width=200, height=70, font=self.stfont),
             ]
         if ut == False and aos == False:
             self.menu_text = ["Take screenshots from device screen.\nScreenshots will be saved under \"screenshots\"\nas PNG.",
