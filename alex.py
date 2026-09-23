@@ -190,6 +190,7 @@ class MyApp(ctk.CTk):
             "2024_31317": self.show_2024_31317,
             "2024_0044": self.show_2024_0044,
             "2016_5195": self.show_2016_5195,
+            "2016_10277": self.show_2016_10277,
             "Physical": self.show_physical,
             "DataMenu": self.show_data_menu,
             "AbToPrfs": self.show_ab_to_prfs,
@@ -911,11 +912,13 @@ class MyApp(ctk.CTk):
         ctk.CTkButton(self.dynamic_frame, text="CVE-2024-31317", command=lambda: self.switch_menu("2024_31317"), width=200, height=50, font=self.stfont),
         ctk.CTkButton(self.dynamic_frame, text="CVE-2020-0069 ", command=lambda: self.switch_menu("2020_0069"), width=200, height=50, font=self.stfont),
         ctk.CTkButton(self.dynamic_frame, text="CVE-2016-5195 ", command=lambda: self.switch_menu("2016_5195"), width=200, height=50, font=self.stfont),
+        ctk.CTkButton(self.dynamic_frame, text="CVE-2016-10277 ", command=lambda: self.switch_menu("2016_10277"), width=200, height=50, font=self.stfont),
         ]
         self.menu_text = ["Android 12 & 13 with SPL < 03/2024 - Gains access\nto app sandboxes by installing a dummy app.",
                           "Android 9 - 11 with SPL < 06/2024 - Gains system-user\nshell access through a zygote attack.",
                           "Android < 10 with SPL < 03/2020 - Gains temp-root on\nMediaTek devices. (MT67xx, MT816x, MT817x, MT6580)",
-                          "Android < 7 with SPL < 11/2016 - Gains temp-root on\ndevices with Kernel versions between 3.4 and 4.4"]
+                          "Android < 7 with SPL < 11/2016 - Gains temp-root on\ndevices with Kernel versions between 3.4 and 4.4",
+                          "Android < 7 with SPL < 05/2017 - Gains temp-root on\nsome Motorola devices (XT1033, XT1040, XT1068, ...)"]
 
         self.menu_textbox = []
         for btn in self.menu_buttons:
@@ -945,7 +948,8 @@ class MyApp(ctk.CTk):
         global c_su
         mtk_su = False
         m_init_device = self.check_initroot()
-        print(m_init_device)
+        if fb_found == "not found":
+            m_init_device = None
         self.change = ctk.IntVar(self, 0)
         print(show_root)
         if show_root == False:
@@ -1069,6 +1073,52 @@ class MyApp(ctk.CTk):
         else:
             self.text.configure(text="Root access has not been confirmed.")
             self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
+            return
+    
+    # CVE-2016-10277 Initroot - Check
+    def show_2016_10277(self):
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
+        ctk.CTkLabel(self.dynamic_frame, text="", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
+        self.text = ctk.CTkLabel(self.dynamic_frame, text="Checking compatibility ...", width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        self.text.pack(anchor="center", pady=25)
+        global show_root
+        m_init_device = self.check_initroot()
+        if fb_found == "not found":
+            self.text.configure(text="Fastboot was not found on this PC.\nMake sure it is installed and added to PATH.")
+            self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("Exploits")).pack(pady=40))
+            return
+
+        self.change = ctk.IntVar(self, 0)
+        if m_init_device:
+            self.choose = ctk.BooleanVar(self, False)
+            self.text.configure(text="This device may be vulnerable to CVE-2016-10277 (initroot).\nFor temporary root access, a custom initramfs can be loaded via fastboot.\nThere is a risk of causing a boot loop.\n\nDo you want to continue?")
+            self.yesb = ctk.CTkButton(self.dynamic_frame, text="YES", font=self.stfont, command=lambda: self.choose.set(True))
+            self.yesb.pack(side="left", pady=(20,330), padx=140)
+            self.nob = ctk.CTkButton(self.dynamic_frame, text="NO", font=self.stfont, command=lambda: self.choose.set(False))
+            self.nob.pack(side="left", pady=(20,330))    
+            self.wait_variable(self.choose)  
+            self.yesb.pack_forget()
+            self.nob.pack_forget()
+            if self.choose.get() == True:     
+                self.text.configure(text="Attempt to gain temp-root via CVE-2016-10277 (initroot).\nPlease Wait ...")
+                check_ir = threading.Thread(target=lambda:temp_initroot(self.change, self.text, m_init_device))
+                check_ir.start()
+                print("initroot tried")
+                self.wait_variable(self.change)
+                if self.change.get() == 1:
+                    show_root = True
+                    self.after(100, lambda: self.switch_menu("RootAcq"))
+                    return
+                else:
+                    self.text.configure(text="Root access has not been gained.")
+                    self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("Exploits")).pack(pady=40))
+                    return
+            else:
+                self.switch_menu("Exploits")
+                return
+        else:
+            self.text.configure(text="This device isn't vulnerable to CVE-2016-10277.", anchor="center")
+            self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("Exploits")).pack(pady=40))
             return
 
     # CVE-2016-0069 Dirty-COW - Check
@@ -5209,6 +5259,7 @@ def temp_initroot(change, text, m_init_device, timeout=30):
     if fb.is_device_connected():
         info_text = f"{b_info_text}\n\nCurrent step: Found device in fastboot mode"
         text.configure(text=info_text)
+        time.sleep(1)
         padding = paddings.get(m_init_device)[0]
         scratch = paddings.get(m_init_device)[1]
         initrd_address = f"0x{scratch + padding:08X}"
