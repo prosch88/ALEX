@@ -191,6 +191,7 @@ class MyApp(ctk.CTk):
             "2024_0044": self.show_2024_0044,
             "2016_5195": self.show_2016_5195,
             "2016_10277": self.show_2016_10277,
+            "2016_10277_undo": self.show_2016_10277_undo,
             "Physical": self.show_physical,
             "DataMenu": self.show_data_menu,
             "AbToPrfs": self.show_ab_to_prfs,
@@ -279,7 +280,7 @@ class MyApp(ctk.CTk):
     def global_exception_handler(self, type, value, tb):
         try:
             if self.text.winfo_ismapped():
-                self.text.configure(text=f"Uh-Oh, An error was raised! Check the file:\nufade_log_{udid}.log")
+                self.text.configure(text=f"Uh-Oh, An error was raised! Check the file:\nALEX_log_{snr}.log")
             else:
                 self.text = ctk.CTkLabel(self.dynamic_frame, width=400, height=180, font=self.stfont, anchor="w", justify="left")
                 self.text.configure(text=f"Error: {value}")
@@ -946,6 +947,7 @@ class MyApp(ctk.CTk):
         global show_root
         global mtk_su
         global c_su
+        global initroot
         mtk_su = False
         m_init_device = self.check_initroot()
         if fb_found == "not found":
@@ -973,7 +975,7 @@ class MyApp(ctk.CTk):
                     return
             elif not skip_2016_10277 and m_init_device:
                 self.choose = ctk.BooleanVar(self, False)
-                self.text.configure(text="This device may be vulnerable to CVE-2016-10277 (initroot).\nFor temporary root access, a custom initramfs can be loaded via fastboot.\nThere is a risk of causing a boot loop.\n\nDo you want to continue?")
+                self.text.configure(text="This device may be vulnerable to CVE-2016-10277 (initroot).\nFor temporary root access, a custom initramfs can be loaded via fastboot.\nThere is a risk of causing a bootloop.\n\nDo you want to continue?")
                 self.yesb = ctk.CTkButton(self.dynamic_frame, text="YES", font=self.stfont, command=lambda: self.choose.set(True))
                 self.yesb.pack(side="left", pady=(20,330), padx=140)
                 self.nob = ctk.CTkButton(self.dynamic_frame, text="NO", font=self.stfont, command=lambda: self.choose.set(False))
@@ -988,6 +990,7 @@ class MyApp(ctk.CTk):
                     print("initroot tried")
                     self.wait_variable(self.change)
                     if self.change.get() == 1:
+                        initroot = True
                         show_root = True
                     else:
                         skip_2016_10277 = True
@@ -1082,6 +1085,7 @@ class MyApp(ctk.CTk):
         self.text = ctk.CTkLabel(self.dynamic_frame, text="Checking compatibility ...", width=585, height=60, font=self.stfont, anchor="w", justify="left")
         self.text.pack(anchor="center", pady=25)
         global show_root
+        global initroot
         m_init_device = self.check_initroot()
         if fb_found == "not found":
             self.text.configure(text="Fastboot was not found on this PC.\nMake sure it is installed and added to PATH.")
@@ -1091,7 +1095,7 @@ class MyApp(ctk.CTk):
         self.change = ctk.IntVar(self, 0)
         if m_init_device:
             self.choose = ctk.BooleanVar(self, False)
-            self.text.configure(text="This device may be vulnerable to CVE-2016-10277 (initroot).\nFor temporary root access, a custom initramfs can be loaded via fastboot.\nThere is a risk of causing a boot loop.\n\nDo you want to continue?")
+            self.text.configure(text="This device may be vulnerable to CVE-2016-10277 (initroot).\nFor temporary root access, a custom initramfs can be loaded via fastboot.\nThere is a risk of causing a bootloop.\n\nDo you want to continue?")
             self.yesb = ctk.CTkButton(self.dynamic_frame, text="YES", font=self.stfont, command=lambda: self.choose.set(True))
             self.yesb.pack(side="left", pady=(20,330), padx=140)
             self.nob = ctk.CTkButton(self.dynamic_frame, text="NO", font=self.stfont, command=lambda: self.choose.set(False))
@@ -1107,6 +1111,7 @@ class MyApp(ctk.CTk):
                 self.wait_variable(self.change)
                 if self.change.get() == 1:
                     show_root = True
+                    initroot = True
                     self.after(100, lambda: self.switch_menu("RootAcq"))
                     return
                 else:
@@ -1120,6 +1125,37 @@ class MyApp(ctk.CTk):
             self.text.configure(text="This device isn't vulnerable to CVE-2016-10277.", anchor="center")
             self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("Exploits")).pack(pady=40))
             return
+
+    def show_2016_10277_undo(self):
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
+        ctk.CTkLabel(self.dynamic_frame, text="", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
+        self.text = ctk.CTkLabel(self.dynamic_frame, text="Please wait ...", width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        self.text.pack(anchor="center", pady=25)
+        global show_root
+        m_init_device = self.check_initroot()
+        if fb_found == "not found":
+            self.text.configure(text="Fastboot was not found on this PC.\nMake sure it is installed and added to PATH.")
+            self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
+            return
+
+        self.change = ctk.IntVar(self, 0)
+        self.choose = ctk.BooleanVar(self, False)
+        self.text.configure(text="This process resets the initramfs address and prevents a bootloop\nafter the device restarts. To do this, the device is put back into\nFastboot mode.\n\nDo you want to continue?")
+        self.yesb = ctk.CTkButton(self.dynamic_frame, text="YES", font=self.stfont, command=lambda: self.choose.set(True))
+        self.yesb.pack(side="left", pady=(20,330), padx=140)
+        self.nob = ctk.CTkButton(self.dynamic_frame, text="NO", font=self.stfont, command=lambda: self.choose.set(False))
+        self.nob.pack(side="left", pady=(20,330))    
+        self.wait_variable(self.choose)  
+        self.yesb.pack_forget()
+        self.nob.pack_forget() 
+        self.text.configure(text="Reboot to fastboot.\nPlease Wait ...")
+        check_ir = threading.Thread(target=lambda:fix_initroot_bootloop(self.change, self.text))
+        check_ir.start()
+        self.wait_variable(self.change)
+        self.after(100, self.show_noadbserver)
+        return
+
+
 
     # CVE-2016-0069 Dirty-COW - Check
     def show_2016_5195(self):
@@ -1404,6 +1440,9 @@ class MyApp(ctk.CTk):
             self.menu_text = ["Creates a FFS Backup of an already\nrooted Device. (As Zip - more reliable)",
                               "Creates a FFS Backup of an already\nrooted Device. (As Tar - faster)",
                               "Creates a physical Backup of a rooted Device.\n(Device may be encrypted)",]
+        if initroot:
+            self.menu_buttons.append(ctk.CTkButton(self.dynamic_frame, text="Reset initramfs Value", command=lambda: self.switch_menu("2016_10277_undo"), width=200, height=70, font=self.stfont))
+            self.menu_text.append("Perform this operation after successfully\nbacking up the data to prevent a bootloop\nafter restarting.")
         self.menu_textbox = []
         for btn in self.menu_buttons:
             self.menu_textbox.append(ctk.CTkLabel(self.dynamic_frame, width=right_content, height=70, font=self.stfont, anchor="w", justify="left"))
@@ -3130,6 +3169,7 @@ def get_client(host=default_host, port=default_port, check=False):
         if check == True:
             return adb
         if device == None:
+            restart_adb()            
             device_info = nodevice_text = ("No device detected!\n" +
                     "\n" + '{:13}'.format("Python: ") + "\t" + platform.python_version() +
                     "\n" + '{:13}'.format("adbutils: ") + "\t" + version('adbutils') +
@@ -4252,6 +4292,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                     try: os.remove(out_file)
                     except: pass
                     device_path = f"/dev/{block + target}"
+                    log(f"Physical extraction using command: 'adb pull {device_path} {out_file}'")
                     proc = Popen(
                         ["adb", "pull", device_path, out_file],
                         stdout=subprocess.DEVNULL,
@@ -4292,6 +4333,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                         else:
                             cmd = ['adb', out_cmd, f"cat {device_path} 2>/dev/null"]
 
+                        log(f"Physical extraction using command: '{' '.join(cmd)} > {out_file}'")
                         proc = Popen(
                             cmd,
                             stdout=f,
@@ -4376,6 +4418,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             case_json_name=f"{snr}_{target}.case.json"
             device_path = f"/dev/{block + target}"
             out_file = f"{snr}_{target}.bin"
+            log(f"Physical extraction using command: 'adb pull {device_path} {out_file}'")
             if dshell is True:
                 with dirty_shell.DirtyShell(["shell", "run-as"]) as ds:
                     ds.execute(f"setenforce 0")
@@ -4443,7 +4486,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
 
                     else:
                         cmd = ['adb', out_cmd, f"cat {device_path} 2>/dev/null"]
-
+                log(f"Physical extraction using command: '{' '.join(cmd)} > {out_file}'")
                 proc = Popen(
                     cmd,
                     stdout=f,
@@ -5290,6 +5333,13 @@ def temp_initroot(change, text, m_init_device, timeout=30):
         text.configure(text=info_text)
         if wait_for_adb(device, timeout=40):
             log("device rebooted")
+            info_text = f"{b_info_text}\n\nCurrent step: Waiting for device"
+            text.configure(text=info_text)
+            time.sleep(7)
+            try:
+                device.shell("echo ready")
+            except:
+                restart_adb()
             change.set(1)
         else:
             log("device lost after fastboot")
@@ -5299,7 +5349,7 @@ def temp_initroot(change, text, m_init_device, timeout=30):
 
 def fix_initroot_bootloop(change, text, timeout=30):
 
-    b_info_text = "Rebooting into fastboot.\nPlease Wait ..."
+    b_info_text = "Reset initramfs value.\nPlease Wait ..."
     info_text = f"{b_info_text}\n\nCurrent step: Reboot to fastboot"
     text.configure(text=info_text)
     device.shell("reboot bootloader")
@@ -5310,20 +5360,14 @@ def fix_initroot_bootloop(change, text, timeout=30):
         if time.time() - wait_start > timeout:
             break
     if fb.is_device_connected():
-
-        result = fb.run("oem", "config", "fsg-id", f"a initrd=\"\"")
+        info_text = f"{b_info_text}\n\nCurrent step: Reset initrd to default values"
+        text.configure(text=info_text)
+        result = fb.run("oem", "config", "fsg-id", f'a initrd=\"\"')
         time.sleep(2)
         print(result)
         fb.run("continue")
         time.sleep(2)
-        if wait_for_adb(device, timeout=40):
-            log("device rebooted")
-            change.set(1)
-        else:
-            log("device lost after fastboot")
-            change.set(2)
-    else:
-        change.set(2)
+        change.set(1)
 
 def temp_mtk_su(change, timeout=30):
     result_holder = {"value": None}
@@ -5364,6 +5408,25 @@ def wait_for_adb(device, timeout=40, interval=1):
         time.sleep(interval)
 
     return False
+
+def restart_adb():
+    subprocess.run(
+        ["adb", "kill-server"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        timeout=5,
+    )
+
+    time.sleep(0.5)
+
+    result = subprocess.run(
+        ["adb", "start-server"],
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+
+    return result.returncode == 0
 
 #ALEX "logging"
 def log(text):
@@ -5412,6 +5475,7 @@ adb = None
 state = None
 show_root = False
 mtk_su = False
+initroot = False
 dshell = False
 c_su = False
 has_exec_out = True
