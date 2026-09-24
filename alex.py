@@ -154,9 +154,6 @@ class MyApp(ctk.CTk):
         # Show Main Menu
         ctk.CTkLabel(self.dynamic_frame, text="ALEX by Christian Peter", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="center")
         self.text = ctk.CTkLabel(self.dynamic_frame, width=400, height=250, font=self.stfont, text="Checking adb and device connection ...", anchor="w", justify="left")
-        #self.after(2000)
-        #self.init_device = threading.Thread(target=self.show_noadbserver())
-        #self.init_device.start()
         self.show_noadbserver()
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
@@ -1374,23 +1371,27 @@ class MyApp(ctk.CTk):
             return
 
     def check_initroot(self):
+        print("check initroot")
         if spl < "2017-05-01":
             if "google/shamu" in fingerprint:
                 return "shamu"
             elif "motorola" in fingerprint:
-                if model.upper() == "XT1033":
+                print(sku)
+                if "XT1033" in {model.upper(), sku.upper()}:
                     return "falcon"
-                elif model.upper() == "XT1040":
+                elif "XT1040" in {model.upper(), sku.upper()}:
                     return "peregrine"
-                elif model.upper() == "XT1068":
+                elif "XT1068" in {model.upper(), sku.upper()}:
                     return "titan_retbr"
-                elif model.upper() == "XT1078":
+                elif "XT1078" in {model.upper(), sku.upper()}:
                     return "thea"
-                elif model.upper() == "XT1607":
+                elif "XT1602" in {model.upper(), sku.upper()}:
                     return "harpia"
-                elif model.upper() == "XT1622":
+                elif "XT1607" in {model.upper(), sku.upper()}:
+                    return "harpia"
+                elif "XT1622" in {model.upper(), sku.upper()}:
                     return "athene"
-                elif model.upper() == "XT1676":
+                elif "XT1676" in {model.upper(), sku.upper()}:
                     return "cedric"
                 else:
                     return None
@@ -3223,9 +3224,11 @@ def get_client(host=default_host, port=default_port, check=False):
 
             global brand
             global model
+            global sku
 
             brand = get_prop_fallback(props, "ro.product.vendor.manufacturer", "ro.product.odm.manufacturer", "ro.product.brand").capitalize()
             model = get_prop_fallback(props, "ro.product.odm.marketname", "ro.product.odm.model", "ro.product.model", "ro.product.vendor.model").capitalize()
+            sku = get_prop_fallback(props, "ro.boot.hardware.sku")
 
             global full_name   
             full_name = smart_title(f"{brand} {model}" if brand.lower() not in model.lower() else model)
@@ -3331,6 +3334,8 @@ def get_client(host=default_host, port=default_port, check=False):
                             w_mac = "-"
                     if any(err in w_mac.lower() for err in errors):
                         w_mac = "-"
+            if "," in w_mac:
+                w_mac = w_mac.split(",")[0]
             global d_name
             d_name = device.shell("settings get global device_name")
             if d_name == "":
@@ -4202,7 +4207,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
     case_backup = None
     now = datetime.now()
     case_begin = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    log("Started physical extraction.)")
+    log("Started physical extraction.")
     #Find block device
     block = ""
     if show_root == True:
@@ -4292,7 +4297,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                     try: os.remove(out_file)
                     except: pass
                     device_path = f"/dev/{block + target}"
-                    log(f"Physical extraction using command: 'adb pull {device_path} {out_file}'")
+                    log(f"physical extraction command: 'adb pull {device_path} {out_file}'")
                     proc = Popen(
                         ["adb", "pull", device_path, out_file],
                         stdout=subprocess.DEVNULL,
@@ -4333,7 +4338,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                         else:
                             cmd = ['adb', out_cmd, f"cat {device_path} 2>/dev/null"]
 
-                        log(f"Physical extraction using command: '{' '.join(cmd)} > {out_file}'")
+                        log(f"physical extraction command: '{' '.join(cmd)} > {out_file}'")
                         proc = Popen(
                             cmd,
                             stdout=f,
@@ -4376,6 +4381,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             prog_text.pack_forget()
             progress.pack_forget()
             text.configure(text="Physical Backup complete!")
+            log("Physical Backup complete!")
                     
             change.set(1)
             return
@@ -4418,7 +4424,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             case_json_name=f"{snr}_{target}.case.json"
             device_path = f"/dev/{block + target}"
             out_file = f"{snr}_{target}.bin"
-            log(f"Physical extraction using command: 'adb pull {device_path} {out_file}'")
+            log(f"physical extraction command: 'adb pull {device_path} {out_file}'")
             if dshell is True:
                 with dirty_shell.DirtyShell(["shell", "run-as"]) as ds:
                     ds.execute(f"setenforce 0")
@@ -4454,6 +4460,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             prog_text.pack_forget()
             progress.pack_forget()
             text.configure(text="Physical Backup complete!")
+            log("Physical Backup complete!")
 
         elif amiroot == "root":
             prog_text.pack()
@@ -4486,7 +4493,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
 
                     else:
                         cmd = ['adb', out_cmd, f"cat {device_path} 2>/dev/null"]
-                log(f"Physical extraction using command: '{' '.join(cmd)} > {out_file}'")
+                log(f"physical extraction command: '{' '.join(cmd)} > {out_file}'")
                 proc = Popen(
                     cmd,
                     stdout=f,
@@ -4520,6 +4527,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             prog_text.pack_forget()
             progress.pack_forget()
             text.configure(text="Physical Backup complete!")
+            log("Physical Backup complete!")
         else:
             text.configure(text="Wrong password! Try again.")
             log("Wrong password")            
@@ -5340,7 +5348,10 @@ def temp_initroot(change, text, m_init_device, timeout=30):
                 device.shell("echo ready")
             except:
                 restart_adb()
-            change.set(1)
+            if "error" in str(result):
+                change.set(2)
+            else:
+                change.set(1)
         else:
             log("device lost after fastboot")
             change.set(2)
