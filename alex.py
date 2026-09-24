@@ -1371,12 +1371,10 @@ class MyApp(ctk.CTk):
             return
 
     def check_initroot(self):
-        print("check initroot")
         if spl < "2017-05-01":
             if "google/shamu" in fingerprint:
                 return "shamu"
             elif "motorola" in fingerprint:
-                print(sku)
                 if "XT1033" in {model.upper(), sku.upper()}:
                     return "falcon"
                 elif "XT1040" in {model.upper(), sku.upper()}:
@@ -5334,7 +5332,7 @@ def temp_initroot(change, text, m_init_device, timeout=30):
         text.configure(text=info_text)
         result = fb.run("oem", "config", "fsg-id", f"a initrd={initrd_address},{initram_size}")
         time.sleep(2)
-        print(result)
+        mprint(result)
         fb.run("continue")
         time.sleep(2)
         info_text = f"{b_info_text}\n\nCurrent step: Reboot device"
