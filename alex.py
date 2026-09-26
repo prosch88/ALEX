@@ -3243,7 +3243,6 @@ def get_client(host=default_host, port=default_port, check=False):
                 major_ver = int(software.split(".")[0])
             except:
                 major_ver = 4
-            software = "12"
             global sdk
             sdk = get_prop_fallback(props, "ro.build.version.sdk")
             global build
