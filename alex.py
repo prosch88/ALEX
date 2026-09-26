@@ -25,7 +25,7 @@ import alex.exploits as exploits
 import alex.dirty_shell as dirty_shell
 import alex.shot_ut as shot_ut
 import alex.ab_decrypt as ab_decrypt
-import alex.case_uco as case_uco
+import alex.case_uco as case_ucofont
 import numpy as np
 import uiautomator2 as u2
 import ipaddress
@@ -58,6 +58,7 @@ if os.name == "posix":
 from PIL import ImageTk, Image, ExifTags, ImageDraw, ImageFont
 
 import customtkinter as ctk
+import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter import StringVar
 
@@ -72,12 +73,13 @@ else:
 ctk.set_appearance_mode("dark")  # Dark Mode
 ctk.set_default_color_theme(os.path.join(os.path.dirname(__file__), "assets" , "alex_theme.json" ))
 ctk.set_window_scaling(scaling)
-ctk.set_widget_scaling(scaling) 
+ctk.set_widget_scaling(scaling)
+
+
 
 class MyApp(ctk.CTk):
     def __init__(self):
         super().__init__()
-
         self.stop_event = threading.Event()
         if getattr(sys, 'frozen', False):
             self.report_callback_exception = self.global_exception_handler
@@ -916,7 +918,7 @@ class MyApp(ctk.CTk):
                           "Android 9 - 11 with SPL < 06/2024 - Gains system-user\nshell access through a zygote attack.",
                           "Android < 10 with SPL < 03/2020 - Gains temp-root on\nMediaTek devices. (MT67xx, MT816x, MT817x, MT6580)",
                           "Android < 7 with SPL < 11/2016 - Gains temp-root on\ndevices with Kernel versions between 3.4 and 4.4",
-                          "Android < 7 with SPL < 05/2017 - Gains temp-root on\nsome Motorola devices (XT1033, XT1040, XT1068, ...)"]
+                          "Android < 7 with SPL < 06/2017 - Gains temp-root on\nsome Motorola devices (XT1033, XT1040, XT1068, ...)"]
 
         self.menu_textbox = []
         for btn in self.menu_buttons:
@@ -1332,12 +1334,12 @@ class MyApp(ctk.CTk):
             self.textframe = ctk.CTkFrame(self.dynamic_frame, width=200, corner_radius=0, fg_color="transparent")
             self.selectframe.pack(side="left", pady=20, padx=30, fill="y", expand=True)
             self.selectframe.pack_propagate(False)
-            container = tk.Frame(self.selectframe, width=380, height=380)
+            container = tk.Frame(self.selectframe, width=int(380*scaling), height=int(380*scaling))
             container.pack(side="left", pady=10)
             container.pack_propagate(False)
             self.textframe.pack(side="left", pady=20, fill="both", expand=True)
             self.textframe.pack_propagate(False)
-            self.applistbox = tk.Listbox(container, width=200, height=380, 
+            self.applistbox = tk.Listbox(container, font=(self.stfont, fsize), width=int(200*scaling), height=int(380*scaling), 
                                             bg="#2E2E2E", fg="#abb3bd", selectbackground="#195727",
                                             selectforeground="#80FD9C", highlightthickness=0,
                                             borderwidth=0, relief="flat", activestyle="none",
@@ -3241,6 +3243,7 @@ def get_client(host=default_host, port=default_port, check=False):
                 major_ver = int(software.split(".")[0])
             except:
                 major_ver = 4
+            software = "12"
             global sdk
             sdk = get_prop_fallback(props, "ro.build.version.sdk")
             global build
