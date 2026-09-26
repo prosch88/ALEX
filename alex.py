@@ -1566,7 +1566,7 @@ class MyApp(ctk.CTk):
                             filenames += "\n"
                         filenames += PurePosixPath(file).name
                         logfiles.append(file)
-                        self.text.configure(text=f"A new intrusion log file has been generated. If you want\nto generate logs for other listed devices, you can do so now.\nOnce the desired logs have been generated, click Pull Logs.”\n\nFound Logfiles:", height=40)
+                        self.text.configure(text=f"A new intrusion log file has been generated. If you want\nto generate logs for other listed devices, you can do so now.\nOnce the desired logs have been generated, click ”Pull Logfiles.”\n\nFound Logfiles:", height=40)
                         self.filelist.configure(state="normal")
                         self.filelist.delete("1.0", "end")
                         self.filelist.update()
