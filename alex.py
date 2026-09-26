@@ -1371,7 +1371,7 @@ class MyApp(ctk.CTk):
             return
 
     def check_initroot(self):
-        if spl < "2017-05-01":
+        if spl < "2017-06-01":
             if "google/shamu" in fingerprint:
                 return "shamu"
             elif "motorola" in fingerprint:
@@ -5332,7 +5332,7 @@ def temp_initroot(change, text, m_init_device, timeout=30):
         text.configure(text=info_text)
         result = fb.run("oem", "config", "fsg-id", f"a initrd={initrd_address},{initram_size}")
         time.sleep(2)
-        mprint(result)
+        print(result)
         fb.run("continue")
         time.sleep(2)
         info_text = f"{b_info_text}\n\nCurrent step: Reboot device"
