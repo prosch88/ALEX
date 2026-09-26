@@ -5333,7 +5333,7 @@ def temp_initroot(change, text, m_init_device, timeout=30):
         text.configure(text=info_text)
         result = fb.run("oem", "config", "fsg-id", f"a initrd={initrd_address},{initram_size}")
         time.sleep(2)
-        print(result)
+        #print(result)
         fb.run("continue")
         time.sleep(2)
         info_text = f"{b_info_text}\n\nCurrent step: Reboot device"
@@ -5375,7 +5375,7 @@ def fix_initroot_bootloop(change, text, timeout=30):
         text.configure(text=info_text)
         result = fb.run("oem", "config", "fsg-id", f'a initrd=\"\"')
         time.sleep(2)
-        print(result)
+        #print(result)
         fb.run("continue")
         time.sleep(2)
         change.set(1)
