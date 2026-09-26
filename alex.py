@@ -5298,7 +5298,8 @@ def temp_initroot(change, text, m_init_device, timeout=30):
     b_info_text = "Attempt to gain temp-root via CVE-2016-10277 (initroot).\nPlease Wait ..."
     info_text = f"{b_info_text}\n\nCurrent step: Reboot to fastboot"
     text.configure(text=info_text)
-    device.shell("reboot bootloader")
+    run(["adb", "reboot", "bootloader"], check=True)
+    #device.shell("reboot bootloader")
     time.sleep(4)
     wait_start = time.time()
     while not fb.is_device_connected():
@@ -5361,7 +5362,8 @@ def fix_initroot_bootloop(change, text, timeout=30):
     b_info_text = "Reset initramfs value.\nPlease Wait ..."
     info_text = f"{b_info_text}\n\nCurrent step: Reboot to fastboot"
     text.configure(text=info_text)
-    device.shell("reboot bootloader")
+    run(["adb", "reboot", "bootloader"], check=True)
+    #device.shell("reboot bootloader")
     time.sleep(4)
     wait_start = time.time()
     while not fb.is_device_connected():
