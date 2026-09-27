@@ -118,6 +118,9 @@ class MyApp(ctk.CTk):
             self.stfont = ctk.CTkFont("default")
         self.stfont.configure(size=fsize)
 
+        self.font_current_size = self.stfont.actual("size")
+        self.font_scaled_size = round(self.font_current_size * scaling)
+
         style = ttk.Style()
         style.theme_use("clam")
 
@@ -1339,7 +1342,7 @@ class MyApp(ctk.CTk):
             container.pack_propagate(False)
             self.textframe.pack(side="left", pady=20, fill="both", expand=True)
             self.textframe.pack_propagate(False)
-            self.applistbox = tk.Listbox(container, font=(self.stfont, fsize), width=int(200*scaling), height=int(380*scaling), 
+            self.applistbox = tk.Listbox(container, font=(self.stfont, self.font_scaled_size), width=int(200*scaling), height=int(380*scaling), 
                                             bg="#2E2E2E", fg="#abb3bd", selectbackground="#195727",
                                             selectforeground="#80FD9C", highlightthickness=0,
                                             borderwidth=0, relief="flat", activestyle="none",
