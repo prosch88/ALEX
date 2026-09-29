@@ -3477,7 +3477,7 @@ def get_client(host=default_host, port=default_port, check=False):
             global all_apps
             global su_app
             su_app = None
-            su_apps = [".supersu", ".magisk", ".su", ".superuser", ".kinguser", ".kernelsu"]
+            su_apps = [".supersu", ".magisk", ".su", ".superuser", ".sumanager", ".kinguser", ".kernelsu", ".resukisu"]
             if whoami != "phablet":
                 all_app_query = device.shell("pm list packages")
                 all_apps = [line.replace("package:", "") for line in all_app_query.splitlines() if line.strip()]
