@@ -1385,7 +1385,11 @@ class MyApp(ctk.CTk):
                 elif "XT1040" in {model.upper(), sku.upper()}:
                     return "peregrine"
                 elif "XT1068" in {model.upper(), sku.upper()}:
-                    return "titan_retbr"
+                    return "titan"
+                elif "XT1069" in {model.upper(), sku.upper()}:
+                    return "titan"
+                elif "XT1072" in {model.upper(), sku.upper()}:
+                    return "thea"
                 elif "XT1078" in {model.upper(), sku.upper()}:
                     return "thea"
                 elif "XT1602" in {model.upper(), sku.upper()}:
