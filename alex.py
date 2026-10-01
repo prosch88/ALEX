@@ -25,7 +25,7 @@ import alex.exploits as exploits
 import alex.dirty_shell as dirty_shell
 import alex.shot_ut as shot_ut
 import alex.ab_decrypt as ab_decrypt
-import alex.case_uco as case_ucofont
+import alex.case_uco as case_uco
 import numpy as np
 import uiautomator2 as u2
 import ipaddress
