@@ -1380,6 +1380,8 @@ class MyApp(ctk.CTk):
             if "google/shamu" in fingerprint:
                 return "shamu"
             elif "motorola" in fingerprint:
+                if "XT1032" in {model.upper(), sku.upper()}:
+                    return "falcon"
                 if "XT1033" in {model.upper(), sku.upper()}:
                     return "falcon"
                 elif "XT1040" in {model.upper(), sku.upper()}:
