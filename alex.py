@@ -1737,13 +1737,17 @@ class MyApp(ctk.CTk):
         self.pull_data = threading.Thread(target=lambda: pull_dir_mod(device.sync, data_path, folder, text=self.text, prog_text=self.prog_text, progress=self.progress, change=self.change, zip=zip))
         self.pull_data.start()
         self.wait_variable(self.change)
-        zip.close()
-        try: shutil.rmtree(folder)
-        except: pass
-        self.text.configure(text="Data Extraction complete.")
+        if self.change.get() == 1:
+            zip.close()
+            try: shutil.rmtree(folder)
+            except: pass
+            self.text.configure(text="Data Extraction complete.")
+        else:
+            self.text.configure(text="Data Extraction incomplete.")
         self.prog_text.pack_forget()
         self.progress.pack_forget()
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
+
 
     #Show the ADB Backup screen
     def show_adb_bu(self):
@@ -1851,26 +1855,33 @@ class MyApp(ctk.CTk):
         self.pull_data = threading.Thread(target=lambda: pull_dir_mod(device.sync, data_path, folder, text=self.text, prog_text=self.prog_text, progress=self.progress, change=self.change, zip=zip, mode="ufed"))
         self.pull_data.start()
         self.wait_variable(self.change)
-        zip.close()
-        try: shutil.rmtree(folder)
-        except: pass
-        self.change.set(0)
-        self.prog_text.configure(text="")
-        self.progress.pack_forget()
-        self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
-        self.progress.pack()
-        self.progress.start()
-        self.ufd_data = threading.Thread(target=lambda: ufed_style_files(self.change, ufed_folder, zip, fname, starttime, self.text))
-        self.ufd_data.start()
-        self.wait_variable(self.change)
-        case_end = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        case_backup = create_case_backup(bu_fname=zip_path, bu_ext=".zip", bu_desc= "ALEX Logical+ (UFED-Style) Backup", type="Logical", method="Advanced Logical", bu_hash=f_hash, case_begin=case_begin, case_end=case_end, ufd=ufd_path )
-        call_case_json(case_device, case_backup, case_json_name, change=None)
-        self.text.configure(text="Advanced Logical Backup complete.")
-        self.prog_text.pack_forget()
-        self.progress.pack_forget()
-        log("UFED-Style Logical+ Backup complete")
-        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))  
+        if self.change.get() == 2:
+            self.text.configure(text="Advanced Logical Backup failed.")
+            self.prog_text.pack_forget()
+            self.progress.pack_forget()
+            log("UFED-Style Logical+ Backup failed")
+            self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
+        else:
+            zip.close()
+            try: shutil.rmtree(folder)
+            except: pass
+            self.change.set(0)
+            self.prog_text.configure(text="")
+            self.progress.pack_forget()
+            self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
+            self.progress.pack()
+            self.progress.start()
+            self.ufd_data = threading.Thread(target=lambda: ufed_style_files(self.change, ufed_folder, zip, fname, starttime, self.text))
+            self.ufd_data.start()
+            self.wait_variable(self.change)
+            case_end = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            case_backup = create_case_backup(bu_fname=zip_path, bu_ext=".zip", bu_desc= "ALEX Logical+ (UFED-Style) Backup", type="Logical", method="Advanced Logical", bu_hash=f_hash, case_begin=case_begin, case_end=case_end, ufd=ufd_path )
+            call_case_json(case_device, case_backup, case_json_name, change=None)
+            self.text.configure(text="Advanced Logical Backup complete.")
+            self.prog_text.pack_forget()
+            self.progress.pack_forget()
+            log("UFED-Style Logical+ Backup complete")
+            self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))  
 
     #Show the "PRFS"-Backup screen
     def show_prfs(self):
@@ -5175,11 +5186,16 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
         dst = pathlib.Path(dst)
         
     os.makedirs(dst, exist_ok=exist_ok)
-    func_size = rec_pull_contents(src, dst, rootf, rel_in_zip="", prog_text=prog_text, progress=progress, exist_ok=exist_ok)
-    #zip.close()
-    log(f"Pulled {rootf}")
-    change.set(1)
-    return func_size
+    try:
+        func_size = rec_pull_contents(src, dst, rootf, rel_in_zip="", prog_text=prog_text, progress=progress, exist_ok=exist_ok)
+        log(f"Pulled {rootf}")
+        change.set(1)
+        return func_size
+    except Exception as e:
+        log(f"Error pulling {rootf}: {e}")
+        zip.close()
+        change.set(2)
+        return 0
 
 # Check for root via su
 def has_root(change, timeout=30):
@@ -5304,7 +5320,7 @@ def temp_initroot(change, text, m_init_device, timeout=30):
                "thea":          [0x04000000, 0x11000000],
                "peregrine":     [0x04000000, 0x11000000],
                "falcon":        [0x04000000, 0x11000000],
-               "titan_retbr":   [0x04000000, 0x11000000],}
+               "titan":         [0x04000000, 0x11000000],}
 
     b_info_text = "Attempt to gain temp-root via CVE-2016-10277 (initroot).\nPlease Wait ..."
     info_text = f"{b_info_text}\n\nCurrent step: Reboot to fastboot"
