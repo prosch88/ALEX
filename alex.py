@@ -5277,7 +5277,7 @@ def temp_dirty_cow(change, timeout=30):
         dcow_bin = os.path.join(os.path.dirname(__file__), "ressources" , "cve", "2016-5195", "arm64", "dirtycow")
         rnas_bin = os.path.join(os.path.dirname(__file__), "ressources" , "cve", "2016-5195", "arm64", "run-as")
     remote_dcow = "/data/local/tmp/dcow"
-    remote_rnas = "/data/local/tmp/rnas"
+    remote_rnas = "/data/local/tmp/run-as"
     try:
         run(["adb", "push", dcow_bin, remote_dcow], check=True)
         log("Pushed dcow binary to /data/local/tmp")
