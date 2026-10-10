@@ -5236,14 +5236,18 @@ def has_root(change, timeout=30):
         change.set(2)
         return True
 
+
 def device_has_su() -> bool:
     try:
         result = run(
             ["adb", "shell", "which", "su"],
             capture_output=True, text=True
         )
+        if "not found" in result.stdout.lower() or "not found" in result.stderr.lower():
+            return False
         return result.stdout.strip() != ""
-    except Exception:
+    except Exception as e:
+        print(e)
         return False
 
 def supports_exec_out() -> bool:
