@@ -3273,7 +3273,7 @@ def get_client(host=default_host, port=default_port, check=False):
             global abi
             abi = get_prop_fallback(props, "ro.product.cpu.abi")
             global fingerprint
-            fingerprint = get_prop_fallback(props, "ro.bootimage.build.fingerprint")
+            fingerprint = get_prop_fallback(props, "ro.bootimage.build.fingerprint","ro.build.fingerprint")
             global locale
             locale = get_prop_fallback(props, "persist.sys.locale")
             if locale in [None,"","-"," "]:
