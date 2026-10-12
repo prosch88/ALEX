@@ -1380,6 +1380,8 @@ class MyApp(ctk.CTk):
             if "google/shamu" in fingerprint:
                 return "shamu"
             elif "motorola" in fingerprint:
+                if "XT1021" in {model.upper(), sku.upper()}:
+                    return "condor"
                 if "XT1032" in {model.upper(), sku.upper()}:
                     return "falcon"
                 if "XT1033" in {model.upper(), sku.upper()}:
@@ -5314,6 +5316,7 @@ def temp_dirty_cow(change, timeout=30):
 
 def temp_initroot(change, text, m_init_device, timeout=30):
     paddings ={"shamu":         [0x0, 0x11000000],
+               "condor":        [0x02000000, 0x0E000000],
                "cedric":        [0x02000000, 0xA0100000],
                "athene":        [0x02000000, 0x90000000],
                "harpia":        [0x04000000, 0x90000000],
