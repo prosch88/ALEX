@@ -1411,62 +1411,53 @@ class MyApp(ctk.CTk):
         else:
             return None
 
-
     #Show rooted Backup Options
     def show_root_acq_menu(self):
         self.skip = ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont)
         self.skip.grid(row=0, column=0, columnspan=2, sticky="w")
-        if dshell == True:
-            self.menu_buttons = [
-                ctk.CTkButton(self.dynamic_frame, text="Filesystem Backup\nMethod 1", command=lambda: self.switch_menu("RootFFS"), width=200, height=70, font=self.stfont, state="disabled"),
-                ctk.CTkButton(self.dynamic_frame, text="Filesystem Backup\nMethod 2", command=lambda: self.switch_menu("TarRootFFS"), width=200, height=70, font=self.stfont, state="disabled"),
-                ctk.CTkButton(self.dynamic_frame, text="Physical Backup", command=lambda: self.switch_menu("Physical"), width=200, height=70, font=self.stfont),
-            ]
-            self.menu_text = ["Creates a FFS Backup of an already\nrooted Device. (As Zip - more reliable)",
-                              "Creates a FFS Backup of an already\nrooted Device. (As Tar - faster)",
-                              "Creates a physical Backup of an already\nrooted Device.",]
-        elif crypt_on == "unencrypted":
-            self.menu_buttons = [
-                ctk.CTkButton(self.dynamic_frame, text="Filesystem Backup\nMethod 1", command=lambda: self.switch_menu("RootFFS"), width=200, height=70, font=self.stfont),
-                ctk.CTkButton(self.dynamic_frame, text="Filesystem Backup\nMethod 2", command=lambda: self.switch_menu("TarRootFFS"), width=200, height=70, font=self.stfont),
-                ctk.CTkButton(self.dynamic_frame, text="Physical Backup", command=lambda: self.switch_menu("Physical"), width=200, height=70, font=self.stfont),
-            ]
-            self.menu_text = ["Creates a FFS Backup of an already\nrooted Device. (As Zip - more reliable)",
-                              "Creates a FFS Backup of an already\nrooted Device. (As Tar - faster)",
-                              "Creates a physical Backup of an already\nrooted Device.",]
-        elif crypt_on == "encrypted":
-            self.menu_buttons = [
-                ctk.CTkButton(self.dynamic_frame, text="Filesystem Backup\nMethod 1", command=lambda: self.switch_menu("RootFFS"), width=200, height=70, font=self.stfont),
-                ctk.CTkButton(self.dynamic_frame, text="Filesystem Backup\nMethod 2", command=lambda: self.switch_menu("TarRootFFS"), width=200, height=70, font=self.stfont),
-                ctk.CTkButton(self.dynamic_frame, text="Physical Backup", command=lambda: self.switch_menu("Physical"), fg_color="#8c2c27", text_color="#DCE4EE", width=200, height=70, font=self.stfont),
-            ]
-            self.menu_text = ["Creates a FFS Backup of an already\nrooted Device. (As Zip - more reliable)",
-                              "Creates a FFS Backup of an already\nrooted Device. (As Tar - faster)",
-                              "Creates a physical Backup of a rooted Device.\n(Device is encrypted - the dump may be unusable!)",]
-        else:
-            self.menu_buttons = [
-                ctk.CTkButton(self.dynamic_frame, text="Filesystem Backup\nMethod 1", command=lambda: self.switch_menu("RootFFS"), width=200, height=70, font=self.stfont),
-                ctk.CTkButton(self.dynamic_frame, text="Filesystem Backup\nMethod 2", command=lambda: self.switch_menu("TarRootFFS"), width=200, height=70, font=self.stfont),
-                ctk.CTkButton(self.dynamic_frame, text="Physical Backup", command=lambda: self.switch_menu("Physical"), fg_color="#8c2c27", text_color="#DCE4EE", width=200, height=70, font=self.stfont),
-            ]
-            self.menu_text = ["Creates a FFS Backup of an already\nrooted Device. (As Zip - more reliable)",
-                              "Creates a FFS Backup of an already\nrooted Device. (As Tar - faster)",
-                              "Creates a physical Backup of a rooted Device.\n(Device may be encrypted)",]
+
+        self.menu_buttons = [
+            ctk.CTkButton(self.dynamic_frame, text="Filesystem Backup\nMethod 1", command=lambda: self.switch_menu("RootFFS"), width=200, height=70, font=self.stfont),
+            ctk.CTkButton(self.dynamic_frame, text="Filesystem Backup\nMethod 2", command=lambda: self.switch_menu("TarRootFFS"), width=200, height=70, font=self.stfont),
+            ctk.CTkButton(self.dynamic_frame, text="Physical Backup", command=lambda: self.switch_menu("Physical"), width=200, height=70, font=self.stfont),
+        ]
+
+        self.menu_text = [
+            "Creates a FFS Backup of an already\nrooted Device. (As Zip - more reliable)",
+            "Creates a FFS Backup of an already\nrooted Device. (As Tar - faster)",
+            "Creates a physical Backup of an already\nrooted Device.",
+        ]
+
+        #Disable FFS methods if dshell is active
+        if dshell:
+            self.menu_buttons[0].configure(state="disabled")
+            self.menu_buttons[1].configure(state="disabled")
+
+        #Disable ZIP FFS on Android < 5
+        if int(software.split(".")[0]) < 5:
+            self.menu_buttons[0].configure(state="disabled")
+
+        #Physical Backup warning if device is encrypted
+        if not dshell and crypt_on != "unencrypted":
+            self.menu_buttons[2].configure(fg_color="#8c2c27", text_color="#DCE4EE")
+            if crypt_on == "encrypted":
+                self.menu_text[2] = "Creates a physical Backup of a rooted Device.\n(Device is encrypted - the dump may be unusable!)"
+            else:
+                self.menu_text[2] = "Creates a physical Backup of a rooted Device.\n(Device may be encrypted)"
+
+        #Additional option for initroot
         if initroot:
             self.menu_buttons.append(ctk.CTkButton(self.dynamic_frame, text="Reset initramfs Value", command=lambda: self.switch_menu("2016_10277_undo"), width=200, height=70, font=self.stfont))
             self.menu_text.append("Perform this operation after successfully\nbacking up the data to prevent a bootloop\nafter restarting.")
+
         self.menu_textbox = []
-        for btn in self.menu_buttons:
-            self.menu_textbox.append(ctk.CTkLabel(self.dynamic_frame, width=right_content, height=70, font=self.stfont, anchor="w", justify="left"))
-        r=1
-        i=0
-        for btn in self.menu_buttons:
-            btn.grid(row=r,column=0, padx=30, pady=10)
-            self.menu_textbox[i].grid(row=r,column=1, padx=10, pady=10)
-            self.menu_textbox[i].configure(text=self.menu_text[i])
-            r+=1
-            i+=1
-        ctk.CTkButton(self.dynamic_frame, text="Back", command=self.show_main_menu).grid(row=r, column=1, padx=10, pady=10, sticky="e" )
+        for r, (btn, description) in enumerate(zip(self.menu_buttons, self.menu_text), start=1):
+            btn.grid(row=r, column=0, padx=30, pady=10)
+            label = ctk.CTkLabel(self.dynamic_frame, text=description, width=right_content, height=70, font=self.stfont, anchor="w", justify="left")
+            label.grid(row=r, column=1, padx=10, pady=10)
+            self.menu_textbox.append(label)
+
+        ctk.CTkButton(self.dynamic_frame, text="Back", command=self.show_main_menu).grid(row=len(self.menu_buttons) + 1, column=1, padx=10, pady=10, sticky="e")
 
     #Show the Logcat-Dump Menu
     def show_logcat_dump(self):
@@ -4100,6 +4091,7 @@ def find_agent(change, text, app_text):
 def tar_root_ffs(outtar, prog_text, change):
     global c_su
     global has_exec_out
+    print(f"has su: {device_has_su()}")
     if has_exec_out:
         out_cmd = "exec-out"
     else:
@@ -4148,7 +4140,7 @@ def tar_root_ffs(outtar, prog_text, change):
     else:
         cmd = [
             "adb", out_cmd,
-            f"sh -c '{tar_remote} -cO /data 2>/dev/null'"
+            f"sh -c '{tar_remote} -cO /data' 2>/dev/null"
         ]
 
     with open(outtar, "wb") as f:
@@ -5318,7 +5310,7 @@ def temp_dirty_cow(change, timeout=30):
         change.set(2)
         return False
 
-def temp_initroot(change, text, m_init_device, timeout=30):
+def temp_initroot(change, text, m_init_device, timeout=120):
     paddings ={"shamu":         [0x0, 0x11000000],
                "condor":        [0x02000000, 0x0E000000],
                "cedric":        [0x02000000, 0xA0100000],
@@ -5372,7 +5364,7 @@ def temp_initroot(change, text, m_init_device, timeout=30):
         time.sleep(2)
         info_text = f"{b_info_text}\n\nCurrent step: Reboot device"
         text.configure(text=info_text)
-        if wait_for_adb(device, timeout=40):
+        if wait_for_adb(device, timeout=180):
             log("device rebooted")
             info_text = f"{b_info_text}\n\nCurrent step: Waiting for device"
             text.configure(text=info_text)

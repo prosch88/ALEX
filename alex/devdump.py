@@ -109,8 +109,11 @@ def device_has_su() -> bool:
             ["adb", "shell", "which", "su"],
             capture_output=True, text=True
         )
+        if "not found" in result.stdout.lower() or "not found" in result.stderr.lower():
+            return False
         return result.stdout.strip() != ""
-    except Exception:
+    except Exception as e:
+        print(e)
         return False
 
 def push_temp_script(script_text, mtk_su=False, c_su=False):
