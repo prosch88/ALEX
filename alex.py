@@ -3489,8 +3489,8 @@ def get_client(host=default_host, port=default_port, check=False):
             su_app = None
             su_apps = [".supersu", ".magisk", ".su", ".superuser", ".sumanager", 
                        ".kinguser", ".kernelsu", ".resukisu", ".apatch", ".sukisu",
-                       ".sukisu.ultra"]
-                       
+                       ".sukisu.ultra", ".ksunext"]
+
             if whoami != "phablet":
                 all_app_query = device.shell("pm list packages")
                 all_apps = [line.replace("package:", "") for line in all_app_query.splitlines() if line.strip()]
