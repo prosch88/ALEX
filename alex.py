@@ -3056,7 +3056,7 @@ class MyApp(ctk.CTk):
             change.set(1)
 
 
-a_version = 0.6
+a_version = 0.7
 default_host = "127.0.0.1"
 default_port = 5037
 # Abort-Helper for the live logcat capture
@@ -5583,6 +5583,8 @@ try:
         guiv = "1368"
     elif sys.argv[1] == "1024":
         guiv = "1024"
+    elif sys.argv[1] == "800":
+        guiv = "800"
     else:
         pass
 except:
@@ -5609,6 +5611,20 @@ elif guiv == "1024":
     b_button_offset_y = 410
     sb_button_offset_x = 525
     right_content = 360
+
+elif guiv == "800":
+    scaling = 0.8
+    ctk.set_window_scaling(scaling)
+    ctk.set_widget_scaling(scaling)
+    resx = 1000
+    resy = 600
+    leftx = 330
+    rightx = 680
+    fsize = 14
+    b_button_offset_x = 330
+    b_button_offset_y = 410
+    sb_button_offset_x = 525
+    right_content = 340
 
 elif guiv == "1368":
     resx = 1358
