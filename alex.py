@@ -3161,6 +3161,20 @@ def get_client(host=default_host, port=default_port, check=False):
     global apps
     global ut
     global aos
+    if check == True:
+        try:
+            connected = adb != None and device != None and any(
+                entry.serial == snr_id and entry.state == state
+                and entry.state not in ("offline", "unauthorized")
+                for entry in adb.list(extended=True)
+            )
+        except Exception:
+            connected = False
+        if not connected:
+            device = None
+            state = None
+        return adb
+
     try:
         ensure_adb_server()
         adb = adbutils.AdbClient(host=host, port=port)
@@ -3180,8 +3194,6 @@ def get_client(host=default_host, port=default_port, check=False):
             snr = None
             state = None
             device = None
-        if check == True:
-            return adb
         if device == None:
             restart_adb()            
             device_info = nodevice_text = ("No device detected!\n" +
