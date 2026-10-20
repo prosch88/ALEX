@@ -17,6 +17,7 @@ from adbutils._utils import append_path
 from io import BytesIO
 from pathlib import Path, PurePosixPath
 from pdfme import build_pdf
+from alex.command_log import adb_call, log_process, set_logger
 import alex.fastboot as fastboot
 import alex.ufed_style as ufed_style
 import alex.devdump as devdump
@@ -202,7 +203,7 @@ class MyApp(ctk.CTk):
     
     def on_close(self):
         try:
-            adb.server_kill()
+            adb_call(adb.server_kill)
         except Exception as e:
             print(e)
         self.destroy()
@@ -522,6 +523,7 @@ class MyApp(ctk.CTk):
     def choose_cwd(self, outputbox, data=False):
         global dir
         global dir_top
+        global cwd_selected
         user_input = outputbox.get()
         try:
             if user_input == '':
@@ -537,6 +539,8 @@ class MyApp(ctk.CTk):
             dir_top = f"{dir[:45]}..."
         else:
             dir_top = dir
+        cwd_selected = True
+        set_logger(log)
         if data == False:
             self.show_main_menu()
         else:
@@ -960,7 +964,7 @@ class MyApp(ctk.CTk):
             if whoami == "root":
                 show_root = True
                 try:
-                    if device.shell("echo 'whoami' | su").strip() == "whoami":
+                    if adb_call(device.shell, "echo 'whoami' | su").strip() == "whoami":
                         c_su = True
                 except:
                     pass
@@ -1541,12 +1545,12 @@ class MyApp(ctk.CTk):
             self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("LogMenu")).pack(pady=40))
 
     def capture_intrusion(self):
-        device.shell("am start -n com.google.android.gms/.intrusiondetection.ui.retrieval.IntrusionDetectionRetrievalActivity")
+        adb_call(device.shell, "am start -n com.google.android.gms/.intrusiondetection.ui.retrieval.IntrusionDetectionRetrievalActivity")
         def pull_logs(logfiles):
             self.change.set(1)
             for file in logfiles:
                 fileout = PurePosixPath(file).name
-                device.sync.pull(file, fileout)
+                adb_call(device.sync.pull, file, fileout)
             self.after(100)
             self.text.configure(text="All log files have been downloaded.")
             self.backb.pack_forget()
@@ -1554,14 +1558,14 @@ class MyApp(ctk.CTk):
             self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("LogMenu")).pack(pady=40))
             return
 
-        files_before = set(device.shell(r"find '/sdcard/Download/Intrusion Logging/'").splitlines())
+        files_before = set(adb_call(device.shell, r"find '/sdcard/Download/Intrusion Logging/'").splitlines())
         new_file = False
         filenames = ""
         logfiles = []
         self.filelist = ctk.CTkTextbox(self.dynamic_frame, width=585, height=100)
         while self.change.get() == 0:
             time.sleep(1)
-            files = set(device.shell(r"find '/sdcard/Download/Intrusion Logging/'").splitlines())
+            files = set(adb_call(device.shell, r"find '/sdcard/Download/Intrusion Logging/'").splitlines())
             new_files = files - files_before
             if new_files:
                 for file in sorted(new_files):
@@ -1710,7 +1714,7 @@ class MyApp(ctk.CTk):
         if ut == False:
             data_path = "/sdcard/"
         else:
-            data_path = device.shell("echo $HOME") + "/"
+            data_path = adb_call(device.shell, "echo $HOME") + "/"
         self.change = ctk.IntVar(self, 0)
         self.get_dsize = threading.Thread(target=lambda: get_data_size(data_path, self.change))
         self.get_dsize.start()
@@ -1964,7 +1968,7 @@ class MyApp(ctk.CTk):
             self.prfs_dumpsys = threading.Thread(target=lambda: dump_dumpsys(self.change))
             self.prfs_dumpsys.start()
             self.wait_variable(self.change)
-            d_date = device.shell("date +%s")   
+            d_date = adb_call(device.shell, "date +%s")
 
         if incl_adb_bu == "on":
             self.change.set(0)
@@ -2233,7 +2237,7 @@ class MyApp(ctk.CTk):
                 t.start()
                 last_data = time.time()
                 if auto_bu == True and device_auto != None:
-                    output = device.shell("dumpsys trust")
+                    output = adb_call(device.shell, "dumpsys trust")
                     bu_pass = "12345"
                     if "deviceLocked=true" in output or "deviceLocked=1" in output:
                         self.text.configure(text="The device is locked. Unlock the device and tap \"Back up my data.\"\nIf a password is required, enter \"12345\".")
@@ -2429,25 +2433,25 @@ class MyApp(ctk.CTk):
         elif aos == True:
             shotfail = True
             shot_path = "/home/ceres/alex_shot.png"
-            device.shell(f"screenshottool {shot_path} 0")
-            device.sync.pull(shot_path, filepath)
-            device.shell(f"rm {shot_path}")
+            adb_call(device.shell, f"screenshottool {shot_path} 0")
+            adb_call(device.sync.pull, shot_path, filepath)
+            adb_call(device.shell, f"rm {shot_path}")
             shot = Image.open(filepath)
             png_bytes = BytesIO()
             shot.save(png_bytes, format="PNG")
             png = png_bytes.getvalue()
         else:
             try:
-                shot = device.screenshot(error_ok=False)
+                shot = adb_call(device.screenshot, error_ok=False)
                 png_bytes = BytesIO()
                 shot.save(png_bytes, format="PNG")
                 png = png_bytes.getvalue()
             except:
                 shotfail = True
                 shot_path = "/sdcard/alex_shot.png"
-                device.shell(f"screencap {shot_path}")
-                device.sync.pull(shot_path, filepath)
-                device.shell(f"rm {shot_path}")
+                adb_call(device.shell, f"screencap {shot_path}")
+                adb_call(device.sync.pull, shot_path, filepath)
+                adb_call(device.shell, f"rm {shot_path}")
                 shot = Image.open(filepath)
                 png_bytes = BytesIO()
                 shot.save(png_bytes, format="PNG")
@@ -2529,9 +2533,9 @@ class MyApp(ctk.CTk):
         shotfail = False
         hsize = 426
         if direction == "down":
-            swipe_direction = lambda: device.swipe(w//2, h//2, w//2, 0, 0.5)
+            swipe_direction = lambda: adb_call(device.swipe, w//2, h//2, w//2, 0, 0.5)
         else:
-            swipe_direction = lambda: device.swipe(w//2, h//2, w//2, h, 0.5)
+            swipe_direction = lambda: adb_call(device.swipe, w//2, h//2, w//2, h, 0.5)
         if text != None:
             text.configure(text="Chat capture is running.")
         if first != False:
@@ -2541,16 +2545,16 @@ class MyApp(ctk.CTk):
             except: pass
             seen_hashes = []
             try:
-                shot = device.screenshot(error_ok=False)
+                shot = adb_call(device.screenshot, error_ok=False)
                 png_bytes = BytesIO()
                 shot.save(png_bytes, format="PNG")
                 png = png_bytes.getvalue()
             except:
                 shotfail = True
                 shot_path = "/sdcard/alex_shot.png"
-                device.shell(f"screencap {shot_path}")
-                device.sync.pull(shot_path, filepath)
-                device.shell(f"rm {shot_path}")
+                adb_call(device.shell, f"screencap {shot_path}")
+                adb_call(device.sync.pull, shot_path, filepath)
+                adb_call(device.shell, f"rm {shot_path}")
                 shot = Image.open(filepath)
                 png_bytes = BytesIO()
                 shot.save(png_bytes, format="PNG")
@@ -2593,16 +2597,16 @@ class MyApp(ctk.CTk):
                     swipe_direction()
                     time.sleep(0.3)
                     try:
-                        shot = device.screenshot(error_ok=False)
+                        shot = adb_call(device.screenshot, error_ok=False)
                         png_bytes = BytesIO()
                         shot.save(png_bytes, format="PNG")
                         png = png_bytes.getvalue()
                     except:
                         shotfail = True
                         shot_path = "/sdcard/alex_shot.png"
-                        device.shell(f"screencap {shot_path}")
-                        device.sync.pull(shot_path, filepath)
-                        device.shell(f"rm {shot_path}")
+                        adb_call(device.shell, f"screencap {shot_path}")
+                        adb_call(device.sync.pull, shot_path, filepath)
+                        adb_call(device.shell, f"rm {shot_path}")
                         shot = Image.open(filepath)
                         png_bytes = BytesIO()
                         shot.save(png_bytes, format="PNG")
@@ -2748,7 +2752,7 @@ class MyApp(ctk.CTk):
                 r'Account\s*\{\s*name=([^,}]+)\s*,\s*type=([^}]+)\s*\}'
             )
             if ut == False:
-                for line in device.shell("dumpsys account").splitlines():
+                for line in adb_call(device.shell, "dumpsys account").splitlines():
                     m = acc_pattern.search(line)
                     if m:
                         key = (m.group(1), m.group(2))
@@ -2763,7 +2767,7 @@ class MyApp(ctk.CTk):
                     i+=1
                     progr = 100/len(apps)*i
                     app_name = d_app[0][:37]
-                    try: app_version = device.app_info(d_app[0]).version_name[:28]
+                    try: app_version = adb_call(device.app_info, d_app[0]).version_name[:28]
                     except: app_version = ""
                     app_installer = "packageinstaller" if "packageinstaller" in d_app[1] else d_app[1][:25]
                     apps_info.append([app_name, app_version, app_installer])
@@ -3095,7 +3099,7 @@ def add_space(value: str) -> str:
         return value
 
 def getprop(device, key):
-    value = device.shell(f"getprop {key}").strip()
+    value = adb_call(device.shell, f"getprop {key}").strip()
     return value if value else "-"
 
 def to_mb(text: str) -> float:
@@ -3131,7 +3135,7 @@ def get_client(host=default_host, port=default_port, check=False):
         return " ".join(transform_word(w) for w in s.split())
     
     def load_props():
-        result = device.shell("getprop")
+        result = adb_call(device.shell, "getprop")
         props = {}
 
         for line in result.splitlines():
@@ -3166,7 +3170,7 @@ def get_client(host=default_host, port=default_port, check=False):
             connected = adb != None and device != None and any(
                 entry.serial == snr_id and entry.state == state
                 and entry.state not in ("offline", "unauthorized")
-                for entry in adb.list(extended=True)
+                for entry in adb_call(adb.list, extended=True)
             )
         except Exception:
             connected = False
@@ -3183,8 +3187,8 @@ def get_client(host=default_host, port=default_port, check=False):
 
     if adb != None:
         try:
-            snr_id = adb.list(extended=True)[0].serial
-            state = adb.list(extended=True)[0].state
+            snr_id = adb_call(adb.list, extended=True)[0].serial
+            state = adb_call(adb.list, extended=True)[0].state
             device = adb.device(snr_id)
             try:
                 device_auto = u2.connect()
@@ -3225,12 +3229,12 @@ def get_client(host=default_host, port=default_port, check=False):
         else:
             paired = True
             global whoami
-            whoami = device.shell("whoami 2>/dev/null")
+            whoami = adb_call(device.shell, "whoami 2>/dev/null")
             if whoami != "root":
-                check_id = device.shell("id")
+                check_id = adb_call(device.shell, "id")
                 if "root" in check_id:
                     whoami = "root"
-            osr = device.shell("cat /etc/os-release")
+            osr = adb_call(device.shell, "cat /etc/os-release")
             if whoami == "phablet":
                 ut = True
             else:
@@ -3286,12 +3290,12 @@ def get_client(host=default_host, port=default_port, check=False):
                 prodregi = get_prop_fallback(props, "ro.product.locale.region")
                 locale = f"{prodlang or ''}-{prodregi or ''}".strip()
                 if locale == "-" and ut == True:
-                    locale = device.shell("echo $LANG")
+                    locale = adb_call(device.shell, "echo $LANG")
             global imei
             imei = get_prop_fallback(props, 'gsm.baseband.imei').replace("'","")
             if imei == "-":
                 if whoami == "phablet":
-                    imei_cmd = device.shell('dbus-send --system --print-reply --dest=org.ofono /ril_0 org.ofono.Modem.GetProperties')
+                    imei_cmd = adb_call(device.shell, 'dbus-send --system --print-reply --dest=org.ofono /ril_0 org.ofono.Modem.GetProperties')
                     match = re.search(r'"(\d{14,17})"', imei_cmd)
                     if match:
                         imei = match.group(1)
@@ -3303,7 +3307,7 @@ def get_client(host=default_host, port=default_port, check=False):
                 imei = get_prop_fallback(props, 'ril.imei').replace("'","")
             if imei == "-":
                 try:
-                    dump_imei = device.shell("dumpsys iphonesubinfo")
+                    dump_imei = adb_call(device.shell, "dumpsys iphonesubinfo")
                     match = re.search(r"Device ID\s*=\s*(\d+)", dump_imei)
                     if match:
                         imei = match.group(1)
@@ -3317,31 +3321,31 @@ def get_client(host=default_host, port=default_port, check=False):
                 else:
 
                     try:
-                        imei = device.shell("service call iphonesubinfo 1 s16 com.android.shell | cut -c 50-66 | tr -d '.[:space:]'").replace("'","")
+                        imei = adb_call(device.shell, "service call iphonesubinfo 1 s16 com.android.shell | cut -c 50-66 | tr -d '.[:space:]'").replace("'","")
                     except:
                         imei = "-"
             if "not found" in imei or "service" in imei or "000000" in imei or imei == "":
                 imei = "-"
             global b_mac
-            b_mac = device.shell("settings get secure bluetooth_address")
+            b_mac = adb_call(device.shell, "settings get secure bluetooth_address")
             if b_mac == "":
                 b_mac = "-"
             if any(err in b_mac.lower() for err in errors):
                 b_mac = "-"
             if b_mac == "-":
                 if whoami == "phablet" or aos == True:
-                    b_mac = device.shell(f"busctl --system get-property org.bluez /org/bluez/hci0 org.bluez.Adapter1 Address | tr -d 's\" '")
+                    b_mac = adb_call(device.shell, f"busctl --system get-property org.bluez /org/bluez/hci0 org.bluez.Adapter1 Address | tr -d 's\" '")
             global w_mac
             w_mac = get_prop_fallback(props, "ro.boot.wifimacaddr")
             if w_mac == "-":
                 if whoami == "phablet":
-                    w_mac = device.shell("cat /sys/class/net/wlan0/address")
+                    w_mac = adb_call(device.shell, "cat /sys/class/net/wlan0/address")
                     if "No such file" in w_mac:
                         w_mac = "-"
                     else:
                         w_mac = w_mac.upper()
                 else:
-                    wifi_dump = device.shell("dumpsys wifi")
+                    wifi_dump = adb_call(device.shell, "dumpsys wifi")
                     match1 = re.search(r"wifi_sta_factory_mac_address=([0-9a-fA-F:]{17})", wifi_dump)
                     match2 = re.search(r" MAC:\s*([0-9a-fA-F:]{17})", wifi_dump)      
                     if match1:
@@ -3354,7 +3358,7 @@ def get_client(host=default_host, port=default_port, check=False):
                         w_mac = "-"
                     if w_mac == "-":
                         try:
-                            w_mac = device.shell("ip addr show wlan0 | grep 'link/ether' | awk '{print $2}'").upper()
+                            w_mac = adb_call(device.shell, "ip addr show wlan0 | grep 'link/ether' | awk '{print $2}'").upper()
                         except:
                             w_mac = "-"
                     if any(err in w_mac.lower() for err in errors):
@@ -3362,7 +3366,7 @@ def get_client(host=default_host, port=default_port, check=False):
             if "," in w_mac:
                 w_mac = w_mac.split(",")[0]
             global d_name
-            d_name = device.shell("settings get global device_name")
+            d_name = adb_call(device.shell, "settings get global device_name")
             if d_name == "":
                 d_name = "-"
                 name_s = d_name
@@ -3371,7 +3375,7 @@ def get_client(host=default_host, port=default_port, check=False):
                 name_s = d_name
             if d_name == "-":
                 if whoami == "phablet" or aos == True:
-                    d_name = device.shell("hostname")
+                    d_name = adb_call(device.shell, "hostname")
             if len(d_name) > 26:
                 wordnames = d_name.split()
                 if len(' '.join(wordnames[:-1])) < 27:
@@ -3399,10 +3403,10 @@ def get_client(host=default_host, port=default_port, check=False):
                 data_dev = ""
             else:
                 data_dev =  "data"
-            data_df = device.shell(f"df -h /{data_dev}")
+            data_df = adb_call(device.shell, f"df -h /{data_dev}")
             if "-h" in data_df.lower():
                 old_dev = True
-                data_df = device.shell("df /data")
+                data_df = adb_call(device.shell, "df /data")
             data_lines = data_df.strip().splitlines()
             if len(data_lines) >= 2 and "can't find mount point" not in data_df:
                 data_line = data_lines[1]
@@ -3439,7 +3443,7 @@ def get_client(host=default_host, port=default_port, check=False):
                 data_s, used_s, free, use_percent = "-", "-", "-", "-"
                 graph_progress = "-"
             global ad_id
-            ad_id = device.shell("settings get secure android_id")
+            ad_id = adb_call(device.shell, "settings get secure android_id")
             if any(err in ad_id.lower() for err in errors):
                 ad_id = "-"
             if ad_id == "":
@@ -3447,7 +3451,7 @@ def get_client(host=default_host, port=default_port, check=False):
             global d_class
             d_class = get_prop_fallback(props, "ro.build.characteristics")
             global d_features
-            d_features = device.shell("pm list features")
+            d_features = adb_call(device.shell, "pm list features")
             global crypt_on
             global crypt_type
             crypt_on = get_prop_fallback(props, "ro.crypto.state")
@@ -3457,7 +3461,7 @@ def get_client(host=default_host, port=default_port, check=False):
             else:
                 crypt_type = ""
             global aapm
-            aapm = device.shell("settings get secure advanced_protection_mode")
+            aapm = adb_call(device.shell, "settings get secure advanced_protection_mode")
             if any(err in ad_id.lower() for err in errors):
                 aapm = 0
             if aapm == "":
@@ -3477,7 +3481,7 @@ def get_client(host=default_host, port=default_port, check=False):
             else:
                 try:
                     for i in range(8,16):
-                        val = device.shell(f"service call iphonesubinfo {i} s16 com.android.shell | cut -c 50-66 | tr -d '.[:space:]'").replace("'","")
+                        val = adb_call(device.shell, f"service call iphonesubinfo {i} s16 com.android.shell | cut -c 50-66 | tr -d '.[:space:]'").replace("'","")
                         if re.fullmatch(r'\+?[0-9]+', val):
                             if phone_number == "-" and val.startswith("+"):
                                 phone_number = val
@@ -3504,9 +3508,9 @@ def get_client(host=default_host, port=default_port, check=False):
                        ".sukisu.ultra", ".ksunext"]
 
             if whoami != "phablet":
-                all_app_query = device.shell("pm list packages")
+                all_app_query = adb_call(device.shell, "pm list packages")
                 all_apps = [line.replace("package:", "") for line in all_app_query.splitlines() if line.strip()]
-                app_query = device.shell("pm list packages -3 -i")
+                app_query = adb_call(device.shell, "pm list packages -3 -i")
                 pattern = re.compile(r"package:([^\s]+)\s+installer=([^\s]+)")
                 apps = [[pkg, installer] for pkg, installer in pattern.findall(app_query)]
 
@@ -3519,7 +3523,7 @@ def get_client(host=default_host, port=default_port, check=False):
                     print("Found:", su_app)
 
             else:
-                app_cmd = device.shell("click list")
+                app_cmd = adb_call(device.shell, "click list")
                 apps = []
                 for line in app_cmd.splitlines():
                     parts = line.split()
@@ -3530,7 +3534,7 @@ def get_client(host=default_host, port=default_port, check=False):
 
             global apps_path
             apps_path = []
-            apps_path_query = device.shell("pm list packages -f -3")
+            apps_path_query = adb_call(device.shell, "pm list packages -f -3")
             for line in apps_path_query.splitlines():
                 match = re.match(r"package:(.+)/base\.apk=.*", line)
                 if match:
@@ -3553,9 +3557,9 @@ def get_client(host=default_host, port=default_port, check=False):
             rec_root = False
             if state == "recovery":
                 recovery = True
-                if device.shell("whoami") == "root":
+                if adb_call(device.shell, "whoami") == "root":
                     rec_root = True
-                elif "root" in device.shell("id"):
+                elif "root" in adb_call(device.shell, "id"):
                     rec_root = True
                 device_info = ("Device is in recovery mode" + "\n\n" +
                     '{:13}'.format("Model: ") + "\t" + fname_s +
@@ -3709,9 +3713,9 @@ def save_info():
 
 def dump_logcat(change):
     if int(software.split(".")[0]) < 10:
-        logdump = device.shell("logcat -d -b all -v time", stream=True)
+        logdump = adb_call(device.shell, "logcat -d -b all -v time", stream=True)
     else:
-        logdump = device.shell("logcat -d -b all -v epoch", stream=True)
+        logdump = adb_call(device.shell, "logcat -d -b all -v epoch", stream=True)
     buffer = b""
     with open(f"logcat_{snr}.txt", "w", encoding='utf-8') as logcfile:
         while True:
@@ -3732,7 +3736,7 @@ def live_logcat(change, progtext):
         cmd = "logcat -T 1 -b all -v time"
     else:
         cmd = "logcat -T 1 -b all -v epoch"
-    logdump = device.shell(cmd, stream=True)
+    logdump = adb_call(device.shell, cmd, stream=True)
     buffer = b""
     i=0
     try:
@@ -3761,7 +3765,7 @@ def live_logcat(change, progtext):
     change.set(1)
 
 def dump_dumpsys(change):
-    sysdump = device.shell("dumpsys", stream=True)
+    sysdump = adb_call(device.shell, "dumpsys", stream=True)
     buffer = b""
     with open(f"dumpsys_{snr}.txt", "w", encoding='utf-8', errors="surrogateescape") as dumpsfile:
         while True:
@@ -3782,7 +3786,7 @@ def dump_dumpsys(change):
 # Actually Dumping the Bugreport
 def dump_bugreport(change, progress, prog_text):
     brpath = ""
-    output = device.shell("bugreportz -p", stream=True)
+    output = adb_call(device.shell, "bugreportz -p", stream=True)
     with output:
         f = output.conn.makefile()
         for _ in range(10):
@@ -3791,7 +3795,7 @@ def dump_bugreport(change, progress, prog_text):
                 brpath = line.strip().split("BEGIN:")[1]
         f.close()
     try:
-        device.sync.pull(brpath, f"{snr}_dumpstate.zip")
+        adb_call(device.sync.pull, brpath, f"{snr}_dumpstate.zip")
         log("Extracted Bugreport")
     except:
         log("Error extracting Bugreport")
@@ -3904,8 +3908,8 @@ def dump_appops(change, text, progress, prog_text, folder=None, jsonout=False):
         progress.set(current)
         prog_text.configure(text=f"{int(current*100)}%")
 
-        d_date = device.shell("date +%s")
-        app_ops_input = device.shell(f"appops get {app}")
+        d_date = adb_call(device.shell, "date +%s")
+        app_ops_input = adb_call(device.shell, f"appops get {app}")
         try:
             app_ops_unix = replace_relative_times(app_ops_input, int(d_date))
             app_ops = app_ops_unix
@@ -3956,7 +3960,7 @@ def query_content(change, text, progress, prog_text, json_out=False, zip_path=No
         progress.set(current)
         prog_text.configure(text=f"{int(current*100)}%")
         text.configure(text=f"Extracting Data from Content Providers.\nThis may take some time.\nCurrent: {key}")
-        content_out = device.shell(f"content query --uri content://{key}")
+        content_out = adb_call(device.shell, f"content query --uri content://{key}")
         if any(error in content_out for error in error_text):
             log(f"No content output for {key}")
             pass
@@ -3984,7 +3988,7 @@ def query_content(change, text, progress, prog_text, json_out=False, zip_path=No
                 prog_text.configure(text=f"{int(current*100)}%")
                 text.configure(text=f"Extracting Data from Content Providers.\nThis may take some time.\nCurrent: {key}/{item}")
                 #print((f"content query --uri content://{key}/{item}"))
-                content_out = device.shell(f"content query --uri content://{key}/{item}")
+                content_out = adb_call(device.shell, f"content query --uri content://{key}/{item}")
                 if any(error in content_out for error in error_text):
                     log(f"No content output for {key}/{item}")
                     pass
@@ -4013,7 +4017,7 @@ def query_content(change, text, progress, prog_text, json_out=False, zip_path=No
             pass
         else:
             if not isinstance(value, list):
-                content_out = device.shell(f"content query --uri content://{key}/{value}")
+                content_out = adb_call(device.shell, f"content query --uri content://{key}/{value}")
                 if any(error in content_out for error in error_text):
                     if not isinstance(value, list):
                         log(f"No content output for {key}/{value}")
@@ -4072,7 +4076,7 @@ def find_agent(change, text, app_text):
             agent_bundle = app
             agent_install = "-"
             try:
-                out_dump = device.shell(f"dumpsys package {app}")
+                out_dump = adb_call(device.shell, f"dumpsys package {app}")
                 for line in out_dump.splitlines():
                     if "firstInstallTime" in line:
                         agent_install = line.split("=", 1)[1].strip()
@@ -4241,19 +4245,19 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
     block = ""
     if show_root == True:
         if dshell is True:
-            dev_cmd = device.shell("ls /dev")
+            dev_cmd = adb_call(device.shell, "ls /dev")
         elif device_has_su():
             if c_su:
-                dev_cmd = device.shell("su -c 'ls /dev'")
+                dev_cmd = adb_call(device.shell, "su -c 'ls /dev'")
             else:
-                dev_cmd = device.shell("echo 'ls /dev' | su")
+                dev_cmd = adb_call(device.shell, "echo 'ls /dev' | su")
         elif mtk_su == True:
-            dev_cmd = device.shell("/data/local/tmp/mtk-su -c ls /dev")
+            dev_cmd = adb_call(device.shell, "/data/local/tmp/mtk-su -c ls /dev")
         else:
-            dev_cmd = device.shell("ls /dev")
+            dev_cmd = adb_call(device.shell, "ls /dev")
         amiroot = "root"
     else:
-        dev_cmd = device.shell("ls /dev")
+        dev_cmd = adb_call(device.shell, "ls /dev")
     if "mmcblk0" in dev_cmd:
         target = "mmcblk0"
     elif "sda" in dev_cmd:
@@ -4263,18 +4267,18 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
     elif "block" in dev_cmd:
         if show_root == True:
             if dshell is True:
-                dev_cmd = device.shell("ls /dev/block")
+                dev_cmd = adb_call(device.shell, "ls /dev/block")
             elif device_has_su():
                 if c_su:
-                    dev_cmd = device.shell("su -c 'ls /dev/block'")
+                    dev_cmd = adb_call(device.shell, "su -c 'ls /dev/block'")
                 else:
-                    dev_cmd = device.shell("echo 'ls /dev/block' | su")
+                    dev_cmd = adb_call(device.shell, "echo 'ls /dev/block' | su")
             elif mtk_su == True: 
-                dev_cmd = device.shell("/data/local/tmp/mtk-su -c ls /dev/block")
+                dev_cmd = adb_call(device.shell, "/data/local/tmp/mtk-su -c ls /dev/block")
             else:
-                dev_cmd = device.shell("ls /dev/block")
+                dev_cmd = adb_call(device.shell, "ls /dev/block")
         else:
-            dev_cmd = device.shell("ls /dev/block")
+            dev_cmd = adb_call(device.shell, "ls /dev/block")
         block = "block/"
     if "mmcblk0" in dev_cmd:
         target = "mmcblk0"
@@ -4290,12 +4294,12 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             if show_root == True:
                 amiroot = "root"
             else:
-                amiroot = device.shell("whoami 2>/dev/null")
+                amiroot = adb_call(device.shell, "whoami 2>/dev/null")
             case_json_name=f"{snr}_nand.case.json"
             bu_files = []
             bu_sizes = {}
-            check_id = device.shell("id")
-            nand_target = device.shell("ls /dev/block/")
+            check_id = adb_call(device.shell, "id")
+            nand_target = adb_call(device.shell, "ls /dev/block/")
             targets = nand_target.strip().split()
             full_size = 0
             last_current = 0
@@ -4303,18 +4307,18 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                 if "nand" in target:
                     if show_root == True:
                         if dshell is True:
-                            target_size = int(device.shell(f"cat /sys/block/{target}/size"))*512
+                            target_size = int(adb_call(device.shell, f"cat /sys/block/{target}/size"))*512
                         elif device_has_su():
                             if c_su:
-                                target_size = int(device.shell(f"su -c 'cat /sys/block/{target}/size'"))*512
+                                target_size = int(adb_call(device.shell, f"su -c 'cat /sys/block/{target}/size'"))*512
                             else:
-                                target_size = int(device.shell(f"echo 'cat /sys/block/{target}/size' | su"))*512
+                                target_size = int(adb_call(device.shell, f"echo 'cat /sys/block/{target}/size' | su"))*512
                         elif mtk_su == True:
-                            target_size = int(device.shell(f"/data/local/tmp/mtk-su -c cat /sys/block/{target}/size"))*512
+                            target_size = int(adb_call(device.shell, f"/data/local/tmp/mtk-su -c cat /sys/block/{target}/size"))*512
                         else:
-                            target_size = int(device.shell(f"cat /sys/block/{target}/size"))*512
+                            target_size = int(adb_call(device.shell, f"cat /sys/block/{target}/size"))*512
                     else:
-                        target_size = int(device.shell(f"cat /sys/block/{target}/size"))*512
+                        target_size = int(adb_call(device.shell, f"cat /sys/block/{target}/size"))*512
                     bu_sizes[target] = target_size
                     full_size += target_size
             for target, size in bu_sizes.items():
@@ -4326,7 +4330,6 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                     try: os.remove(out_file)
                     except: pass
                     device_path = f"/dev/{block + target}"
-                    log(f"physical extraction command: 'adb pull {device_path} {out_file}'")
                     proc = Popen(
                         ["adb", "pull", device_path, out_file],
                         stdout=subprocess.DEVNULL,
@@ -4367,7 +4370,6 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                         else:
                             cmd = ['adb', out_cmd, f"cat {device_path} 2>/dev/null"]
 
-                        log(f"physical extraction command: '{' '.join(cmd)} > {out_file}'")
                         proc = Popen(
                             cmd,
                             stdout=f,
@@ -4423,27 +4425,27 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
     else:
         if show_root == True:
             if dshell is True:
-                size = int(device.shell(f"cat /sys/block/{target}/size"))*512
+                size = int(adb_call(device.shell, f"cat /sys/block/{target}/size"))*512
             elif device_has_su():
                 if c_su:
-                    size = int(device.shell(f"su -c 'cat /sys/block/{target}/size'"))*512
+                    size = int(adb_call(device.shell, f"su -c 'cat /sys/block/{target}/size'"))*512
                 else:
-                    size = int(device.shell(f"echo 'cat /sys/block/{target}/size' | su"))*512
+                    size = int(adb_call(device.shell, f"echo 'cat /sys/block/{target}/size' | su"))*512
             elif mtk_su == True:
-                size = int(device.shell(f"/data/local/tmp/mtk-su -c cat /sys/block/{target}/size"))*512
+                size = int(adb_call(device.shell, f"/data/local/tmp/mtk-su -c cat /sys/block/{target}/size"))*512
             else:
-                size = int(device.shell(f"cat /sys/block/{target}/size"))*512
+                size = int(adb_call(device.shell, f"cat /sys/block/{target}/size"))*512
         else:
-            size = int(device.shell(f"cat /sys/block/{target}/size"))*512
+            size = int(adb_call(device.shell, f"cat /sys/block/{target}/size"))*512
         if ut == True:
-            amiroot = device.shell(f"echo {sh_pwd} | sudo -S whoami 2>/dev/null")
+            amiroot = adb_call(device.shell, f"echo {sh_pwd} | sudo -S whoami 2>/dev/null")
         elif aos == True:
-            amiroot = device.shell("whoami 2>/dev/null")
+            amiroot = adb_call(device.shell, "whoami 2>/dev/null")
         else:
             if show_root == True:
                 amiroot = "root"
             else:
-                amiroot = device.shell("whoami 2>/dev/null")
+                amiroot = adb_call(device.shell, "whoami 2>/dev/null")
         if recovery == True or dshell == True:
             prog_text.pack()
             progress.pack()
@@ -4453,7 +4455,6 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             case_json_name=f"{snr}_{target}.case.json"
             device_path = f"/dev/{block + target}"
             out_file = f"{snr}_{target}.bin"
-            log(f"physical extraction command: 'adb pull {device_path} {out_file}'")
             if dshell is True:
                 with dirty_shell.DirtyShell(["shell", "run-as"]) as ds:
                     ds.execute(f"setenforce 0")
@@ -4522,7 +4523,6 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
 
                     else:
                         cmd = ['adb', out_cmd, f"cat {device_path} 2>/dev/null"]
-                log(f"physical extraction command: '{' '.join(cmd)} > {out_file}'")
                 proc = Popen(
                     cmd,
                     stdout=f,
@@ -4601,22 +4601,22 @@ def recreate_dbs(change, text, zip_path=None):
         try: os.remove(mmssms_db)
         except: pass
         try:
-            sms_data = device.shell("content query --uri content://sms")
+            sms_data = adb_call(device.shell, "content query --uri content://sms")
             sms_json = content_to_json(sms_data) 
         except:
             sms_json = [{}]
         try:
-            pdu_data = device.shell("content query --uri content://mms")
+            pdu_data = adb_call(device.shell, "content query --uri content://mms")
             pdu_json = content_to_json(pdu_data)
         except:
             pdu_json = [{}]
         try:
-            addRecreatedr_data = device.shell("content query --uri content://mms/addr")
+            addRecreatedr_data = adb_call(device.shell, "content query --uri content://mms/addr")
             addr_json = content_to_json(addr_data)
         except:
             addr_json = [{}]
         try:
-            part_data = device.shell("content query --uri content://mms/part")
+            part_data = adb_call(device.shell, "content query --uri content://mms/part")
             part_json = content_to_json(part_data)
         except:
             part_data = [{}]
@@ -4661,7 +4661,7 @@ def recreate_dbs(change, text, zip_path=None):
         try: os.remove(call_db)
         except: pass
         try:
-            call_data = device.shell("content query --uri content://call_log/calls")
+            call_data = adb_call(device.shell, "content query --uri content://call_log/calls")
             call_json = content_to_json(call_data)
         except:
             call_json = [{}]
@@ -4694,12 +4694,12 @@ def recreate_dbs(change, text, zip_path=None):
         try: os.remove(contact_db)
         except: pass
         try:
-            contact_contacts = device.shell("content query --uri content://com.android.contacts/contacts")
+            contact_contacts = adb_call(device.shell, "content query --uri content://com.android.contacts/contacts")
             contact_contacts_json = content_to_json(contact_contacts)
         except:
             contact_contacs_json = [{}]
         try:
-            contact_data = device.shell("content query --uri content://com.android.contacts/data")
+            contact_data = adb_call(device.shell, "content query --uri content://com.android.contacts/data")
             contact_data_json = content_to_json(contact_data)
             unique_mimetypes = {}
             next_id = 1
@@ -4716,12 +4716,12 @@ def recreate_dbs(change, text, zip_path=None):
             contact_data_json = [{}]
             mimetype_json = [{}]
         try:
-            contact_raw_contacts_data = device.shell("content query --uri content://com.android.contacts/raw_contacts")
+            contact_raw_contacts_data = adb_call(device.shell, "content query --uri content://com.android.contacts/raw_contacts")
             contact_raw_contacts_json = content_to_json(contact_raw_contacts_data)
         except:
             contact_raw_contacts_json = [{}]
         try:
-            contact_settings_data = device.shell("content query --uri content://com.android.contacts/settings")
+            contact_settings_data = adb_call(device.shell, "content query --uri content://com.android.contacts/settings")
             contact_settings_json = content_to_json(contact_settings_data)
         except:
             contact_settings_json = [{}]
@@ -4759,32 +4759,32 @@ def recreate_dbs(change, text, zip_path=None):
         try: os.remove(calendar_db)
         except: pass
         try:
-            colors_data = device.shell("content query --uri content://com.android.calendar/colors")
+            colors_data = adb_call(device.shell, "content query --uri content://com.android.calendar/colors")
             colors_json = content_to_json(colors_data) 
         except:
             colors_json = [{}]
         try:
-            calendars_data = device.shell("content query --uri content://com.android.calendar/calendars")
+            calendars_data = adb_call(device.shell, "content query --uri content://com.android.calendar/calendars")
             calendars_json = content_to_json(calendars_data)
         except:
             calendars_json = [{}]
         try:
-            event_data = device.shell("content query --uri content://com.android.calendar/event_entities")
+            event_data = adb_call(device.shell, "content query --uri content://com.android.calendar/event_entities")
             event_json = content_to_json(event_data)
         except:
             event_json = [{}]
         try:
-            extended_data = device.shell("content query --uri content://com.android.calendar/extendedproperties")
+            extended_data = adb_call(device.shell, "content query --uri content://com.android.calendar/extendedproperties")
             extended_json = content_to_json(extended_data)
         except:
             extended_json = [{}]
         try:
-            reminders_data = device.shell("content query --uri content://com.android.calendar/reminders")
+            reminders_data = adb_call(device.shell, "content query --uri content://com.android.calendar/reminders")
             reminders_json = content_to_json(reminders_data)
         except:
             reminders_json = [{}]
         try:
-            syncstate_data = device.shell("content query --uri content://com.android.calendar/syncstate")
+            syncstate_data = adb_call(device.shell, "content query --uri content://com.android.calendar/syncstate")
             syncstate_json = content_to_json(syncstate_data)
         except:
             syncstate_json = [{}]
@@ -4829,14 +4829,14 @@ def recreate_dbs(change, text, zip_path=None):
         with open(packages_list, "w", encoding="utf-8") as pl:
             for app in all_apps:
                 text.configure(text=f"Attempt to recreate the packages.list\nCurrent package: {app[:56]}")
-                a_class = device.shell(f"pm path {app}")
+                a_class = adb_call(device.shell, f"pm path {app}")
                 if "priv-app" in a_class:
                     pack_class = "platform:privapp"
                 elif "vendor" in a_class:
                     pack_class = "platform:vendor"
                 else:
                     pack_class = "default"
-                dumpsys = device.shell(f"dumpsys package {app}")
+                dumpsys = adb_call(device.shell, f"dumpsys package {app}")
                 app_dir = re.search(r"dataDir=([^\s]+)", dumpsys)
                 app_uid = re.search(r"\buid=(\d+)", dumpsys)
                 app_tar = re.search(r"targetSdk=(\d+)", dumpsys)
@@ -4897,29 +4897,29 @@ def ufed_style_files(change, ufed_folder, zip, zipname, starttime, text):
             apps_file.write(f"{app}\n")
     #Contacts
     text.configure(text="Creating UFED-Style Report files.\nQuery: content://com.android.contacts/data/phones")
-    contact_query = device.shell("content query --uri content://com.android.contacts/data/phones")
+    contact_query = adb_call(device.shell, "content query --uri content://com.android.contacts/data/phones")
     contact_json = content_to_json(contact_query)
     #Calls
     text.configure(text="Creating UFED-Style Report files.\nQuery: content://call_log/calls")
-    calls_query = device.shell("content query --uri content://call_log/calls")
+    calls_query = adb_call(device.shell, "content query --uri content://call_log/calls")
     calls_json = content_to_json(calls_query)
     #Calendar
     text.configure(text="Creating UFED-Style Report files.\nQuery: content://com.android.calendar/event_entities")
-    calendar_query = device.shell("content query --uri content://com.android.calendar/event_entities")
+    calendar_query = adb_call(device.shell, "content query --uri content://com.android.calendar/event_entities")
     calendar_json = content_to_json(calendar_query)
     #SMS
     text.configure(text="Creating UFED-Style Report files.\nQuery: content://sms")
-    sms_query = device.shell("content query --uri content://sms")
+    sms_query = adb_call(device.shell, "content query --uri content://sms")
     sms_json = content_to_json(sms_query)
     #MMS
     text.configure(text="Creating UFED-Style Report files.\nQuery: content://mms")
-    mms_query = device.shell("content query --uri content://mms")
+    mms_query = adb_call(device.shell, "content query --uri content://mms")
     mms_json = content_to_json(mms_query)
     text.configure(text="Creating UFED-Style Report files.\nQuery: content://mms/part")
-    mms_part_query = device.shell("content query --uri content://mms/part")
+    mms_part_query = adb_call(device.shell, "content query --uri content://mms/part")
     mms_part_json = content_to_json(mms_part_query)
     text.configure(text="Creating UFED-Style Report files.\nQuery: content://mms/addr")
-    mms_addr_query = device.shell("content query --uri content://mms/addr")
+    mms_addr_query = adb_call(device.shell, "content query --uri content://mms/addr")
     mms_addr_json = content_to_json(mms_addr_query)
 
     end = datetime.now()
@@ -4987,7 +4987,7 @@ def check_bu_pass(bu_file, change, password=None):
 
 def get_data_size(data_path, change):
     global total_size
-    size_cmd = device.shell(f"du -ks {data_path} 2>/dev/null")
+    size_cmd = adb_call(device.shell, f"du -ks {data_path} 2>/dev/null")
     try:
         total_size = int(size_cmd.split()[0])*1024
     except Exception as e:
@@ -5099,7 +5099,7 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
         global data_size
         global total_size
 
-        items = list(self.iter_directory(src))
+        items = list(adb_call(self.iter_directory, src))
 
         items = list(filter(
             lambda i: i.path != '.' and i.path != '..',
@@ -5141,10 +5141,10 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
             new_dst:str = append_path(dst, fileout) 
             try:
                 try: 
-                    mtime = self.stat(new_src).mtime.timestamp()
+                    mtime = adb_call(self.stat, new_src).mtime.timestamp()
                 except:
                     mtime = datetime.fromisoformat('1980-01-01').timestamp() 
-                size = self.pull_file(new_src, new_dst)
+                size = adb_call(self.pull_file, new_src, new_dst)
                 try:
                     if mtime < datetime.fromisoformat('1980-01-01').timestamp():
                         mtime = datetime.fromisoformat('1980-01-01').timestamp() 
@@ -5215,16 +5215,16 @@ def has_root(change, timeout=30):
     def check_root():
         global c_su
         try:
-            check_whoami = device.shell("echo 'whoami' | su").strip()
+            check_whoami = adb_call(device.shell, "echo 'whoami' | su").strip()
             if check_whoami == "whoami":
                 c_su = True
-                check_whoami = device.shell("su -c whoami").strip()
+                check_whoami = adb_call(device.shell, "su -c whoami").strip()
             if "not found" in check_whoami:
-                check_id = device.shell("echo 'id' | su")
+                check_id = adb_call(device.shell, "echo 'id' | su")
                 if "root" in check_id:
                     check_whoami = "root"
             result_holder["value"] = check_whoami == "root"
-            check_c_su = device.shell("su -c echo alex")
+            check_c_su = adb_call(device.shell, "su -c echo alex")
             if check_c_su == "alex":
                 c_su = True
             #print(result_holder["value"])
@@ -5303,7 +5303,7 @@ def temp_dirty_cow(change, timeout=30):
     run(["adb", "shell", "/data/local/tmp/dcow /data/local/tmp/run-as /system/bin/run-as --no-pad"], check=True)
     time.sleep(4)
     try:
-        stream = device.shell("run-as", stream=True)
+        stream = adb_call(device.shell, "run-as", stream=True)
         try:
             check_dirty = stream.recv(4096)
         finally:
@@ -5385,7 +5385,7 @@ def temp_initroot(change, text, m_init_device, timeout=120):
             text.configure(text=info_text)
             time.sleep(7)
             try:
-                device.shell("echo ready")
+                adb_call(device.shell, "echo ready")
             except:
                 restart_adb()
             if "error" in str(result):
@@ -5436,7 +5436,7 @@ def temp_mtk_su(change, timeout=30):
         pass
     run(["adb", "shell", f"chmod 755 {remote_path}"], check=True)
     try:
-        result_holder["value"] = device.shell(f"{remote_path} -c whoami").strip() == "root"
+        result_holder["value"] = adb_call(device.shell, f"{remote_path} -c whoami").strip() == "root"
 
     except Exception as e:
         print(e)
@@ -5453,7 +5453,7 @@ def wait_for_adb(device, timeout=40, interval=1):
 
     while time.monotonic() - start < timeout:
         try:
-            device.shell("echo ready")
+            adb_call(device.shell, "echo ready")
             return True
         except Exception:
             pass
@@ -5462,7 +5462,7 @@ def wait_for_adb(device, timeout=40, interval=1):
     return False
 
 def restart_adb():
-    subprocess.run(
+    run(
         ["adb", "kill-server"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -5471,7 +5471,7 @@ def restart_adb():
 
     time.sleep(0.5)
 
-    result = subprocess.run(
+    result = run(
         ["adb", "start-server"],
         capture_output=True,
         text=True,
@@ -5482,18 +5482,22 @@ def restart_adb():
 
 #ALEX "logging"
 def log(text):
+    if not cwd_selected:
+        return
     with open(f"ALEX_log_{snr}.log", 'a', encoding="utf-8") as logfile:
         logtime = str(datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
         logfile.write(f"{logtime}: {text}\n")
 
 #subprocess helper
 def run(cmd, **kwargs):
+    log_process(cmd, **kwargs)
     if sys.platform == "win32":
         kwargs.setdefault("creationflags", subprocess.CREATE_NO_WINDOW)
 
     return subprocess.run(cmd, **kwargs)
 
 def Popen(cmd, **kwargs):
+    log_process(cmd, **kwargs)
     if sys.platform == "win32":
         kwargs.setdefault("creationflags", subprocess.CREATE_NO_WINDOW)
 
@@ -5514,6 +5518,7 @@ def sanitize_for_pdf(text) -> str:
             result.append(ch)
     return ''.join(result)
 
+cwd_selected = False
 device = None
 device_auto = None
 fb = fastboot.Fastboot()

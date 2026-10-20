@@ -2,6 +2,11 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+
+try:
+    from .command_log import log_command
+except ImportError:
+    from command_log import log_command
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
@@ -71,6 +76,7 @@ class Fastboot:
             return False
 
         try:
+            log_command([self.executable, "--version"])
             result = subprocess.run(
                 [self.executable, "--version"],
                 stdout=subprocess.PIPE,
@@ -175,6 +181,7 @@ class Fastboot:
         ]
 
         try:
+            log_command(command)
             result = subprocess.run(
                 command,
                 stdout=subprocess.PIPE,

@@ -6,6 +6,11 @@ import os
 import random
 import string
 import subprocess
+
+try:
+    from .command_log import log_process
+except ImportError:
+    from command_log import log_process
 import sys
 import time
 import _thread
@@ -33,12 +38,14 @@ ADDRESS = None
 
 #subprocess helper
 def run(cmd, **kwargs):
+    log_process(cmd, **kwargs)
     if sys.platform == "win32":
         kwargs.setdefault("creationflags", subprocess.CREATE_NO_WINDOW)
 
     return subprocess.run(cmd, **kwargs)
 
 def Popen(cmd, **kwargs):
+    log_process(cmd, **kwargs)
     if sys.platform == "win32":
         kwargs.setdefault("creationflags", subprocess.CREATE_NO_WINDOW)
 
@@ -65,6 +72,7 @@ def make_qr_image(data: str, size: int = 256) -> Image.Image:
     return img.resize((size, size), Image.NEAREST)
 
 def adb_devices():
+    log_process([ADB_PATH, "devices"])
     out = subprocess.check_output([ADB_PATH, "devices"], text=True)
 
     devices = []

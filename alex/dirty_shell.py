@@ -4,6 +4,11 @@ from __future__ import annotations
 
 import re
 import subprocess
+
+try:
+    from .command_log import log_command, log_process
+except ImportError:
+    from command_log import log_command, log_process
 import sys
 import threading
 import time
@@ -11,12 +16,14 @@ from typing import BinaryIO, Callable, List, Optional, Union
 
 
 def _run(cmd, **kwargs):
+    log_process(cmd, **kwargs)
     if sys.platform == "win32":
         kwargs.setdefault("creationflags", subprocess.CREATE_NO_WINDOW)
     return subprocess.run(cmd, **kwargs)
 
 
 def _Popen(cmd, **kwargs):
+    log_process(cmd, **kwargs)
     if sys.platform == "win32":
         kwargs.setdefault("creationflags", subprocess.CREATE_NO_WINDOW)
     return subprocess.Popen(cmd, **kwargs)
@@ -107,8 +114,7 @@ class DirtyShell:
                 return
             try:
                 if self._proc.stdin and self._proc.poll() is None:
-                    self._proc.stdin.write(b"exit\n")
-                    self._proc.stdin.flush()
+                    self._write(b"exit\n")
             except Exception:
                 pass
             try:
@@ -160,6 +166,8 @@ class DirtyShell:
     def _write(self, data: bytes) -> None:
         if not self._proc or not self._proc.stdin:
             raise RuntimeError("Shell is not running")
+        log_command(data.decode(self.encoding, self.errors).rstrip("\n"),
+                    context="command (inside active ADB shell)")
         self._proc.stdin.write(data)
         self._proc.stdin.flush()
 

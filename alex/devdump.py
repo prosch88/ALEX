@@ -1,17 +1,24 @@
 #!/usr/bin/env python3
 
 import subprocess, zipfile, time, os, argparse, sys
+
+try:
+    from .command_log import log_process
+except ImportError:
+    from command_log import log_process
 from datetime import datetime
 import tempfile
 
 #subprocess helper
 def run(cmd, **kwargs):
+    log_process(cmd, **kwargs)
     if sys.platform == "win32":
         kwargs.setdefault("creationflags", subprocess.CREATE_NO_WINDOW)
 
     return subprocess.run(cmd, **kwargs)
 
 def Popen(cmd, **kwargs):
+    log_process(cmd, **kwargs)
     if sys.platform == "win32":
         kwargs.setdefault("creationflags", subprocess.CREATE_NO_WINDOW)
 
