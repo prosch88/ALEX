@@ -620,7 +620,7 @@ class MyApp(ctk.CTk):
         self.okbutton = ctk.CTkButton(self.dynamic_frame, text="Unback", font=self.stfont, command=lambda: self.perf_ab_to_prfs())
         self.okbutton.pack(anchor="w", padx=80, pady=15)
         self.okbutton.configure(state="disabled")
-        self.backbutton = ctk.CTkButton(self.dynamic_frame, text="Back", command=lambda: self.switch_menu("DataMenu"))
+        self.backbutton = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, command=lambda: self.switch_menu("DataMenu"))
         self.backbutton.pack(anchor="e", pady=10, padx=(0,65))
 
     def choose_ab_file(self):
@@ -785,7 +785,7 @@ class MyApp(ctk.CTk):
             r+=1
             i+=1
 
-        ctk.CTkButton(self.dynamic_frame, text="Back", command=self.show_main_menu).grid(row=r, column=1, padx=10, pady=10, sticky="e" )
+        ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, command=self.show_main_menu).grid(row=r, column=1, padx=10, pady=10, sticky="e" )
 
     #Acquisition Menu
     def show_acquisition_menu(self):
@@ -832,7 +832,7 @@ class MyApp(ctk.CTk):
             r+=1
             i+=1
 
-        ctk.CTkButton(self.dynamic_frame, text="Back", command=self.show_main_menu).grid(row=r, column=1, padx=10, pady=10, sticky="e" )
+        ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, command=self.show_main_menu).grid(row=r, column=1, padx=10, pady=10, sticky="e" )
 
     #Log Menu
     def show_log_menu(self):
@@ -864,7 +864,7 @@ class MyApp(ctk.CTk):
             r+=1
             i+=1
 
-        ctk.CTkButton(self.dynamic_frame, text="Back", command=self.show_main_menu).grid(row=r, column=1, padx=10, pady=10, sticky="e" )
+        ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, command=self.show_main_menu).grid(row=r, column=1, padx=10, pady=10, sticky="e" )
 
     #Advanced Menu
     def show_advanced_menu(self):
@@ -908,7 +908,7 @@ class MyApp(ctk.CTk):
             r+=1
             i+=1
 
-        ctk.CTkButton(self.dynamic_frame, text="Back", command=self.show_main_menu).grid(row=r, column=1, padx=10, pady=10, sticky="e" )
+        ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, command=self.show_main_menu).grid(row=r, column=1, padx=10, pady=10, sticky="e" )
 
     #Exploits Menu
     def show_exploit_menu(self):
@@ -939,7 +939,7 @@ class MyApp(ctk.CTk):
             r+=1
             i+=1
 
-        ctk.CTkButton(self.dynamic_frame, text="Back", command=self.show_main_menu).grid(row=r, column=1, padx=10, pady=10, sticky="e" )
+        ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, command=self.show_main_menu).grid(row=r, column=1, padx=10, pady=10, sticky="e" )
 
 
 
@@ -1463,7 +1463,7 @@ class MyApp(ctk.CTk):
             label.grid(row=r, column=1, padx=10, pady=10)
             self.menu_textbox.append(label)
 
-        ctk.CTkButton(self.dynamic_frame, text="Back", command=self.show_main_menu).grid(row=len(self.menu_buttons) + 1, column=1, padx=10, pady=10, sticky="e")
+        ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, command=self.show_main_menu).grid(row=len(self.menu_buttons) + 1, column=1, padx=10, pady=10, sticky="e")
 
     #Show the Logcat-Dump Menu
     def show_logcat_dump(self):
