@@ -110,7 +110,7 @@ class MyApp(ctk.CTk):
 
         ctk.FontManager.load_font(os.path.join(os.path.dirname(__file__), "assets" , "NotoSansMono-UFADE.ttf" ))
         ctk.FontManager.load_font(os.path.join(os.path.dirname(__file__), "assets" , "NotoSans-Medium.ttf" ))
-        
+
         if platform.uname().system == 'Windows':
             self.stfont = ctk.CTkFont("Noto Sans Medium")
             self.monofont = ctk.CTkFont("Noto Sans Mono UFADE")
@@ -136,7 +136,7 @@ class MyApp(ctk.CTk):
         # Widgets (left Frame))
         if platform.uname().system == 'Windows':
             self.info_text = ctk.CTkTextbox(self.left_frame, height=resy, width=leftx, fg_color="#2E2E2E", corner_radius=0, font=self.monofont, activate_scrollbars=False, wrap='none')
-            
+
         elif platform.uname().system == 'Darwin':
             self.info_text = ctk.CTkTextbox(self.left_frame, height=resy, width=leftx, fg_color="#2E2E2E", corner_radius=0, font=("Menlo", fsize), activate_scrollbars=False, wrap='none')
         else:
@@ -200,7 +200,7 @@ class MyApp(ctk.CTk):
             "AbToPrfs": self.show_ab_to_prfs,
         }
 
-    
+
     def on_close(self):
         try:
             adb_call(adb.server_kill)
@@ -208,7 +208,7 @@ class MyApp(ctk.CTk):
             print(e)
         self.destroy()
         os._exit(0)
-    
+
     def show_main_menu(self):
          # Erase content of dynamic frame
         for widget in self.dynamic_frame.winfo_children():
@@ -261,8 +261,8 @@ class MyApp(ctk.CTk):
             ctk.CTkButton(self.dynamic_frame, text="Advanced Options", command=lambda: self.switch_menu("AdvMenu"), width=200, height=70, font=self.stfont),
             ctk.CTkButton(self.dynamic_frame, text="Exploit Options", command=lambda: self.switch_menu("Exploits"), width=200, height=70, font=self.stfont),
             ]
-        self.menu_text = ["Save information about the device and installed apps.", 
-                          "Allows logical, advanced logical and filesystem\nextractions.", 
+        self.menu_text = ["Save information about the device and installed apps.",
+                          "Allows logical, advanced logical and filesystem\nextractions.",
                           "Collect the Bugreport, dumpsys and logcat logs",
                           "More specific options like screenshotting.",
                           "Access to implemented exploit methods,"]
@@ -278,7 +278,7 @@ class MyApp(ctk.CTk):
             self.menu_textbox[i].configure(text=self.menu_text[i])
             r+=1
             i+=1
-    
+
     # Print out exception
     def global_exception_handler(self, type, value, tb):
         try:
@@ -320,14 +320,14 @@ class MyApp(ctk.CTk):
                         "\n" + '{:13}'.format("Python: ") + "\t" + platform.python_version() +
                         "\n" + '{:13}'.format("adbutils: ") + "\t" + version('adbutils') +
                         "\n" + '{:13}'.format("fastboot: ") + "\t" + fb_found +
-                        "\n\n" + 
+                        "\n\n" +
                         "   54 68 65 20 52 6f 61 64 20 67 6f \n" +
                         "   65 73 20 65 76 65 72 20 6f 6e 20 \n" +
                         "   61 6e 64 20 6f 6e 0a 44 6f 77 6e \n" +
                         "   20 66 72 6f 6d 20 74 68 65 20 64 \n" +
-                        "   6f 6f 72 20 77 68 65 72 65 20 69 \n" + 
+                        "   6f 6f 72 20 77 68 65 72 65 20 69 \n" +
                         "   74 20 62 65 67 61 6e 2e 0a 4e 6f \n" +
-                        "   77 20 66 61 72 20 61 68 65 61 64 \n" + 
+                        "   77 20 66 61 72 20 61 68 65 61 64 \n" +
                         "   20 74 68 65 20 52 6f 61 64 20 68 \n" +
                         "   61 73 20 67 6f 6e 65 2c 0a 41 6e \n" +
                         "   64 20 49 20 6d 75 73 74 20 66 6f \n" +
@@ -439,7 +439,7 @@ class MyApp(ctk.CTk):
         self.pinb.pack(pady=5)
         self.backb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=self.show_noadbserver)
         self.backb.pack(pady=5)
-        self.wait_variable(self.choose)  
+        self.wait_variable(self.choose)
         self.qrb.pack_forget()
         self.pinb.pack_forget()
         self.backb.pack_forget()
@@ -449,7 +449,7 @@ class MyApp(ctk.CTk):
             self.imglabel = ctk.CTkLabel(self.dynamic_frame, image=self.placeholder_image, text=" ", width=256, height=256, font=self.stfont,  justify="left")
             self.imglabel.pack()
             self.backb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=self.show_noadbserver)
-            self.backb.pack(pady=30)        
+            self.backb.pack(pady=30)
             self.pair_wifi = threading.Thread(target=lambda: wifi_adb.wifi_pair(self.change, self.imglabel))
             self.pair_wifi.start()
         elif self.choose.get() == "pin":
@@ -479,7 +479,7 @@ class MyApp(ctk.CTk):
                 self.ipbox.pack_forget()
                 self.text.configure(text="Invalid input! Provide a valid IP address.")
                 self.backb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=self.show_noadbserver)
-                self.backb.pack(pady=30)     
+                self.backb.pack(pady=30)
             try:
                 p_port_check = int(p_port)
                 p_pair_check = int(p_pair)
@@ -494,8 +494,8 @@ class MyApp(ctk.CTk):
                 self.pair_wifi = threading.Thread(target=lambda: wifi_adb.wifi_pair(self.change, p_addr=p_ip, p_port = p_port, p_pass=p_pair))
                 self.pair_wifi.start()
 
-        self.wait_variable(self.change) 
-        
+        self.wait_variable(self.change)
+
         self.after(500, self.show_noadbserver())
 
 
@@ -515,10 +515,10 @@ class MyApp(ctk.CTk):
         self.outputbox = ctk.CTkEntry(self.dynamic_frame, width=360, height=20, corner_radius=0, placeholder_text=[dir])
         self.outputbox.bind(sequence="<Return>", command=lambda x: self.choose_cwd(self.outputbox, data))
         self.outputbox.insert(0, string=dir)
-        self.outputbox.pack(side="left", pady=(110,0), padx=(130,0))  
+        self.outputbox.pack(side="left", pady=(110,0), padx=(130,0))
         self.okbutton = ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.choose_cwd(self.outputbox, data))
         self.okbutton.pack(side="left", pady=(110,0), padx=(10,120))
-    
+
     # Function to choose the working directoy
     def choose_cwd(self, outputbox, data=False):
         global dir
@@ -567,7 +567,7 @@ class MyApp(ctk.CTk):
             if not dir:
                 dir = olddir
         self.okbutton.configure(state="enabled")
-        outputbox.configure(state="normal")    
+        outputbox.configure(state="normal")
         outputbox.delete(0, "end")
         outputbox.insert(0, string=dir)
 
@@ -797,15 +797,15 @@ class MyApp(ctk.CTk):
                 ctk.CTkButton(self.dynamic_frame, text="Physical Acquisition", command=lambda: self.switch_menu("Physical"), width=200, height=70, font=self.stfont),
             ]
             self.menu_text = ["Extract the content of \"Home\" as a folder.",
-                            "Extract a physical image of the Block-device.\n(Requires the sudo password)"] 
+                            "Extract a physical image of the Block-device.\n(Requires the sudo password)"]
 
         elif recovery == True:
             self.menu_buttons = [
                 ctk.CTkButton(self.dynamic_frame, text="Physical Acquisition", command=lambda: self.switch_menu("Physical"), width=200, height=70, font=self.stfont),
             ]
-            self.menu_text = ["Extract a physical image of the Block-device.\n(Block-device might be encrypted.)"] 
+            self.menu_text = ["Extract a physical image of the Block-device.\n(Block-device might be encrypted.)"]
 
-            
+
         else:
             self.menu_buttons = [
                 ctk.CTkButton(self.dynamic_frame, text="Pull \"sdcard\"", command=lambda: self.switch_menu("PullData"), width=200, height=70, font=self.stfont),
@@ -818,7 +818,7 @@ class MyApp(ctk.CTk):
                             "Perform an ADB-Backup.",
                             "Creates an advanced Logical Backup as ZIP\nwith an UFD File for PA.",
                             "Try to reconstruct parts of the device-filesystem",
-                            "Show backup options for rooted or vulnerable\n(temporarily rootable) devices."]            
+                            "Show backup options for rooted or vulnerable\n(temporarily rootable) devices."]
 
         self.menu_textbox = []
         for btn in self.menu_buttons:
@@ -941,7 +941,7 @@ class MyApp(ctk.CTk):
 
         ctk.CTkButton(self.dynamic_frame, text="Back", command=self.show_main_menu).grid(row=r, column=1, padx=10, pady=10, sticky="e" )
 
-    
+
 
     #Show the Check Root
     def show_check_root(self, skip_2016_10277 = False, skip_2020_0069 = False, skip_2016_5195 = False):
@@ -985,8 +985,8 @@ class MyApp(ctk.CTk):
                 self.yesb = ctk.CTkButton(self.dynamic_frame, text="YES", font=self.stfont, command=lambda: self.choose.set(True))
                 self.yesb.pack(side="left", pady=(20,330), padx=140)
                 self.nob = ctk.CTkButton(self.dynamic_frame, text="NO", font=self.stfont, command=lambda: self.choose.set(False))
-                self.nob.pack(side="left", pady=(20,330))    
-                self.wait_variable(self.choose)  
+                self.nob.pack(side="left", pady=(20,330))
+                self.wait_variable(self.choose)
                 self.yesb.pack_forget()
                 self.nob.pack_forget()
                 if self.choose.get() == True:
@@ -1015,11 +1015,11 @@ class MyApp(ctk.CTk):
                     self.yesb = ctk.CTkButton(self.dynamic_frame, text="YES", font=self.stfont, command=lambda: self.choose.set(True))
                     self.yesb.pack(side="left", pady=(20,330), padx=140)
                     self.nob = ctk.CTkButton(self.dynamic_frame, text="NO", font=self.stfont, command=lambda: self.choose.set(False))
-                    self.nob.pack(side="left", pady=(20,330))    
-                    self.wait_variable(self.choose)  
+                    self.nob.pack(side="left", pady=(20,330))
+                    self.wait_variable(self.choose)
                     self.yesb.pack_forget()
                     self.nob.pack_forget()
-                    if self.choose.get() == True:     
+                    if self.choose.get() == True:
                         self.text.configure(text="Attempt to gain temp-root via CVE-2020-0069 (mtk-su).\nPlease Wait ...")
                         check_su = threading.Thread(target=lambda:temp_mtk_su(self.change))
                         check_su.start()
@@ -1043,11 +1043,11 @@ class MyApp(ctk.CTk):
                 self.yesb = ctk.CTkButton(self.dynamic_frame, text="YES", font=self.stfont, command=lambda: self.choose.set(True))
                 self.yesb.pack(side="left", pady=(20,330), padx=140)
                 self.nob = ctk.CTkButton(self.dynamic_frame, text="NO", font=self.stfont, command=lambda: self.choose.set(False))
-                self.nob.pack(side="left", pady=(20,330))    
-                self.wait_variable(self.choose)  
+                self.nob.pack(side="left", pady=(20,330))
+                self.wait_variable(self.choose)
                 self.yesb.pack_forget()
                 self.nob.pack_forget()
-                if self.choose.get() == True:     
+                if self.choose.get() == True:
                     self.text.configure(text="Attempt to gain temp-root via CVE-2016-5195 (Dirty COW).\nPlease Wait ...")
                     check_su = threading.Thread(target=lambda:temp_dirty_cow(self.change))
                     check_su.start()
@@ -1083,7 +1083,7 @@ class MyApp(ctk.CTk):
             self.text.configure(text="Root access has not been confirmed.")
             self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
             return
-    
+
     # CVE-2016-10277 Initroot - Check
     def show_2016_10277(self):
         ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
@@ -1105,11 +1105,11 @@ class MyApp(ctk.CTk):
             self.yesb = ctk.CTkButton(self.dynamic_frame, text="YES", font=self.stfont, command=lambda: self.choose.set(True))
             self.yesb.pack(side="left", pady=(20,330), padx=140)
             self.nob = ctk.CTkButton(self.dynamic_frame, text="NO", font=self.stfont, command=lambda: self.choose.set(False))
-            self.nob.pack(side="left", pady=(20,330))    
-            self.wait_variable(self.choose)  
+            self.nob.pack(side="left", pady=(20,330))
+            self.wait_variable(self.choose)
             self.yesb.pack_forget()
             self.nob.pack_forget()
-            if self.choose.get() == True:     
+            if self.choose.get() == True:
                 self.text.configure(text="Attempt to gain temp-root via CVE-2016-10277 (initroot).\nPlease Wait ...")
                 check_ir = threading.Thread(target=lambda:temp_initroot(self.change, self.text, m_init_device))
                 check_ir.start()
@@ -1150,10 +1150,10 @@ class MyApp(ctk.CTk):
         self.yesb = ctk.CTkButton(self.dynamic_frame, text="YES", font=self.stfont, command=lambda: self.choose.set(True))
         self.yesb.pack(side="left", pady=(20,330), padx=140)
         self.nob = ctk.CTkButton(self.dynamic_frame, text="NO", font=self.stfont, command=lambda: self.choose.set(False))
-        self.nob.pack(side="left", pady=(20,330))    
-        self.wait_variable(self.choose)  
+        self.nob.pack(side="left", pady=(20,330))
+        self.wait_variable(self.choose)
         self.yesb.pack_forget()
-        self.nob.pack_forget() 
+        self.nob.pack_forget()
         self.text.configure(text="Reboot to fastboot.\nPlease Wait ...")
         check_ir = threading.Thread(target=lambda:fix_initroot_bootloop(self.change, self.text))
         check_ir.start()
@@ -1179,11 +1179,11 @@ class MyApp(ctk.CTk):
             self.yesb = ctk.CTkButton(self.dynamic_frame, text="YES", font=self.stfont, command=lambda: self.choose.set(True))
             self.yesb.pack(side="left", pady=(20,330), padx=140)
             self.nob = ctk.CTkButton(self.dynamic_frame, text="NO", font=self.stfont, command=lambda: self.choose.set(False))
-            self.nob.pack(side="left", pady=(20,330))    
-            self.wait_variable(self.choose)  
+            self.nob.pack(side="left", pady=(20,330))
+            self.wait_variable(self.choose)
             self.yesb.pack_forget()
             self.nob.pack_forget()
-            if self.choose.get() == True:     
+            if self.choose.get() == True:
                 self.text.configure(text="Attempt to gain temp-root via CVE-2016-0069 (Dirty COW).\nPlease Wait ...")
                 check_su = threading.Thread(target=lambda:temp_dirty_cow(self.change))
                 check_su.start()
@@ -1226,11 +1226,11 @@ class MyApp(ctk.CTk):
                 self.yesb = ctk.CTkButton(self.dynamic_frame, text="YES", font=self.stfont, command=lambda: self.choose.set(True))
                 self.yesb.pack(side="left", pady=(20,330), padx=140)
                 self.nob = ctk.CTkButton(self.dynamic_frame, text="NO", font=self.stfont, command=lambda: self.choose.set(False))
-                self.nob.pack(side="left", pady=(20,330))    
-                self.wait_variable(self.choose)  
+                self.nob.pack(side="left", pady=(20,330))
+                self.wait_variable(self.choose)
                 self.yesb.pack_forget()
                 self.nob.pack_forget()
-                if self.choose.get() == True:     
+                if self.choose.get() == True:
                     self.text.configure(text="Attempt to gain temp-root via CVE-2020-0069 (mtk-su).\nPlease Wait ...")
                     check_su = threading.Thread(target=lambda:temp_mtk_su(self.change))
                     check_su.start()
@@ -1256,7 +1256,7 @@ class MyApp(ctk.CTk):
             self.text.configure(text="This device isn't vulnerable to CVE-2020-0069.", anchor="center")
             self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("Exploits")).pack(pady=40))
             return
-        
+
     # CVE-2024-03137 (Zygote Attack)
     def show_2024_31317(self):
         ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
@@ -1279,7 +1279,7 @@ class MyApp(ctk.CTk):
             self.progress.pack_forget()
             self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("Exploits")).pack(pady=40))
             return
-            
+
         else:
             self.text.configure(text="This device isn't vulnerable to CVE-2024-31317.", anchor="center")
             self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("Exploits")).pack(pady=40))
@@ -1318,7 +1318,7 @@ class MyApp(ctk.CTk):
                 self.prog_text.pack_forget()
                 self.progress.pack_forget()
                 self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("Exploits")).pack(pady=40))
-                return           
+                return
 
         def fill_list(app_list, listbox):
             listbox.select_clear(0, tk.END)
@@ -1337,21 +1337,23 @@ class MyApp(ctk.CTk):
             zip_path = f'App_Extration_{snr}_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}.zip'
             self.tlabel.configure(height=30)
             self.text.pack_forget()
-            self.selectframe = ctk.CTkFrame(self.dynamic_frame, width=400, corner_radius=0, fg_color="transparent")
-            self.textframe = ctk.CTkFrame(self.dynamic_frame, width=200, corner_radius=0, fg_color="transparent")
-            self.selectframe.pack(side="left", pady=20, padx=30, fill="y", expand=True)
+            self.selectframe = ctk.CTkFrame(self.dynamic_frame, width=400, height=380, corner_radius=0, fg_color="transparent")
+            self.textframe = ctk.CTkFrame(self.dynamic_frame, width=200, height=380, corner_radius=0, fg_color="transparent")
+            self.selectframe.pack(side="left", pady=20, padx=30)
             self.selectframe.pack_propagate(False)
-            container = tk.Frame(self.selectframe, width=int(380*scaling), height=int(380*scaling))
-            container.pack(side="left", pady=10)
+            available_width = self.selectframe.winfo_width()
+            available_height = self.selectframe.winfo_height()
+            container = tk.Frame(self.selectframe, width=available_width, height=available_height, bg="")
+            container.pack(side="left", fill="both", expand=True)
             container.pack_propagate(False)
             self.textframe.pack(side="left", pady=20, fill="both", expand=True)
             self.textframe.pack_propagate(False)
-            self.applistbox = tk.Listbox(container, font=(self.stfont, self.font_scaled_size), width=int(200*scaling), height=int(380*scaling), 
+            self.applistbox = tk.Listbox(container, font=(self.stfont, self.font_scaled_size), width=int(200*scaling), height=int(380*scaling),
                                             bg="#2E2E2E", fg="#abb3bd", selectbackground="#195727",
                                             selectforeground="#80FD9C", highlightthickness=0,
                                             borderwidth=0, relief="flat", activestyle="none",
                                             exportselection=False, selectmode=tk.MULTIPLE)
-            self.applistbox.pack(side="left")
+            self.applistbox.pack(side="left", fill="both", expand=True)
             self.appscrollbar = ctk.CTkScrollbar(self.selectframe, width=16, height=380, orientation="vertical", corner_radius=0, command=self.applistbox.yview)
             self.appscrollbar.pack(side="right")
             self.applistbox.config(yscrollcommand=self.appscrollbar.set)
@@ -1538,7 +1540,7 @@ class MyApp(ctk.CTk):
             self.get_intrusion = threading.Thread(target=lambda: self.capture_intrusion())
             self.get_intrusion.start()
 
-            
+
         else:
             self.text = ctk.CTkLabel(self.dynamic_frame, text="Advanced Protection Mode is inactive.\nIntrusion Logs are not available for this device.", width=585, height=60, font=self.stfont, anchor="w", justify="left")
             self.text.pack(anchor="center", pady=25)
@@ -1608,8 +1610,8 @@ class MyApp(ctk.CTk):
         self.jsonb = ctk.CTkButton(self.dynamic_frame, text="JSON", font=self.stfont, command=lambda: self.choose.set(True))
         self.jsonb.pack(pady=10)
         self.abortb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=lambda: self.switch_menu("AdvMenu"))
-        self.abortb.pack(pady=10)    
-        self.wait_variable(self.choose)   
+        self.abortb.pack(pady=10)
+        self.wait_variable(self.choose)
         self.txtb.pack_forget()
         self.jsonb.pack_forget()
         self.abortb.pack_forget()
@@ -1619,8 +1621,8 @@ class MyApp(ctk.CTk):
         self.progress.set(0)
         self.prog_text.configure(text="0%")
         self.progress.pack()
-        self.text.configure(text=f"Extracting Data from Content Providers.\nThis may take some time.")                          
-        outformat = self.choose.get() 
+        self.text.configure(text=f"Extracting Data from Content Providers.\nThis may take some time.")
+        outformat = self.choose.get()
         self.get_content = threading.Thread(target=lambda: query_content(self.change, self.text, self.progress, self.prog_text, json_out=outformat))
         self.get_content.start()
         self.wait_variable(self.change)
@@ -1763,7 +1765,7 @@ class MyApp(ctk.CTk):
         self.incl_system_box.pack(anchor="w", padx= 80, pady=5)
         self.change = ctk.IntVar(self, 0)
         self.startb = ctk.CTkButton(self.dynamic_frame, text="Start", font=self.stfont, command=lambda: self.adb_bu(self.change, incl_shared=self.incl_shared.get(), incl_apps=self.incl_apps.get(), incl_system=self.incl_system.get()))
-        self.startb.pack(pady=20) 
+        self.startb.pack(pady=20)
         self.backb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=lambda: self.switch_menu("AcqMenu"))
         self.backb.pack(pady=5)
         self.wait_variable(self.change)
@@ -1795,12 +1797,12 @@ class MyApp(ctk.CTk):
             sign = "+"
         else:
             sign = "-"
-        output_format = "%d/%m/%Y %H:%M:%S" 
+        output_format = "%d/%m/%Y %H:%M:%S"
         starttime = str(now.strftime(output_format)) + " (" + sign + str(int(utc_offset_hours)) + ")"
         ufed_folder = f"{snr}_Advanced_Logical_UFED_Style_{str(datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))}"
-        try: 
+        try:
             os.mkdir(ufed_folder)
-        except: 
+        except:
             return
         fname = f'{brand}_{model}'
         zip_name = f"{fname}.zip"
@@ -1837,7 +1839,7 @@ class MyApp(ctk.CTk):
             self.prog_text.configure(text="0%")
             self.progress.pack()
         data_path = "/sdcard/"
-        
+
         self.get_dsize = threading.Thread(target=lambda: get_data_size(data_path, self.change))
         self.get_dsize.start()
         self.wait_variable(self.change)
@@ -1878,7 +1880,7 @@ class MyApp(ctk.CTk):
             self.prog_text.pack_forget()
             self.progress.pack_forget()
             log("UFED-Style Logical+ Backup complete")
-            self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))  
+            self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
 
     #Show the "PRFS"-Backup screen
     def show_prfs(self):
@@ -1887,8 +1889,8 @@ class MyApp(ctk.CTk):
         self.text = ctk.CTkLabel(self.dynamic_frame, text="Please choose what Data to include:", width=585, height=20, font=self.stfont, anchor="w", justify="left")
         self.text.pack(anchor="center", pady=25)
         sysfolders = ["/system/apex/","/system/app/","/system/bin/", "/system/cameradata/", "/system/container/", "/system/etc/",
-                      "/system/fake-libs/", "/system/fonts/", "/system/framework/", "/system/hidden/", "/system/lib/", "/system/lib64/", 
-                      "/system/media/", "/system/product/", "/system/priv-app/", "/system/saiv/", "/system/tts/", "/system/usr/", "/system/vendor/", 
+                      "/system/fake-libs/", "/system/fonts/", "/system/framework/", "/system/hidden/", "/system/lib/", "/system/lib64/",
+                      "/system/media/", "/system/product/", "/system/priv-app/", "/system/saiv/", "/system/tts/", "/system/usr/", "/system/vendor/",
                       "/system/xbin/, /product/, /vendor/, /etc/"]
         sysfolders.extend(apps_path)
         global data_size
@@ -1918,7 +1920,7 @@ class MyApp(ctk.CTk):
         self.incl_logs_box = ctk.CTkCheckBox(self.dynamic_frame, text="Include Logs and queried Data.", variable=self.incl_logfiles, onvalue="on", offvalue="off")
         self.incl_logs_box.pack(anchor="w", padx= 80, pady=4)
         self.startb = ctk.CTkButton(self.dynamic_frame, text="Start", font=self.stfont, command=lambda: self.change.set(1))
-        self.startb.pack(pady=25) 
+        self.startb.pack(pady=25)
         self.backb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=lambda: self.switch_menu("AcqMenu"))
         self.backb.pack()
         self.wait_variable(self.change)
@@ -1954,7 +1956,7 @@ class MyApp(ctk.CTk):
             self.prog_text.pack()
             self.progress.pack()
             self.progress.start()
-            self.prog_text.pack()            
+            self.prog_text.pack()
             self.change.set(0)
             # Logcat
             self.text.configure(text="Dumping Logcat Logs.")
@@ -2004,14 +2006,14 @@ class MyApp(ctk.CTk):
                     pass
             else:
                 pass
-            
+
         if incl_sdcard == "on":
             self.change.set(0)
             self.text.configure(text="Preparing Data Extraction ...")
             self.get_dsize = threading.Thread(target=lambda: get_data_size(data_path, self.change))
             self.get_dsize.start()
             self.wait_variable(self.change)
-        
+
         try: os.mkdir(folder)
         except: pass
         self.change.set(0)
@@ -2045,7 +2047,7 @@ class MyApp(ctk.CTk):
                 data_path = sys_folder
                 self.change.set(0)
                 self.get_dsize = threading.Thread(target=lambda: get_data_size(data_path, self.change))
-                self.get_dsize.start()         
+                self.get_dsize.start()
                 self.wait_variable(self.change)
                 if total_size > 1:
                     folder = ".temp_folder"
@@ -2255,7 +2257,7 @@ class MyApp(ctk.CTk):
                 else:
                     pass
                 while True:
-                    
+
                     try:
                         chunk = q.get(timeout=1)
                         if chunk is None:
@@ -2272,10 +2274,10 @@ class MyApp(ctk.CTk):
                             raise TimeoutError("ADB backup timed out")
 
             log(f"Created Backup: {bu_file}")
-            bu_change.set(1) 
+            bu_change.set(1)
         except Exception as e:
             log(f"Error creating backup: {e}")
-            bu_change.set(2)    
+            bu_change.set(2)
 
     def zip_bu(self, zip, text, change):
         text.configure(text="Including the backup to the Zip.")
@@ -2305,7 +2307,7 @@ class MyApp(ctk.CTk):
         self.text.pack(pady=15)
         self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="", width=585, height=20, font=self.stfont, anchor="w", justify="left")
         self.prog_text.pack()
-        self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)        
+        self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
         self.progress.pack()
         self.progress.start()
         self.change = ctk.IntVar(self, 0)
@@ -2315,7 +2317,7 @@ class MyApp(ctk.CTk):
         self.text.configure(text=f"Bugreport saved as: {snr}_dumpstate.zip")
         self.prog_text.pack_forget()
         self.progress.pack_forget()
-        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("LogMenu")).pack(pady=40)) 
+        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("LogMenu")).pack(pady=40))
 
     #Show App-Ops-Screen
     def show_app_ops(self):
@@ -2329,12 +2331,12 @@ class MyApp(ctk.CTk):
         self.jsonb = ctk.CTkButton(self.dynamic_frame, text="JSON", font=self.stfont, command=lambda: self.choose.set(True))
         self.jsonb.pack(pady=10)
         self.abortb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=lambda: self.switch_menu("LogMenu"))
-        self.abortb.pack(pady=10)    
+        self.abortb.pack(pady=10)
         self.wait_variable(self.choose)
         self.txtb.pack_forget()
         self.jsonb.pack_forget()
         self.abortb.pack_forget()
-        self.text.configure(text="Extracting the App Ops.") 
+        self.text.configure(text="Extracting the App Ops.")
         self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0)
         self.progress.set(0)
         self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="0%", width=585, height=20, font=self.stfont, anchor="w", justify="left")
@@ -2351,7 +2353,7 @@ class MyApp(ctk.CTk):
             self.text.configure(text=f"App-Ops saved as: {snr}_apps_ops.json")
         self.prog_text.pack_forget()
         self.progress.pack_forget()
-        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("LogMenu")).pack(pady=40)) 
+        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("LogMenu")).pack(pady=40))
 
     ## Ubuntu Touch visible Options ##
 
@@ -2371,23 +2373,23 @@ class MyApp(ctk.CTk):
         self.prog_text.configure(text="0%")
         if aos == True:
             self.aosphysical = threading.Thread(target=lambda: physical(change=self.change, text=self.text, progress=self.progress, prog_text=self.prog_text))
-            self.aosphysical.start()            
+            self.aosphysical.start()
         elif rec_root == True:
             self.recphysical = threading.Thread(target=lambda: physical(change=self.change, text=self.text, progress=self.progress, prog_text=self.prog_text))
             self.recphysical.start()
         elif show_root == True:
             self.livephysical = threading.Thread(target=lambda: physical(change=self.change, text=self.text, progress=self.progress, prog_text=self.prog_text))
-            self.livephysical.start()   
+            self.livephysical.start()
         else:
             self.passwordbox = ctk.CTkEntry(self.dynamic_frame, width=200, height=20, corner_radius=0, show="*")
             self.passwordbox.bind(sequence="<Return>", command=lambda x: physical(change=self.change, text=self.text, progress=self.progress, prog_text=self.prog_text, pw_box=self.passwordbox, ok_button=self.okb, back_button=self.backb))
-            self.passwordbox.pack(pady = 15) 
+            self.passwordbox.pack(pady = 15)
             self.okb = ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: physical(change=self.change, text=self.text, progress=self.progress, prog_text=self.prog_text, pw_box=self.passwordbox, ok_button=self.okb, back_button=self.backb))
-            self.okb.pack(pady=15) 
+            self.okb.pack(pady=15)
             self.backb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=lambda: self.switch_menu("AcqMenu"))
             self.backb.pack(pady=5)
         self.wait_variable(self.change)
-        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))  
+        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
 
     ## End of UT Options ##
 
@@ -2456,7 +2458,7 @@ class MyApp(ctk.CTk):
                 png_bytes = BytesIO()
                 shot.save(png_bytes, format="PNG")
                 png = png_bytes.getvalue()
-        
+
         hperc = (hsize/float(shot.size[1]))
         wsize = int((float(shot.size[0])*float(hperc)))
         if wsize > 300:
@@ -2467,9 +2469,9 @@ class MyApp(ctk.CTk):
         imglabel.configure(image=screensh)
         if shotfail == False:
             hash_sha256 = hashlib.sha256(png).hexdigest()
-        else: 
+        else:
             hash_sha256 = hashlib.sha256(open(filepath, "rb").read()).hexdigest()
-        
+
         if shotfail == False:
             with open(filepath, "wb") as file:
                 file.write(png)
@@ -2519,11 +2521,11 @@ class MyApp(ctk.CTk):
         self.stop_event.clear()
         self.doshot = threading.Thread(target=lambda: self.shotloop(app_name, chat_name, ab_count, sc_count, abs_count, direction, imglabel, namefield, text, first=True))
         self.doshot.start()
-        
-    
+
+
     def breakshotloop(self):
         self.stop_event.set()
-    
+
     def shotloop(self, app_name, chat_name, ab_count, sc_count, abs_count, direction, imglabel, namefield, text, png=None, first=False, seen_hashes=None, first_hash=None, w=0, h=0):
         name = chat_name + "_" + str(datetime.now().strftime("%m_%d_%Y_%H_%M_%S"))
         filename = name + ".png"
@@ -2685,15 +2687,15 @@ class MyApp(ctk.CTk):
         self.text = ctk.CTkLabel(self.dynamic_frame, text="Provide the case information:", width=585, height=30, font=self.stfont, anchor="w", justify="left")
         self.change = ctk.IntVar(self, 0)
         self.text.pack(anchor="center", pady=25)
-        
+
         self.casebox = ctk.CTkEntry(self.dynamic_frame, width=360, height=20, corner_radius=0, placeholder_text="case number")
         self.casebox.pack(pady=5, padx=30)
         self.namebox = ctk.CTkEntry(self.dynamic_frame, width=360, height=20, corner_radius=0, placeholder_text="case name")
         self.namebox.pack(pady=5, padx=30)
         self.evidbox = ctk.CTkEntry(self.dynamic_frame, width=360, height=20, corner_radius=0, placeholder_text="evidence number")
-        self.evidbox.pack(pady=5, padx=30)  
+        self.evidbox.pack(pady=5, padx=30)
         self.exambox = ctk.CTkEntry(self.dynamic_frame, width=360, height=20, corner_radius=0, placeholder_text="examiner")
-        self.exambox.pack(pady=5, padx=30) 
+        self.exambox.pack(pady=5, padx=30)
         self.okbutton = ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.change.set(1))
         self.okbutton.pack(pady=30, padx=100)
         global case_number
@@ -2772,31 +2774,31 @@ class MyApp(ctk.CTk):
                     app_installer = "packageinstaller" if "packageinstaller" in d_app[1] else d_app[1][:25]
                     apps_info.append([app_name, app_version, app_installer])
                     self.prog_text.configure(text=f"{int(100/len(apps)*i)}%")
-                    self.progress.set(progr/100) 
+                    self.progress.set(progr/100)
             else:
-                apps_info = apps 
+                apps_info = apps
 
             accounts_content = []
             if len(accounts) > 0:
                 for i, account in enumerate(accounts):
                     row_bg = u_grey if (i % 2) != 0 else "white"
-                    
+
                     accounts_content.append({
-                        "keepTogether": True, 
+                        "keepTogether": True,
                         "widths": [2.2, 2.7],
                         "style": {
-                            "s": 9, 
-                            "border_color": "lightgrey", 
+                            "s": 9,
+                            "border_color": "lightgrey",
                             "margin_bottom": 0
                         },
                         "table": [
                             [
                                 {
-                                    "style": {"cell_fill": row_bg}, 
+                                    "style": {"cell_fill": row_bg},
                                     ".": sanitize_for_pdf(account.get("type", ""))
-                                }, 
+                                },
                                 {
-                                    "style": {"cell_fill": row_bg}, 
+                                    "style": {"cell_fill": row_bg},
                                     ".": sanitize_for_pdf(account.get("name", ""))
                                 }
                             ]
@@ -2809,12 +2811,12 @@ class MyApp(ctk.CTk):
             for i, d_app in enumerate(apps_info):
                 row_bg = u_grey if (i % 2) != 0 else "white"
                 mini_table = {
-                    "keepTogether": True, 
+                    "keepTogether": True,
                     "widths": [3.9, 2.8, 2.5],
                     "style": {
                         "s": 9,
-                        "border_color": "lightgrey", 
-                        "margin_bottom": 0 
+                        "border_color": "lightgrey",
+                        "margin_bottom": 0
                     },
                     "table": [
                         [
@@ -2826,7 +2828,7 @@ class MyApp(ctk.CTk):
                 }
                 apps_content.append(mini_table)
 
-                  
+
         #background_color = tuple(int(c * 255) for c in u_grey)
         font_size = 64
         font_path = os.path.join(os.path.dirname(__file__),"assets", "report", "texgyreheros-regular.otf")
@@ -2841,7 +2843,7 @@ class MyApp(ctk.CTk):
         image.save(image_stream, format="JPEG", quality=95)
         image_stream.seek(0)
         if h == 426:
-            lr_width = (1.4 * (185/w))    
+            lr_width = (1.4 * (185/w))
         else:
             lr_width = 0.5
         if app_name != None:
@@ -2877,7 +2879,7 @@ class MyApp(ctk.CTk):
                 d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "wearos_pixel.jpg")
         else:
             d_image = os.path.join(os.path.dirname(__file__), "assets" , "report", "generic.jpg")
- 
+
         if pdf_type == "screenshot":
             document = {
                 "style": {"margin_bottom": 15, "text_align": "j", "page_size": "a4", "margin": [52, 70]},
@@ -3015,19 +3017,19 @@ class MyApp(ctk.CTk):
                                     [{".": [{".b": "ICCID:"}]}, {".": [{".": iccid}]}, {".": [{".b": "Operator:"}]}, {".": [{".": sim_op}]}],
                                     [{"style": {"cell_fill": u_grey}, ".": [{".b": "IMSI:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": imsi}]}, { "style": {"cell_fill": u_grey}, ".": [{".b": "Number:"}]}, {"style": {"cell_fill": u_grey}, ".": [{".": phone_number}]}],
                                     ]
-                            },  
+                            },
                             {".": "",},
                             {
                                 ".": "Accounts:", "style": "title", "label": "title1", "outline": {}
                             },
                             *accounts_content,
-                            *([{".": ""}] * max(1, 5 - len(accounts))),          
+                            *([{".": ""}] * max(1, 5 - len(accounts))),
                             {".": "", "style": "title", "label": "title0", "outline": {}},
 
                             {
                                 ".": "Applications:", "style": "title", "label": "title1", "outline": {}
                             },
-                            
+
                             {
                                 "widths": [3.9, 2.8, 2.5],
                                 "style": {"s": 9, "border_color": "white", "margin_bottom": 2},
@@ -3036,10 +3038,10 @@ class MyApp(ctk.CTk):
                                 ]
                             },
 
-                            *apps_content,              
+                            *apps_content,
 
                             {".": "", "style": "title", "label": "title0", "outline": {}},
-                        ] 
+                        ]
 
                     },
                 ]
@@ -3054,8 +3056,8 @@ class MyApp(ctk.CTk):
                 build_pdf(document, f)
             self.progress.pack_forget()
             self.prog_text.pack_forget()
-        
-        
+
+
         if change != None:
             change.set(1)
 
@@ -3086,7 +3088,7 @@ def ensure_adb_server(timeout=10):
     Popen([adb_path, "start-server"],
                      stdout=subprocess.DEVNULL,
                      stderr=subprocess.DEVNULL)
-    
+
     deadline = time.time() + timeout
     while time.time() < deadline:
         if _adb_serve_running():
@@ -3133,7 +3135,7 @@ def get_client(host=default_host, port=default_port, check=False):
                 return word.upper()
             return word.title()
         return " ".join(transform_word(w) for w in s.split())
-    
+
     def load_props():
         result = adb_call(device.shell, "getprop")
         props = {}
@@ -3199,19 +3201,19 @@ def get_client(host=default_host, port=default_port, check=False):
             state = None
             device = None
         if device == None:
-            restart_adb()            
+            restart_adb()
             device_info = nodevice_text = ("No device detected!\n" +
                     "\n" + '{:13}'.format("Python: ") + "\t" + platform.python_version() +
                     "\n" + '{:13}'.format("adbutils: ") + "\t" + version('adbutils') +
                     "\n" + '{:13}'.format("fastboot: ") + "\t" + fb_found +
-                    "\n\n" + 
+                    "\n\n" +
                     "   54 68 65 20 52 6f 61 64 20 67 6f \n" +
                     "   65 73 20 65 76 65 72 20 6f 6e 20 \n" +
                     "   61 6e 64 20 6f 6e 0a 44 6f 77 6e \n" +
                     "   20 66 72 6f 6d 20 74 68 65 20 64 \n" +
-                    "   6f 6f 72 20 77 68 65 72 65 20 69 \n" + 
+                    "   6f 6f 72 20 77 68 65 72 65 20 69 \n" +
                     "   74 20 62 65 67 61 6e 2e 0a 4e 6f \n" +
-                    "   77 20 66 61 72 20 61 68 65 61 64 \n" + 
+                    "   77 20 66 61 72 20 61 68 65 61 64 \n" +
                     "   20 74 68 65 20 52 6f 61 64 20 68 \n" +
                     "   61 73 20 67 6f 6e 65 2c 0a 41 6e \n" +
                     "   64 20 49 20 6d 75 73 74 20 66 6f \n" +
@@ -3221,7 +3223,7 @@ def get_client(host=default_host, port=default_port, check=False):
             dev_state = "unauthorized ✗"
             device_info = ("Device is " + dev_state + "\n\n" +
                     '{:13}'.format("Serialnr: ") + "\t" + snr_id + "" +
-                    "\n\n" + 
+                    "\n\n" +
                     "   4E 4F 20 41 44 4D 49 54 54 41 4E \n" +
                     "   43 45 20 45 58 43 45 50 54 20 4F \n" +
                     "   4E 20 50 41 52 54 59 20 42 55 53 \n" +
@@ -3259,12 +3261,12 @@ def get_client(host=default_host, port=default_port, check=False):
             model = get_prop_fallback(props, "ro.product.odm.marketname", "ro.product.odm.model", "ro.product.model", "ro.product.vendor.model").capitalize()
             sku = get_prop_fallback(props, "ro.boot.hardware.sku")
 
-            global full_name   
+            global full_name
             full_name = smart_title(f"{brand} {model}" if brand.lower() not in model.lower() else model)
             full_name = "-" if no_getprop in brand else full_name
             global product
             product = get_prop_fallback(props, "ro.product.odm.name", "ro.product.vendor.name", "ro.product.name").capitalize()
-            global d_platform 
+            global d_platform
             d_platform = get_prop_fallback(props, "ro.board.platform").upper()
             global software
             software = get_prop_fallback(props, "ro.build.version.release")
@@ -3347,7 +3349,7 @@ def get_client(host=default_host, port=default_port, check=False):
                 else:
                     wifi_dump = adb_call(device.shell, "dumpsys wifi")
                     match1 = re.search(r"wifi_sta_factory_mac_address=([0-9a-fA-F:]{17})", wifi_dump)
-                    match2 = re.search(r" MAC:\s*([0-9a-fA-F:]{17})", wifi_dump)      
+                    match2 = re.search(r" MAC:\s*([0-9a-fA-F:]{17})", wifi_dump)
                     if match1:
                         w_mac = match1.group(1).upper()
                     elif match2:
@@ -3503,7 +3505,7 @@ def get_client(host=default_host, port=default_port, check=False):
             global all_apps
             global su_app
             su_app = None
-            su_apps = [".supersu", ".magisk", ".su", ".superuser", ".sumanager", 
+            su_apps = [".supersu", ".magisk", ".su", ".superuser", ".sumanager",
                        ".kinguser", ".kernelsu", ".resukisu", ".apatch", ".sukisu",
                        ".sukisu.ultra", ".ksunext"]
 
@@ -3577,7 +3579,7 @@ def get_client(host=default_host, port=default_port, check=False):
                     "\n" + '{:13}'.format("Used: ") + "\t" + used_s +
                     "\n" + '{:13}'.format("Free: ") + "\t" + free +
                     "\n" + '{:13}'.format("Ad-ID: ") + "\t" + ad_id +
-                    "\n" + '{:13}'.format("State: ") + "\t" + crypt_on + " " + crypt_type)   
+                    "\n" + '{:13}'.format("State: ") + "\t" + crypt_on + " " + crypt_type)
             else:
                 device_info = ("Device is " + dev_state + "\n\n" +
                         '{:13}'.format("Model: ") + "\t" + fname_s +
@@ -3599,7 +3601,7 @@ def get_client(host=default_host, port=default_port, check=False):
                         "\n" + '{:13}'.format("Free: ") + "\t" + free +
                         "\n" + '{:13}'.format("Ad-ID: ") + "\t" + ad_id +
                         "\n" + '{:13}'.format("State: ") + "\t" + crypt_on + " " + crypt_type)
-                
+
                 if whoami == "root":
                     device_info = device_info + "\n" + '{:13}'.format("root: ") + "\t" + "rooted"
                 else:
@@ -3640,14 +3642,14 @@ def get_client(host=default_host, port=default_port, check=False):
         device_info = ("ADB not found!\n" +
         "\n" + '{:13}'.format("Python: ") + "\t" + platform.python_version() +
         "\n" + '{:13}'.format("adbutils: ") + "\t" + version('adbutils') +
-        "\n\n" + 
+        "\n\n" +
         "   54 68 65 20 52 6f 61 64 20 67 6f \n" +
         "   65 73 20 65 76 65 72 20 6f 6e 20 \n" +
         "   61 6e 64 20 6f 6e 0a 44 6f 77 6e \n" +
         "   20 66 72 6f 6d 20 74 68 65 20 64 \n" +
-        "   6f 6f 72 20 77 68 65 72 65 20 69 \n" + 
+        "   6f 6f 72 20 77 68 65 72 65 20 69 \n" +
         "   74 20 62 65 67 61 6e 2e 0a 4e 6f \n" +
-        "   77 20 66 61 72 20 61 68 65 61 64 \n" + 
+        "   77 20 66 61 72 20 61 68 65 61 64 \n" +
         "   20 74 68 65 20 52 6f 61 64 20 68 \n" +
         "   61 73 20 67 6f 6e 65 2c 0a 41 6e \n" +
         "   64 20 49 20 6d 75 73 74 20 66 6f \n" +
@@ -3684,19 +3686,19 @@ def save_info_json(zip_path, change):
 
 def save_info():
     file = open("device_" + snr + ".txt", "w", encoding='utf-8')
-    file.write("## DEVICE ##\n\n" + "Model-Nr:   " + full_name + "\nDev-Name:   " + d_name + "\nProduct:    " + product + 
-        "\nPlatform:   " + d_platform + "\nSoftware:   " + software + "\nBuild-Nr:   " + build + "\nLanguage:   " + locale + "\nSerialnr:   " + snr + 
-        "\nWifi MAC:   " + w_mac + "\nBT-MAC:     " + b_mac + "\nData:       " + data_s + "\nFree Space: " + free + 
-        "\nAD-ID :     " + ad_id + "\nIMEI :      " + imei)    
-    
-    file.write("\n\n## SIM-Info ##\n\nICCID:  " + iccid + 
-                                    "\nIMSI:   " + imsi + 
+    file.write("## DEVICE ##\n\n" + "Model-Nr:   " + full_name + "\nDev-Name:   " + d_name + "\nProduct:    " + product +
+        "\nPlatform:   " + d_platform + "\nSoftware:   " + software + "\nBuild-Nr:   " + build + "\nLanguage:   " + locale + "\nSerialnr:   " + snr +
+        "\nWifi MAC:   " + w_mac + "\nBT-MAC:     " + b_mac + "\nData:       " + data_s + "\nFree Space: " + free +
+        "\nAD-ID :     " + ad_id + "\nIMEI :      " + imei)
+
+    file.write("\n\n## SIM-Info ##\n\nICCID:  " + iccid +
+                                    "\nIMSI:   " + imsi +
                                     "\nNMBR:   " + phone_number +
                                     "\nPROV:   " + sim_op)
 
     #Save user-installed Apps to txt
-    try: al = str(len(max([app[0] for app in apps], key=len)))  
-    except: al = 40 
+    try: al = str(len(max([app[0] for app in apps], key=len)))
+    except: al = 40
     file.write("\n\n" + "## Installed Apps (by user) ## \n\n")
     if len(apps) > 0:
         if ut == False:
@@ -3705,9 +3707,9 @@ def save_info():
             file.write('{:{l}}'.format("app", l=al) + "\t" + "version\n")
     else:
         file.write('None')
-   
+
     for app in apps:
-        file.write("\n" + '{:{l}}'.format(app[0], l=al) + "\t" + app[1])        
+        file.write("\n" + '{:{l}}'.format(app[0], l=al) + "\t" + app[1])
     file.close()
     log("Saved Device Info")
 
@@ -3865,7 +3867,7 @@ def dump_appops(change, text, progress, prog_text, folder=None, jsonout=False):
         text = DURATION_FIELD_RE.sub(repl_duration, text)
 
         return text
-    
+
     #Create a dict for json
     def parse_app_text(text: str) -> dict:
         result = {}
@@ -3926,7 +3928,7 @@ def dump_appops(change, text, progress, prog_text, folder=None, jsonout=False):
                 ops_dict[app] = parsed
             else:
                 with open(os.path.join(folder, f"{app}.txt"), "w", encoding="utf-8", errors="ignore") as f:
-                    f.write(app_ops) 
+                    f.write(app_ops)
     if ops_dict != {}:
         with open(f"{snr}_apps_ops.json", "w", encoding="utf-8") as f:
             json.dump(ops_dict, f, indent=2, ensure_ascii=False)
@@ -3947,11 +3949,11 @@ def query_content(change, text, progress, prog_text, json_out=False, zip_path=No
     #prov_len = len(providers)
     prov_len = 0
     for key, value in providers.items():
-        prov_len += 1 
+        prov_len += 1
         prov_len += 1
         if isinstance(value, list):
-            prov_len += len(value) 
-    
+            prov_len += len(value)
+
     i = 0
     for key, value in providers.items():
         #print(key)
@@ -4092,19 +4094,19 @@ def find_agent(change, text, app_text):
         app_text.insert("0.0", outtext)
         app_text.configure(state="disabled")
         file = open("agents_" + snr + ".txt", "w", encoding='utf-8')
-        file.write("## DEVICE ##\n\n" + "Model-Nr:   " + full_name + "\nDev-Name:   " + d_name + "\nProduct:    " + product + 
-            "\nPlatform:   " + d_platform + "\nSoftware:   " + software + "\nBuild-Nr:   " + build + "\nLanguage:   " + locale + "\nSerialnr:   " + snr + 
-            "\nWifi MAC:   " + w_mac + "\nBT-MAC:     " + b_mac + "\nData:       " + data_s + "\nFree Space: " + free + 
-            "\nAD-ID :     " + ad_id + "\nIMEI :      " + imei)    
-        
+        file.write("## DEVICE ##\n\n" + "Model-Nr:   " + full_name + "\nDev-Name:   " + d_name + "\nProduct:    " + product +
+            "\nPlatform:   " + d_platform + "\nSoftware:   " + software + "\nBuild-Nr:   " + build + "\nLanguage:   " + locale + "\nSerialnr:   " + snr +
+            "\nWifi MAC:   " + w_mac + "\nBT-MAC:     " + b_mac + "\nData:       " + data_s + "\nFree Space: " + free +
+            "\nAD-ID :     " + ad_id + "\nIMEI :      " + imei)
+
         file.write("\n\n## AGENTS ##\n\n" + outtext)
     else:
         text.configure(text="No known agent apps found.\n\n" +
-                            "Note: This does not mean that no such apps are present on the device.\n" + 
+                            "Note: This does not mean that no such apps are present on the device.\n" +
                             "If you have identified a previously unknown agent app,\nplease report it back to the project. ")
         app_text.pack_forget()
     change.set(1)
-        
+
 
 #FFS Tar extraction:
 def tar_root_ffs(outtar, prog_text, change):
@@ -4119,7 +4121,7 @@ def tar_root_ffs(outtar, prog_text, change):
     localtar = False
     if "armeabi" in tar_arch.lower():
         tar_bin = os.path.join(os.path.dirname(__file__), "ressources" , "tar", "armhf", "tar")
-    else: 
+    else:
         localtar = True
     if localtar == False:
         remote_path = "/data/local/tmp/tar"
@@ -4215,9 +4217,9 @@ def tar_root_ffs(outtar, prog_text, change):
                     sys.stdout.flush()
             finally:
                 proc.wait()
-    
+
     change.set(1)
-    
+
 
 
 #Physical Extraction for Android and Ubuntu Touch
@@ -4273,7 +4275,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                     dev_cmd = adb_call(device.shell, "su -c 'ls /dev/block'")
                 else:
                     dev_cmd = adb_call(device.shell, "echo 'ls /dev/block' | su")
-            elif mtk_su == True: 
+            elif mtk_su == True:
                 dev_cmd = adb_call(device.shell, "/data/local/tmp/mtk-su -c ls /dev/block")
             else:
                 dev_cmd = adb_call(device.shell, "ls /dev/block")
@@ -4346,7 +4348,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                         text.configure(text=f"Physical Backup is running.\nThis may take some time. Current: {device_path}")
                         time.sleep(0.3)
                     last_current += size
-                
+
                 elif amiroot == "root":
                     current = last_current
                     out_file = f"{snr}_{target}.bin"
@@ -4362,7 +4364,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                                     cmd = ['adb', out_cmd, f"echo \'cat {device_path} 2>/dev/null\' | su"]
 
                             elif mtk_su == True:
-                                cmd = ['adb', "exec-out", f"/data/local/tmp/mtk-su -c cat {device_path} 2>/dev/null"] 
+                                cmd = ['adb', "exec-out", f"/data/local/tmp/mtk-su -c cat {device_path} 2>/dev/null"]
 
                             else:
                                 cmd = ['adb', "exec-out", f"cat {device_path} 2>/dev/null"]
@@ -4389,7 +4391,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                             time.sleep(0.3)
                     last_current += size
 
-                else:    
+                else:
                     text.configure(text="Permission Error!")
                     log("Permission denied!")
                     change.set(1)
@@ -4413,11 +4415,11 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             progress.pack_forget()
             text.configure(text="Physical Backup complete!")
             log("Physical Backup complete!")
-                    
+
             change.set(1)
             return
-            
-        else:    
+
+        else:
             text.configure(text="Block Device not found!")
             log("No Block Device found")
             change.set(1)
@@ -4502,7 +4504,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             case_json_name=f"{snr}_{target}.case.json"
             device_path = f"/dev/{block + target}"
 
-            with open(out_file, "wb") as f:         
+            with open(out_file, "wb") as f:
                 if ut == True:
                     cmd = ['adb', "exec-out",  f"echo {sh_pwd} | sudo -S cat {device_path} 2>/dev/null"]
                 else:
@@ -4541,7 +4543,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                     time.sleep(0.3)
             if sh is not None:
                 sh.close()
-            
+
             case_end = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
             progress.pack_forget()
             progress = ctk.CTkProgressBar(parent, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
@@ -4559,7 +4561,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             log("Physical Backup complete!")
         else:
             text.configure(text="Wrong password! Try again.")
-            log("Wrong password")            
+            log("Wrong password")
 
         change.set(1)
         return
@@ -4590,10 +4592,10 @@ def insert_data(cur, table_name, schema_defaults, data_rows):
 def recreate_dbs(change, text, zip_path=None):
     try:
         with zipfile.ZipFile(zip_path, "a", compression=zipfile.ZIP_STORED) as zf:
-            existing_files = set(zf.namelist()) 
+            existing_files = set(zf.namelist())
     except:
         existing_files = []
-  
+
     #SMS/MMS
     mmssms_db = "mmssms.db"
     if "dump/data/data/com.android.providers.telephony/databases/mmssms.db" not in existing_files:
@@ -4602,7 +4604,7 @@ def recreate_dbs(change, text, zip_path=None):
         except: pass
         try:
             sms_data = adb_call(device.shell, "content query --uri content://sms")
-            sms_json = content_to_json(sms_data) 
+            sms_json = content_to_json(sms_data)
         except:
             sms_json = [{}]
         try:
@@ -4633,10 +4635,10 @@ def recreate_dbs(change, text, zip_path=None):
             "part": (part_defaults, part_json),
             "pdu": (pdu_defaults, pdu_json),
             "sms": (sms_defaults, sms_json)
-        }    
+        }
         conn = sqlite3.connect(mmssms_db)
         cur = conn.cursor()
-        
+
         for table_name, (table_defaults, table_data) in tables_map.items():
             schema_columns = list(table_defaults.keys())
             extra_columns = []
@@ -4653,7 +4655,7 @@ def recreate_dbs(change, text, zip_path=None):
         log("Recreated mmssms.db (partial)")
     else:
         log("mmssms.db already in Backup - skipped")
-    
+
     #CallLog
     call_db = "calllog.db"
     if "dump/data/data/com.android.providers.contacts/databases/calllog.db" not in existing_files:
@@ -4668,10 +4670,10 @@ def recreate_dbs(change, text, zip_path=None):
         call_schema = os.path.join(os.path.dirname(__file__), "ressources" , "calllog.json")
         with open(call_schema, "r", encoding="utf-8") as f:
             schema = json.load(f)
-        calls_defaults = schema["calls"]    
+        calls_defaults = schema["calls"]
         conn = sqlite3.connect(call_db)
         cur = conn.cursor()
-        
+
         schema_columns = list(calls_defaults.keys())
         extra_columns = []
         for row in call_json:
@@ -4706,7 +4708,7 @@ def recreate_dbs(change, text, zip_path=None):
             for entry in contact_data_json:
                 mime = entry.get("mimetype")
                 if mime is None:
-                    continue  
+                    continue
                 if mime not in unique_mimetypes:
                     unique_mimetypes[mime] = next_id
                     next_id += 1
@@ -4737,7 +4739,7 @@ def recreate_dbs(change, text, zip_path=None):
             "data": (data_defaults, contact_data_json),
             "mimetypes": (mimetype_defaults, mimetype_json),
             "raw_contacts": (raw_contacts_defaults, contact_raw_contacts_json)
-        }    
+        }
         conn = sqlite3.connect(contact_db)
         cur = conn.cursor()
         for table_name, (table_defaults, table_data) in tables_map.items():
@@ -4760,7 +4762,7 @@ def recreate_dbs(change, text, zip_path=None):
         except: pass
         try:
             colors_data = adb_call(device.shell, "content query --uri content://com.android.calendar/colors")
-            colors_json = content_to_json(colors_data) 
+            colors_json = content_to_json(colors_data)
         except:
             colors_json = [{}]
         try:
@@ -4788,7 +4790,7 @@ def recreate_dbs(change, text, zip_path=None):
             syncstate_json = content_to_json(syncstate_data)
         except:
             syncstate_json = [{}]
-        
+
         calendar_schema = os.path.join(os.path.dirname(__file__), "ressources" , "calendar.json")
         with open(calendar_schema, "r", encoding="utf-8") as f:
             schema = json.load(f)
@@ -4805,7 +4807,7 @@ def recreate_dbs(change, text, zip_path=None):
             "ExtendedProperties": (extended_defaults, extended_json),
             "Reminders": (reminders_defaults, reminders_json),
             "_sync_state": (sync_defaults, syncstate_json)
-        }  
+        }
         conn = sqlite3.connect(calendar_db)
         cur = conn.cursor()
         for table_name, (table_defaults, table_data) in tables_map.items():
@@ -4930,10 +4932,10 @@ def ufed_style_files(change, ufed_folder, zip, zipname, starttime, text):
         sign = "+"
     else:
         sign = "-"
-    output_format = "%d/%m/%Y %H:%M:%S" 
+    output_format = "%d/%m/%Y %H:%M:%S"
     endtime = str(end.strftime(output_format)) + " (" + sign + str(int(utc_offset_hours)) + ")"
 
-    #Report.xml   
+    #Report.xml
     text.configure(text="Creating UFED-Style Report files.\nCreating Report.xml")
     xml_path = os.path.join(ufed_folder, "report.xml")
     reportxml = ufed_style.ufd_report_xml(contact_json, calls_json, calendar_json, sms_json, mms_json, mms_part_json, mms_addr_json, brand, model, software, build, imei, ad_id, starttime, endtime, a_version, f"{zipname}.zip")
@@ -4958,7 +4960,7 @@ def ufed_style_files(change, ufed_folder, zip, zipname, starttime, text):
     text.configure(text="Creating UFED-Style Report files.\nCreating UFD-File")
     global bu_pass
     ufd_text = "[Backup]\nSharedBackupEnabled=True\nType=ZIP\nZIPLogicalPath=backup\n\n" + "[DeviceInfo]\nChipset=" + d_platform + "\nModel=" + model + "\nOS=" + software + "\nSecurityPatchLevel=" + spl + "\nVendor=" + brand + \
-    "\n\n[Dumps]\nBackup=" + zipname + ".zip\nXML=" + zipname + ".zip\n\n[ExtractionStatus]\nExtractionStatus=Success\n\n[General]\nADBPull=True\nAcquisitionTool=ALEX by Christian Peter\nAndroid_ID=" + ad_id 
+    "\n\n[Dumps]\nBackup=" + zipname + ".zip\nXML=" + zipname + ".zip\n\n[ExtractionStatus]\nExtractionStatus=Success\n\n[General]\nADBPull=True\nAcquisitionTool=ALEX by Christian Peter\nAndroid_ID=" + ad_id
 
     if bu_pass != None:
         ufd_text = ufd_text + "\nBackupPassword=12345"
@@ -4970,7 +4972,7 @@ def ufed_style_files(change, ufed_folder, zip, zipname, starttime, text):
 
     with open(f'{os.path.join(ufed_folder, zipname)}.ufd', "w") as ufdf:
         ufdf.write(ufd_text)
-    
+
     change.set(1)
 
 def check_bu_pass(bu_file, change, password=None):
@@ -4983,7 +4985,7 @@ def check_bu_pass(bu_file, change, password=None):
             change.set(3)
         else:
             change.set(2)
-    
+
 
 def get_data_size(data_path, change):
     global total_size
@@ -5039,7 +5041,7 @@ def create_case_backup(bu_fname, bu_ext, bu_desc, type, method, bu_hash, case_be
             "SHA256": ufd_sha256
         }
         bu_files.append(ufd_file)
-    
+
     case_backup = {
         "description": bu_desc,
         "tool_version": a_version,
@@ -5064,7 +5066,7 @@ def create_multi_file_case_backup(bu_files, type, method, bu_desc, case_begin, c
             "SHA256": bu_file['bu_hash']
         }
         bu_case_files.append(bu_case_file)
-    
+
     case_backup = {
         "description": bu_desc,
         "tool_version": a_version,
@@ -5109,15 +5111,15 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
         dirs = [f for f in items if (f.mode & stat.S_IFMT(f.mode)) == stat.S_IFDIR]
         files = [f for f in items if (f.mode & stat.S_IFMT(f.mode)) == stat.S_IFREG]
 
-        
+
         for dir in dirs:
             dirout = dir.path
             if platform.uname().system == 'Windows':
                 dirout = re.sub(r"[\s%*:|\"<>\x7F\x00-\x1F]", "-", dir.path)
                 if dir.path != dirout:
                     log(f"Renamed {dir.path} to {dirout}")
-            new_src:str = append_path(src, dir.path) 
-            new_dst:pathlib.Path = pathlib.Path(append_path(dst, dirout)) 
+            new_src:str = append_path(src, dir.path)
+            new_dst:pathlib.Path = pathlib.Path(append_path(dst, dirout))
             os.makedirs(new_dst, exist_ok=exist_ok)
             if mode == "ufed":
                 zip_dir_path = f'backup/{rootf.strip("/")}/{rel_in_zip}/{dir.path}/'.replace("//", "/")
@@ -5129,7 +5131,7 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
             zip.writestr(zip_dir_path, b'')
             new_rel = f"{rel_in_zip}/{dir.path}"
             s += rec_pull_contents(new_src, new_dst, rootf, new_rel, prog_text, progress, exist_ok=exist_ok)
-                
+
         for file in files:
             fileout = file.path
             if platform.uname().system == 'Windows':
@@ -5137,19 +5139,19 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
                 if file.path != fileout:
                     log(f"Renamed {file.path} to {fileout}")
 
-            new_src:str = append_path(src, file.path) 
-            new_dst:str = append_path(dst, fileout) 
+            new_src:str = append_path(src, file.path)
+            new_dst:str = append_path(dst, fileout)
             try:
-                try: 
+                try:
                     mtime = adb_call(self.stat, new_src).mtime.timestamp()
                 except:
-                    mtime = datetime.fromisoformat('1980-01-01').timestamp() 
+                    mtime = datetime.fromisoformat('1980-01-01').timestamp()
                 size = adb_call(self.pull_file, new_src, new_dst)
                 try:
                     if mtime < datetime.fromisoformat('1980-01-01').timestamp():
-                        mtime = datetime.fromisoformat('1980-01-01').timestamp() 
+                        mtime = datetime.fromisoformat('1980-01-01').timestamp()
                     os.utime(new_dst, (mtime, mtime))
-                except: 
+                except:
                     pass
             except:
                 log(f"Error pulling: {new_src}")
@@ -5181,9 +5183,9 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
                 progress.update()
             else:
                 if data_size > total_size:
-                    data_size = total_size      
+                    data_size = total_size
                 perc = (100 / total_size) * data_size
-                prog_text.configure(text=f"{round(perc)}%")  
+                prog_text.configure(text=f"{round(perc)}%")
                 progress.set(perc/100)
                 prog_text.update()
                 progress.update()
@@ -5193,7 +5195,7 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
 
     if isinstance(dst, str):
         dst = pathlib.Path(dst)
-        
+
     os.makedirs(dst, exist_ok=exist_ok)
     try:
         func_size = rec_pull_contents(src, dst, rootf, rel_in_zip="", prog_text=prog_text, progress=progress, exist_ok=exist_ok)
