@@ -512,7 +512,7 @@ class MyApp(ctk.CTk):
         ctk.CTkLabel(self.dynamic_frame, text="Choose Output Directory:", height=30, width=585, font=("standard",24), justify="left").pack(pady=20)
         self.browsebutton = ctk.CTkButton(self.dynamic_frame, text="Browse", text_color="#DCE4EE", font=self.stfont, command=lambda: self.browse_cwd(self.outputbox), width=60, fg_color="#2d2d35")
         self.browsebutton.pack(side="bottom", pady=(0,b_button_offset_y), padx=(0,b_button_offset_x))
-        self.outputbox = ctk.CTkEntry(self.dynamic_frame, width=360, height=20, corner_radius=0, placeholder_text=[dir])
+        self.outputbox = ctk.CTkEntry(self.dynamic_frame, width=360, height=20, corner_radius=0, font=self.stfont, placeholder_text=[dir])
         self.outputbox.bind(sequence="<Return>", command=lambda x: self.choose_cwd(self.outputbox, data))
         self.outputbox.insert(0, string=dir)
         self.outputbox.pack(side="left", pady=(110,0), padx=(130,0))
