@@ -57,7 +57,7 @@ import re
 import io
 import unicodedata
 
-if sys.platform == "darwin" and platform.uname().system != "Darwin":
+if sys.platform == "darwin":
 
     extra_paths = [
         "/opt/local/bin",      # MacPorts
@@ -72,7 +72,7 @@ if sys.platform == "darwin" and platform.uname().system != "Darwin":
         + [p for p in current_paths if p not in extra_paths]
     )
 
-if os.name == "posix":
+if os.name == "posix" and platform.uname().system != "Darwin":
     dpi_file = pathlib.Path(__file__).parent / "assets" / "dpi96"
     os.environ["XENVIRONMENT"] = str(dpi_file)
 from PIL import ImageTk, Image, ExifTags, ImageDraw, ImageFont
@@ -80,7 +80,22 @@ from PIL import ImageTk, Image, ExifTags, ImageDraw, ImageFont
 import customtkinter as ctk
 import tkinter as tk
 import tkinter.ttk as ttk
-from tkinter import StringVar
+from tkinter import StringVa
+    scaling = 1.0
+
+ctk.set_appearance_mode("dark")  # Dark Mode
+ctk.set_default_color_theme(os.path.join(os.path.dirname(__file__), "assets" , "alex_theme.json" ))
+ctk.set_window_scaling(scaling)
+ctk.set_widget_scaling(scaling)
+
+
+
+class MyApp(ctk.CTk):
+    def __init__(self):
+        super().__init__()
+        self.stop_event = threading.Event()
+        if getattr(sys, 'frozen', False):
+            sr
 
 if os.name == "posix":
     from alex.linux_dpi import get_linux_scale_factor
@@ -88,22 +103,6 @@ if os.name == "posix":
     if scaling == 1.5:
         scaling += 0.04
 else:
-import uiautomator2 as u2
-import ipaddress
-import sqlite3
-import shutil
-import json
-import queue
-import zipfile
-import tarfile
-import hashlib
-import imagehash
-import tempfile
-import threading
-import adbutils
-import subprocess
-import platform
-import socket
     scaling = 1.0
 
 ctk.set_appearance_mode("dark")  # Dark Mode
