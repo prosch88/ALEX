@@ -57,6 +57,21 @@ import re
 import io
 import unicodedata
 
+if sys.platform == "darwin":
+
+    extra_paths = [
+        "/opt/local/bin",      # MacPorts
+        "/opt/homebrew/bin",   # Homebrew ARM
+        "/usr/local/bin",      # Homebrew Intel
+    ]
+
+    current_paths = os.environ.get("PATH", "").split(os.pathsep)
+
+    os.environ["PATH"] = os.pathsep.join(
+        [p for p in extra_paths if os.path.isdir(p)]
+        + [p for p in current_paths if p not in extra_paths]
+    )
+
 if os.name == "posix":
     dpi_file = pathlib.Path(__file__).parent / "assets" / "dpi96"
     os.environ["XENVIRONMENT"] = str(dpi_file)
@@ -73,6 +88,22 @@ if os.name == "posix":
     if scaling == 1.5:
         scaling += 0.04
 else:
+import uiautomator2 as u2
+import ipaddress
+import sqlite3
+import shutil
+import json
+import queue
+import zipfile
+import tarfile
+import hashlib
+import imagehash
+import tempfile
+import threading
+import adbutils
+import subprocess
+import platform
+import socket
     scaling = 1.0
 
 ctk.set_appearance_mode("dark")  # Dark Mode
@@ -5524,28 +5555,6 @@ def sanitize_for_pdf(text) -> str:
             result.append(ch)
     return ''.join(result)
 
-def setup_platform_path():
-    if sys.platform != "darwin":
-        return
-
-    extra_paths = [
-        "/opt/homebrew/bin",
-        "/usr/local/bin",
-        "/usr/bin",
-        "/bin",
-        "/usr/sbin",
-        "/sbin",
-    ]
-
-    current_paths = os.environ.get("PATH", "").split(os.pathsep)
-
-    for path in extra_paths:
-        if os.path.isdir(path) and path not in current_paths:
-            current_paths.append(path)
-
-    os.environ["PATH"] = os.pathsep.join(current_paths)
-
-setup_platform_path()
 cwd_selected = False
 device = None
 device_auto = None
