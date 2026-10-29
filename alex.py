@@ -75,27 +75,11 @@ if sys.platform == "darwin":
 if os.name == "posix" and platform.uname().system != "Darwin":
     dpi_file = pathlib.Path(__file__).parent / "assets" / "dpi96"
     os.environ["XENVIRONMENT"] = str(dpi_file)
-from PIL import ImageTk, Image, ExifTags, ImageDraw, ImageFont
 
 import customtkinter as ctk
 import tkinter as tk
 import tkinter.ttk as ttk
-from tkinter import StringVa
-    scaling = 1.0
-
-ctk.set_appearance_mode("dark")  # Dark Mode
-ctk.set_default_color_theme(os.path.join(os.path.dirname(__file__), "assets" , "alex_theme.json" ))
-ctk.set_window_scaling(scaling)
-ctk.set_widget_scaling(scaling)
-
-
-
-class MyApp(ctk.CTk):
-    def __init__(self):
-        super().__init__()
-        self.stop_event = threading.Event()
-        if getattr(sys, 'frozen', False):
-            sr
+from tkinter import StringVar
 
 if os.name == "posix":
     from alex.linux_dpi import get_linux_scale_factor
