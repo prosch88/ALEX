@@ -10,6 +10,10 @@ if sys.stdout is None:
     sys.stdout = open(os.devnull, "w")
 if sys.stderr is None:
     sys.stderr = open(os.devnull, "w")
+if sys.__stdout__ is None:
+    sys.__stdout__ = sys.stdout
+if sys.__stderr__ is None:
+    sys.__stderr__ = sys.stderr
 from PIL import ImageTk, Image, ExifTags, ImageDraw, ImageFont
 from datetime import datetime, timedelta, timezone, date
 from importlib.metadata import version
