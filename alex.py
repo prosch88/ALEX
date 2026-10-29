@@ -5524,6 +5524,28 @@ def sanitize_for_pdf(text) -> str:
             result.append(ch)
     return ''.join(result)
 
+def setup_platform_path():
+    if sys.platform != "darwin":
+        return
+
+    extra_paths = [
+        "/opt/homebrew/bin",
+        "/usr/local/bin",
+        "/usr/bin",
+        "/bin",
+        "/usr/sbin",
+        "/sbin",
+    ]
+
+    current_paths = os.environ.get("PATH", "").split(os.pathsep)
+
+    for path in extra_paths:
+        if os.path.isdir(path) and path not in current_paths:
+            current_paths.append(path)
+
+    os.environ["PATH"] = os.pathsep.join(current_paths)
+
+setup_platform_path()
 cwd_selected = False
 device = None
 device_auto = None
