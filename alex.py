@@ -57,7 +57,7 @@ import re
 import io
 import unicodedata
 
-if sys.platform == "darwin":
+if sys.platform == "darwin" and platform.uname().system != "Darwin":
 
     extra_paths = [
         "/opt/local/bin",      # MacPorts
