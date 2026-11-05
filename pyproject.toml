@@ -1,0 +1,28 @@
+[project]
+name = "alex"
+version = "0.7"
+description = "Android Logical Extractor (ALEX) - ADB-based mobile acquisition tool"
+readme = "README.md"
+license = { text = "GPL-3.0-or-later" }
+requires-python = ">=3.11"
+dependencies = [
+    "adbutils",
+    "customtkinter",
+    "crossfiledialog",
+    "pycryptodome",
+    "uiautomator2",
+    "pdfme==0.4.12",
+    "numpy",
+    "imagehash",
+    "zeroconf",
+    "qrcode",
+    "Pillow",
+]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["alex"]
+packages = ["alex"]

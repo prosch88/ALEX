@@ -1,0 +1,7 @@
+#!/bin/sh
+set -e
+# deb prerm: refresh caches on remove
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database -q /usr/share/applications || true
+fi
+exit 0

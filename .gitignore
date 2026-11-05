@@ -2,3 +2,12 @@
 __pycache__/
 *.py[cod]
 *$py.class
+# Packaging build outputs (never commit built .deb/.rpm)
+dist/
+*.deb
+*.rpm
+/tmp/
+# Python packaging
+*.egg-info/
+build/
+.venv/
