@@ -11,7 +11,7 @@ host_platform = (os_name, os_release, os_version)
 host_os = " ".join(host_platform)
 
 case_context = {
-    "kb": "urn:ufade:case:kb:",
+    "kb": "urn:alex:case:kb:",
     "case-investigation": "https://ontology.caseontology.org/case/investigation/",
     "drafting": "http://example.org/ontology/drafting/",
     "uco-action": "https://ontology.unifiedcyberontology.org/uco/action/",
@@ -212,7 +212,7 @@ def backup_case_json(case_device, case_backup):
     else:
         mobile_uuid = uuid.uuid4()
         has_imei = False
-   
+
     md_facet = {
         "@id": "kb:mobile-device-facet-" + str(mobile_uuid),
         "@type": "uco-observable:MobileDeviceFacet",
@@ -225,7 +225,7 @@ def backup_case_json(case_device, case_backup):
 
     storage_in = case_device["storageCapacity"]
     storage_out = 0
-    try: 
+    try:
         storage_out = parse_size(storage_in)
         md_facet["uco-observable:storageCapacityInBytes"] = storage_out
     except:
@@ -308,4 +308,4 @@ def backup_case_json(case_device, case_backup):
 
     return case_json
 
-   
+
