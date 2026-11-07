@@ -1,0 +1,77 @@
+name: packages
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deb:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build .deb
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q dpkg-dev python3-pip
+          sh packaging/build-deb.sh --out dist
+      - name: Upload .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb
+          path: dist/*.deb
+
+  rpm:
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build .rpm
+        run: |
+          dnf install -y rpm-build git python3-pip
+          sh packaging/build-rpm.sh --out dist
+      - name: Upload .rpm artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm
+          path: dist/*.rpm
+
+  lint-aur:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate PKGBUILD / .SRCINFO
+        run: |
+          pacman -Sy --needed --noconfirm namcap base-devel git
+          mkdir -p /tmp/aurcheck && cp packaging/aur/PKGBUILD /tmp/aurcheck/PKGBUILD
+          cd /tmp/aurcheck && makepkg --printsrcinfo > .SRCINFO
+          diff -u "$GITHUB_WORKSPACE/packaging/aur/.SRCINFO" .SRCINFO || (echo "::warning::.SRCINFO is stale - regenerate with: (cd packaging/aur && makepkg --printsrcinfo > .SRCINFO)"; exit 1)
+          namcap "$GITHUB_WORKSPACE/packaging/aur/PKGBUILD" || true
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [deb, rpm]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - name: Publish release assets (latest .deb/.rpm)
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/**/**/*.deb,dist/**/*.deb,dist/**/**/*.rpm,dist/**/*.rpm

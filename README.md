@@ -23,7 +23,19 @@ More features may follow.
 
 ## Installation
 
-**Clone the repo:**
+**One-liner (always latest `main`):**
+```
+curl -fsSL https://raw.githubusercontent.com/prosch88/ALEX/main/install.sh | bash
+```
+System-wide (`/usr/share/alex` + `/usr/bin/alex`, needs sudo):
+```
+curl -fsSL https://raw.githubusercontent.com/prosch88/ALEX/main/install.sh | bash -s -- --system
+```
+Update later: re-run the command, or `~/.local/share/alex/install.sh --update`.
+See [packaging/README.md](packaging/README.md) for AUR (Arch), `.deb`
+(Debian/Ubuntu), `.rpm` (Fedora/RHEL) and CI-built release assets.
+
+**Clone the repo (manual):**
 ```
 git clone https://github.com/prosch88/ALEX
 ```

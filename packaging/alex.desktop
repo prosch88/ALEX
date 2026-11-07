@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=ALEX
+Comment=Android Logical Extractor - ADB-based mobile acquisition tool
+Exec=alex
+Icon=alex
+Terminal=false
+Type=Application
+Categories=Security;Forensics;Utility;
+Keywords=forensics;android;adb;acquisition;
+StartupNotify=true

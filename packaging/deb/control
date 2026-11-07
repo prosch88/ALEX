@@ -1,0 +1,16 @@
+Package: alex
+Version: __VERSION__
+Architecture: all
+Maintainer: Christian Peter <https://github.com/prosch88/ALEX>
+Depends: python3 (>= 3.11), python3-tk, adb | android-tools-adb, fastboot | android-tools-fastboot
+Recommends: usbutils, python3-venv
+Section: utils
+Priority: optional
+Homepage: https://github.com/prosch88/ALEX
+Description: Android Logical Extractor (ALEX)
+ ADB-based logical/advanced-logical/filesystem acquisition tool
+ for Android, FireOS, WearOS and Ubuntu Touch devices.
+ .
+ This package vendors the Python dependencies from requirements.txt
+ under /usr/share/alex/lib, so it works offline after install and
+ tracks upstream main on every rebuild.

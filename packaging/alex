@@ -1,0 +1,11 @@
+#!/bin/sh
+# ALEX launcher - installed by AUR / .deb / .rpm / install.sh
+# App files live in /usr/share/alex, PyPI deps in /usr/share/alex/lib
+# (relocatable: uses PYTHONPATH, no venv absolute paths).
+set -e
+APP_HOME="${ALEX_HOME:-/usr/share/alex}"
+if [ -d "$APP_HOME/lib" ]; then
+    PYTHONPATH="$APP_HOME/lib:$APP_HOME:${PYTHONPATH:-}"
+    export PYTHONPATH
+fi
+exec python3 "$APP_HOME/alex.py" "$@"
