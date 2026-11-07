@@ -5133,7 +5133,7 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
         for dir in dirs:
             dirout = dir.path
             if platform.uname().system == 'Windows':
-                dirout = re.sub(r"[\s%*:|\"<>\x7F\x00-\x1F]", "-", dir.path)
+                dirout = re.sub(r"[\s?%*:|\"<>\x7F\x00-\x1F]", "-", dir.path)
                 if dir.path != dirout:
                     log(f"Renamed {dir.path} to {dirout}")
             new_src:str = append_path(src, dir.path)
