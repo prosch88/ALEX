@@ -22,6 +22,7 @@ from io import BytesIO
 from pathlib import Path, PurePosixPath
 from pdfme import build_pdf
 from alex.command_log import adb_call, log_process, set_logger
+from alex.hashing import sha256_file
 import alex.fastboot as fastboot
 import alex.ufed_style as ufed_style
 import alex.devdump as devdump
@@ -4940,10 +4941,11 @@ def ufed_style_files(change, ufed_folder, zip, zipname, starttime, text):
     text.configure(text="Creating UFED-Style Report files.\nCalculating Zip-Hash. This may take a while.")
     try:
         with open(f'{os.path.join(ufed_folder, zipname)}.zip', 'rb', buffering=0) as z:
-            z_hash = hashlib.file_digest(z, 'sha256').hexdigest()
+            z_hash = sha256_file(z)
             f_hash = z_hash
-    except:
-        z_hash = " Error - Python >= 3.11 required"
+    except Exception as error:
+        log(f"Error hashing UFED ZIP: {error}")
+        z_hash = " Error - SHA256 calculation failed"
 
     text.configure(text="Creating UFED-Style Report files.\nCreating UFD-File")
     global bu_pass
@@ -4990,7 +4992,7 @@ def do_hash_file(change, filename, physical=False):
     f_hash = None
     try:
         with open(filename, 'rb') as f:
-            f_hash = hashlib.file_digest(f, 'sha256').hexdigest()
+            f_hash = sha256_file(f)
     except Exception as e:
         log(f"Error hashing file: {e}")
         print(e)
@@ -5015,7 +5017,7 @@ def create_case_backup(bu_fname, bu_ext, bu_desc, type, method, bu_hash, case_be
         ufd_sha256 = None
         with open(ufd, "rb") as f:
                 try:
-                    ufd_sha256 = hashlib.file_digest(f, 'sha256').hexdigest()
+                    ufd_sha256 = sha256_file(f)
                 except Exception as e:
                     log(f"Error hashing ufd-file: {e}")
                     ufd_sha256 = None
