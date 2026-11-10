@@ -5216,7 +5216,7 @@ def has_root(change, timeout=30):
                 if "root" in check_id:
                     check_whoami = "root"
             result_holder["value"] = check_whoami == "root"
-            check_c_su = adb_call(device.shell, "su -c echo alex")
+            check_c_su = adb_call(device.shell, "su -c 'echo alex'").strip()
             if check_c_su == "alex":
                 c_su = True
             #print(result_holder["value"])

@@ -43,6 +43,7 @@ class DeviceStream:
         self.c_su, self.mtk_su, self.has_su = c_su, mtk_su, has_su
         self.transport = ['exec-out'] if has_exec_out else ['shell', '-T']
         self.idle_timeout = idle_timeout
+        self.preflight_diagnostics = []
 
     def root(self, command):
         if self.mtk_su:
@@ -68,23 +69,63 @@ class DeviceStream:
             return out
 
     def preflight(self):
-        # Includes NUL, CR, LF and high bytes: detect PTY translation and su banners.
+        # Keep every byte in the check: never repair or discard received data.
         expected = bytes(range(256))
         command = "printf '" + ''.join('\\%03o' % n for n in expected) + "'"
-        candidates = [self.transport]
+        original_su, original_transport = self.c_su, self.transport
+        transports = [self.transport]
         if self.transport != ['shell', '-T']:
-            candidates.append(['shell', '-T'])
-        for transport in candidates:
-            try:
-                if self.capture(command, transport, log_enabled=False) == expected:
+            transports.append(['shell', '-T'])
+        root_modes = [self.c_su]
+        if self.has_su and not self.mtk_su:
+            root_modes.append(not self.c_su)
+        self.preflight_diagnostics = []
+        unprivileged = False
+        for c_su in root_modes:
+            self.c_su = c_su
+            if self.mtk_su:
+                method = 'mtk-su'
+            elif self.has_su:
+                method = 'su -c' if c_su else 'piped su'
+            else:
+                method = 'adbd/sh'
+            for transport in transports:
+                label = ' '.join(transport) + ' / ' + method
+                try:
+                    observed = self.capture(command, transport, log_enabled=False)
+                    if observed != expected:
+                        if observed == expected.replace(b'\n', b'\r\n'):
+                            reason = 'LF converted to CRLF'
+                        elif expected in observed:
+                            prefix = observed.index(expected)
+                            reason = f'extra output: {prefix} bytes before, {len(observed) - prefix - 256} after payload'
+                        else:
+                            offset = next((i for i, pair in enumerate(zip(expected, observed))
+                                           if pair[0] != pair[1]), min(len(expected), len(observed)))
+                            reason = f'expected 256 bytes, received {len(observed)}; first mismatch at byte {offset}'
+                        self.preflight_diagnostics.append(label + ': ' + reason)
+                        continue
                     self.transport = transport
-                    break
-            except (OSError, RuntimeError, subprocess.TimeoutExpired):
-                continue
-        else:
-            raise RuntimeError('ADB/root transport is not binary-safe; update platform-tools/device transport')
-        if self.capture('id -u', log_enabled=False).strip() != b'0':
-            raise RuntimeError('Filesystem acquisition requires verified root (UID 0); selected root method did not grant root')
+                    if self.capture('id -u', log_enabled=False).strip() != b'0':
+                        unprivileged = True
+                        self.preflight_diagnostics.append(label + ': binary check passed, but UID is not 0')
+                        break
+                    if self.preflight_diagnostics:
+                        self.preflight_diagnostics.insert(0, 'ADB executable: ' + (shutil.which(self.adb[0]) or self.adb[0]))
+                        self.preflight_diagnostics.append('Using verified transport: ' + label)
+                    return
+                except subprocess.TimeoutExpired:
+                    self.preflight_diagnostics.append(label + ': command timed out')
+                except OSError as error:
+                    self.preflight_diagnostics.append(label + ': process error: ' + str(error.strerror or type(error).__name__))
+                except RuntimeError as error:
+                    detail = ' '.join(str(error).split())[:160]
+                    self.preflight_diagnostics.append(label + ': command failed: ' + detail)
+        self.c_su, self.transport = original_su, original_transport
+        self.preflight_diagnostics.insert(0, 'ADB executable: ' + (shutil.which(self.adb[0]) or self.adb[0]))
+        if unprivileged:
+            raise RuntimeError('Filesystem acquisition requires verified root (UID 0); selected root methods did not grant root')
+        raise RuntimeError('ADB/root transport is not binary-safe; see device log for transport/root diagnostics')
 
 
 class Reader:
@@ -173,7 +214,10 @@ def acquire(output, *, stream, root='/data', excludes=(), output_format='tar',
     partial = output + '.partial'
     token = '/data/local/tmp/alex_ffs_' + uuid.uuid4().hex
     status, errors = token + '.status', token + '.stderr'
-    stream.preflight()
+    try:
+        stream.preflight()
+    finally:
+        log_diagnostics(log, output, '\n'.join(getattr(stream, 'preflight_diagnostics', ())))
     native_tar = bool(stream.capture('command -v tar || true').strip())
     compatible_tar = (native_tar and zip_backend != 'script' and
                       tar_supports_long_names(stream, 'tar', token))
