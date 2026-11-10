@@ -972,13 +972,13 @@ class MyApp(ctk.CTk):
         global mtk_su
         global c_su
         global initroot
-        mtk_su = False
         m_init_device = self.check_initroot()
         if fb_found == "not found":
             m_init_device = None
         self.change = ctk.IntVar(self, 0)
         print(show_root)
         if show_root == False:
+            mtk_su = False
             if whoami == "root":
                 show_root = True
                 try:
@@ -1668,9 +1668,8 @@ class MyApp(ctk.CTk):
         self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
         self.progress.pack()
         self.progress.start()
-        self.do_root_ffs = threading.Thread(target=lambda: devdump.su_root_ffs(outzip=zip_path, filetext=self.text, prog_text=self.prog_text, log=log, change=self.change, mtk_su=mtk_su, c_su=c_su, has_exec_out=has_exec_out))
-        self.do_root_ffs.start()
-        self.wait_variable(self.change)
+        if not ffs_ui_job(self, zip_path, "zip"):
+            return
         case_end = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         self.change = ctk.IntVar(self, 0)
         self.text.configure(text="Calculating Zip-Hash. This may take a while.")
@@ -1704,12 +1703,11 @@ class MyApp(ctk.CTk):
         self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0, mode="indeterminate", indeterminate_speed=0.5)
         self.progress.pack()
         self.progress.start()
-        self.do_root_ffs = threading.Thread(target=lambda: tar_root_ffs(outtar=tar_path, prog_text=self.prog_text, change=self.change))
-        self.do_root_ffs.start()
-        self.wait_variable(self.change)
+        if not ffs_ui_job(self, tar_path, "tar"):
+            return
         case_end = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         self.change = ctk.IntVar(self, 0)
-        self.text.configure(text="Calculating Zip-Hash. This may take a while.")
+        self.text.configure(text="Calculating Tar-Hash. This may take a while.")
         self.tar_ffs_hash = threading.Thread(target=lambda: do_hash_file(self.change, tar_path))
         self.tar_ffs_hash.start()
         self.wait_variable(self.change)
@@ -4126,118 +4124,90 @@ def find_agent(change, text, app_text):
     change.set(1)
 
 
-#FFS Tar extraction:
-def tar_root_ffs(outtar, prog_text, change):
-    global c_su
-    global has_exec_out
-    print(f"has su: {device_has_su()}")
-    if has_exec_out:
-        out_cmd = "exec-out"
-    else:
-        out_cmd = "shell"
-    tar_arch = getprop(device, "ro.product.cpu.abilist") + getprop(device, "ro.product.cpu.abi")
-    localtar = False
-    if "armeabi" in tar_arch.lower():
-        tar_bin = os.path.join(os.path.dirname(__file__), "ressources" , "tar", "armhf", "tar")
-    else:
-        localtar = True
-    if localtar == False:
-        remote_path = "/data/local/tmp/tar"
-        run(["adb", "push", tar_bin, remote_path], check=True)
-        log("Pushed tar binary to /data/local/tmp")
-        if device_has_su():
-            if c_su:
-                run(["adb", "shell", "su", "-c", f"chmod 755 {remote_path}"], check=True)
-            else:
-                run(["adb", "shell", f"echo 'chmod 755 {remote_path}' | su"],
-                              check=True, stdin=subprocess.DEVNULL)
-        else:
-            run(["adb", "shell", f"chmod 755 {remote_path}"], check=True)
-        tar_remote = remote_path
-    else:
-        tar_remote = "tar"
-    CHUNK_SIZE = 1024 * 64
-    if device_has_su():
-        if c_su:
-            cmd = [
-            "adb", out_cmd,
-            "su", "-c",
-            f"{tar_remote} -cO /data 2>/dev/null"
-            ]
-        else:
-            cmd = [
-                "adb", out_cmd,
-                f"echo '{tar_remote} -cO /data 2>/dev/null' | su"
-            ]
+# Both GUI acquisition paths use the same binary-safe transfer engine.
+def ffs_ui_job(app, output, output_format):
+    from alex.ffs import DeviceStream, acquire
+    updates = queue.Queue(maxsize=1)
+    result = {}
+    finished = threading.Event()
 
-    elif mtk_su == True:
-        cmd = [
-            "adb", out_cmd,
-            f"/data/local/tmp/mtk-su -c {tar_remote} -cO /data 2>/dev/null"
-        ]
+    latest = {}
 
-    else:
-        cmd = [
-            "adb", out_cmd,
-            f"sh -c '{tar_remote} -cO /data' 2>/dev/null"
-        ]
-
-    with open(outtar, "wb") as f:
-        proc = Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL, bufsize=0)
-        total_bytes = 0
+    def publish():
         try:
-            while True:
-                chunk = proc.stdout.read(CHUNK_SIZE)
-                if not chunk:
-                    break
-                f.write(chunk)
-                total_bytes += len(chunk)
-                prog_text.configure(text=f"{total_bytes/1024/1024:.1f} MB written")
-                sys.stdout.flush()
+            updates.get_nowait()
+        except queue.Empty:
+            pass
+        try:
+            updates.put_nowait(dict(latest))
+        except queue.Full:
+            pass
+
+    def progress(total):
+        latest['total'] = total
+        publish()
+
+    def on_file(path):
+        latest['path'] = path
+        publish()
+
+    def worker():
+        try:
+            result['value'] = acquire(output, stream=DeviceStream(
+                serial=device.serial, c_su=c_su, mtk_su=mtk_su,
+                has_su=devdump.device_has_su(device.serial), has_exec_out=has_exec_out),
+                root='/data' if output_format == 'tar' else '/',
+                excludes=() if output_format == 'tar' else devdump.DEFAULT_EXCLUDES,
+                output_format=output_format, progress=progress, log=log,
+                on_file=on_file if output_format == 'zip' else None)
+        except Exception as error:
+            result['error'] = str(error)
+            log('Filesystem acquisition failed: ' + str(error))
         finally:
-            proc.wait()
+            finished.set()
 
-    if localtar == False and total_bytes == 0:
-        if device_has_su():
-            if c_su:
-                cmd = [
-                "adb", out_cmd,
-                "su", "-c",
-                "tar -cO /data 2>/dev/null"
-                ]
-            else:
-                cmd = [
-                    "adb", out_cmd,
-                    "echo 'tar -cO /data 2>/dev/null' | su"
-                ]
-        elif mtk_su == True:
-            cmd = [
-                "adb", out_cmd,
-                "/data/local/tmp/mtk-su -c tar -cO /data 2>/dev/null"
-            ]
+    def poll():
+        try:
+            update = updates.get_nowait()
+            if 'total' in update:
+                app.prog_text.configure(text=f"{update['total'] / 1024 / 1024:.1f} MB written")
+            if 'path' in update:
+                path = '/' + update['path'].lstrip('./')
+                fpath = f"...{path[-57:]}" if len(path) > 60 else path
+                app.text.configure(text="Extracting available files from the device filesystem.\nFile: " + fpath)
+        except queue.Empty:
+            pass
+        if finished.is_set():
+            app.change.set(-1 if 'error' in result else 1)
         else:
-            cmd = [
-                "adb", out_cmd,
-                "sh -c 'tar -cO /data 2>/dev/null'"
-            ]
+            app.after(100, poll)
 
-        with open(outtar, "wb") as f:
-            proc = Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL, bufsize=0)
-            total_bytes = 0
-            try:
-                while True:
-                    chunk = proc.stdout.read(CHUNK_SIZE)
-                    if not chunk:
-                        break
-                    f.write(chunk)
-                    total_bytes += len(chunk)
-                    prog_text.configure(text=f"{total_bytes/1024/1024:.1f} MB written")
-                    sys.stdout.flush()
-            finally:
-                proc.wait()
+    threading.Thread(target=worker, daemon=True).start()
+    app.after(100, poll)
+    app.wait_variable(app.change)
+    if 'error' in result:
+        app.progress.stop()
+        app.progress.pack_forget()
+        log('Incomplete filesystem output is retained as .partial; no success record was created.')
+        ctk.CTkButton(app.dynamic_frame, text="OK", font=app.stfont,
+                      command=lambda: app.switch_menu("AcqMenu")).pack(pady=40)
+        return False
+    return True
 
-    change.set(1)
 
+def tar_root_ffs(outtar, prog_text=None, change=None):
+    from alex.ffs import DeviceStream, acquire
+    try:
+        result = acquire(outtar, stream=DeviceStream(
+            serial=device.serial, c_su=c_su, mtk_su=mtk_su,
+            has_su=devdump.device_has_su(device.serial), has_exec_out=has_exec_out), log=log)
+    except Exception:
+        if change is not None:
+            change.set(-1)
+        raise
+    if change is not None:
+        change.set(1)
+    return result
 
 
 #Physical Extraction for Android and Ubuntu Touch
