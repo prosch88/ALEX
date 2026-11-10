@@ -337,6 +337,7 @@ class MyApp(ctk.CTk):
         if device == None:
             itext = ("Please wait ...\n" +
                         "\n" + '{:13}'.format("Python: ") + "\t" + platform.python_version() +
+                        "\n" + '{:13}'.format("adb: ") + "\t" + get_adb_version() +
                         "\n" + '{:13}'.format("adbutils: ") + "\t" + version('adbutils') +
                         "\n" + '{:13}'.format("fastboot: ") + "\t" + fb_found +
                         "\n\n" +
@@ -3112,6 +3113,25 @@ def ensure_adb_server(timeout=10):
             return True
         time.sleep(0.5)
 
+def get_adb_version():
+    try:
+        result = run(["adb", "version"], capture_output=True, text=True,
+                     encoding="utf-8", errors="replace",
+                     stdin=subprocess.DEVNULL, timeout=5)
+        if result.returncode != 0:
+            return "not found"
+        output = result.stdout + "\n" + result.stderr
+        adb_version = re.search(r"^Android Debug Bridge version\s+(\S+)", output, re.MULTILINE)
+        if not adb_version:
+            return "not found"
+        build_version = re.search(r"^Version\s+(\S+)", output, re.MULTILINE)
+        value = adb_version.group(1)
+        if build_version:
+            value += "\n" + '{:13}'.format(" ") + "\t" + build_version.group(1)
+        return value
+    except (OSError, subprocess.TimeoutExpired):
+        return "not found"
+
 def add_space(value: str) -> str:
         if value and value[-1].isalpha():
             return value[:-1] + " " + value[-1]
@@ -3221,6 +3241,7 @@ def get_client(host=default_host, port=default_port, check=False):
             restart_adb()
             device_info = nodevice_text = ("No device detected!\n" +
                     "\n" + '{:13}'.format("Python: ") + "\t" + platform.python_version() +
+                    "\n" + '{:13}'.format("adb: ") + "\t" + get_adb_version() +
                     "\n" + '{:13}'.format("adbutils: ") + "\t" + version('adbutils') +
                     "\n" + '{:13}'.format("fastboot: ") + "\t" + fb_found +
                     "\n\n" +
@@ -3658,6 +3679,7 @@ def get_client(host=default_host, port=default_port, check=False):
         state = None
         device_info = ("ADB not found!\n" +
         "\n" + '{:13}'.format("Python: ") + "\t" + platform.python_version() +
+        "\n" + '{:13}'.format("adb: ") + "\t" + get_adb_version() +
         "\n" + '{:13}'.format("adbutils: ") + "\t" + version('adbutils') +
         "\n\n" +
         "   54 68 65 20 52 6f 61 64 20 67 6f \n" +
