@@ -23,6 +23,8 @@ from pathlib import Path, PurePosixPath
 from pdfme import build_pdf
 from alex.command_log import adb_call, log_process, set_logger
 from alex.hashing import sha256_file
+from alex import root_methods
+from types import SimpleNamespace
 import alex.fastboot as fastboot
 import alex.ufed_style as ufed_style
 import alex.devdump as devdump
@@ -963,146 +965,107 @@ class MyApp(ctk.CTk):
 
 
 
-    #Show the Check Root
-    def show_check_root(self, skip_2016_10277 = False, skip_2020_0069 = False, skip_2016_5195 = False):
+    def _root_context(self):
+        return root_methods.RootContext(software, spl, d_platform, fingerprint,
+                                        model, sku, abi, fb_found != "not found")
+
+    def _check_existing_root(self):
+        """Preserve the adbd-root and su permission checks before acquisition."""
+        global show_root, c_su
+        if whoami == "root":
+            show_root = True
+            try:
+                if adb_call(device.shell, "echo 'whoami' | su").strip() == "whoami":
+                    c_su = True
+            except Exception:
+                pass
+            return True
+        self.text.configure(text="Please allow the following superuser request on the device.")
+        self.change.set(0)
+        threading.Thread(target=lambda: has_root(self.change)).start()
+        self.wait_variable(self.change)
+        show_root = self.change.get() == 1
+        if not show_root:
+            self._root_not_confirmed()
+        return show_root
+
+    def _root_not_confirmed(self):
+        self.text.configure(text="Root access has not been confirmed.")
+        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
+
+    def _run_root_method(self, method, context, skipped):
+        global show_root, initroot, mtk_su, dshell
+        self.choose = ctk.BooleanVar(self, False)
+        self.text.configure(text=method.prompt)
+        self.yesb = ctk.CTkButton(self.dynamic_frame, text="YES", font=self.stfont, command=lambda: self.choose.set(True))
+        self.yesb.pack(side="left", pady=(20,330), padx=140)
+        self.nob = ctk.CTkButton(self.dynamic_frame, text="NO", font=self.stfont, command=lambda: self.choose.set(False))
+        self.nob.pack(side="left", pady=(20,330))
+        self.wait_variable(self.choose)
+        self.yesb.pack_forget()
+        self.nob.pack_forget()
+        if not self.choose.get():
+            self.switch_menu("AcqMenu")
+            return False
+        self.text.configure(text=method.progress)
+        self.change.set(0)
+        runtime = SimpleNamespace(change=self.change, text=self.text,
+                                  initroot_device=self.check_initroot,
+                                  workers={"initroot": temp_initroot,
+                                           "mtk_su": temp_mtk_su,
+                                           "dshell": temp_dirty_cow})
+        def execute():
+            try:
+                method.run(context, runtime)
+            except Exception as exc:
+                log(f"Root method {method.key} failed: {exc}")
+                self.change.set(2)
+        threading.Thread(target=execute).start()
+        self.wait_variable(self.change)
+        if self.change.get() == 1:
+            show_root = True
+            initroot = method.success_flag == "initroot"
+            mtk_su = method.success_flag == "mtk_su"
+            dshell = method.success_flag == "dshell"
+            return True
+        self.text.configure(text=method.failure)
+        skipped = frozenset(skipped) | {method.key}
+        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=20))
+        self.after(110, lambda: ctk.CTkButton(self.dynamic_frame, text="Next Exploit", font=self.stfont, command=lambda: self.switch_menu("CheckRoot", skipped_methods=skipped)).pack())
+        return False
+
+    # Show the Check Root; legacy skip arguments remain compatible with callers.
+    def show_check_root(self, skip_2016_10277=False, skip_2020_0069=False,
+                        skip_2016_5195=False, skipped_methods=()):
+        global mtk_su
         ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
         ctk.CTkLabel(self.dynamic_frame, text="", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
         self.text = ctk.CTkLabel(self.dynamic_frame, text="Checking the root state ...", width=585, height=60, font=self.stfont, anchor="w", justify="left")
         self.text.pack(anchor="center", pady=25)
-        mtk_vers = ("MT67", "MT816", "MT817", "MT6580")
-        global show_root
-        global mtk_su
-        global c_su
-        global initroot
-        m_init_device = self.check_initroot()
-        if fb_found == "not found":
-            m_init_device = None
         self.change = ctk.IntVar(self, 0)
-        print(show_root)
-        if show_root == False:
+        if not show_root:
             mtk_su = False
-            if whoami == "root":
-                show_root = True
-                try:
-                    if adb_call(device.shell, "echo 'whoami' | su").strip() == "whoami":
-                        c_su = True
-                except:
-                    pass
-            elif su_app != None:
-                self.text.configure(text="Please allow the following superuser request on the device.")
-                check_su = threading.Thread(target=lambda:has_root(self.change))
-                check_su.start()
-                self.wait_variable(self.change)
-                if self.change.get() == 1:
-                    show_root = True
-                else:
-                    self.text.configure(text="Root access has not been confirmed.")
-                    self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
+            if whoami == "root" or su_app is not None:
+                if not self._check_existing_root():
                     return
-            elif not skip_2016_10277 and m_init_device:
-                self.choose = ctk.BooleanVar(self, False)
-                self.text.configure(text="This device may be vulnerable to CVE-2016-10277 (initroot).\nFor temporary root access, a custom initramfs can be loaded via fastboot.\nThere is a risk of causing a bootloop.\n\nDo you want to continue?")
-                self.yesb = ctk.CTkButton(self.dynamic_frame, text="YES", font=self.stfont, command=lambda: self.choose.set(True))
-                self.yesb.pack(side="left", pady=(20,330), padx=140)
-                self.nob = ctk.CTkButton(self.dynamic_frame, text="NO", font=self.stfont, command=lambda: self.choose.set(False))
-                self.nob.pack(side="left", pady=(20,330))
-                self.wait_variable(self.choose)
-                self.yesb.pack_forget()
-                self.nob.pack_forget()
-                if self.choose.get() == True:
-                    self.text.configure(text="Attempt to gain temp-root via CVE-2016-10277 (initroot).\nPlease Wait ...")
-                    check_ir = threading.Thread(target=lambda:temp_initroot(self.change, self.text, m_init_device))
-                    check_ir.start()
-                    print("initroot tried")
-                    self.wait_variable(self.change)
-                    if self.change.get() == 1:
-                        initroot = True
-                        show_root = True
-                    else:
-                        skip_2016_10277 = True
-                        self.text.configure(text="Root access has not been gained.")
-                        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=20))
-                        self.after(110, lambda: ctk.CTkButton(self.dynamic_frame, text="Next Exploit", font=self.stfont, command=lambda: self.switch_menu("CheckRoot", skip_2016_10277=skip_2016_10277)).pack())
+            else:
+                skipped = set(skipped_methods)
+                for flag, key in ((skip_2016_10277, "initroot"),
+                                  (skip_2020_0069, "mtk_su"),
+                                  (skip_2016_5195, "dirtycow")):
+                    if flag:
+                        skipped.add(key)
+                methods, order = root_methods.load_methods()
+                context = self._root_context()
+                method = root_methods.select_method(context, methods, order, skipped)
+                if method is not None:
+                    if not self._run_root_method(method, context, skipped):
                         return
                 else:
-                    self.switch_menu("AcqMenu")
-                    return
-
-            elif not skip_2020_0069 and any(d_platform.upper().startswith(mtk_vers) for mtk_ver in mtk_vers):
-                if int(software.split(".")[0]) < 10 and spl < "2020-03-01":
-                    self.choose = ctk.BooleanVar(self, False)
-                    self.text.configure(text="This device may be vulnerable to CVE-2020-0069 (mtk-su).\nFor temporary root access, mtk-su can be copied to the device's\ntmp directory and executed.\n\nDo you want to continue?")
-                    self.yesb = ctk.CTkButton(self.dynamic_frame, text="YES", font=self.stfont, command=lambda: self.choose.set(True))
-                    self.yesb.pack(side="left", pady=(20,330), padx=140)
-                    self.nob = ctk.CTkButton(self.dynamic_frame, text="NO", font=self.stfont, command=lambda: self.choose.set(False))
-                    self.nob.pack(side="left", pady=(20,330))
-                    self.wait_variable(self.choose)
-                    self.yesb.pack_forget()
-                    self.nob.pack_forget()
-                    if self.choose.get() == True:
-                        self.text.configure(text="Attempt to gain temp-root via CVE-2020-0069 (mtk-su).\nPlease Wait ...")
-                        check_su = threading.Thread(target=lambda:temp_mtk_su(self.change))
-                        check_su.start()
-                        print("mtk-su tried")
-                        self.wait_variable(self.change)
-                        if self.change.get() == 1:
-                            show_root = True
-                            mtk_su = True
-                        else:
-                            skip_2020_0069 = True
-                            self.text.configure(text="Root access has not been gained.\nDue to the nature of this process, another attempt may be successful.")
-                            self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=20))
-                            self.after(110, lambda: ctk.CTkButton(self.dynamic_frame, text="Next Exploit", font=self.stfont, command=lambda: self.switch_menu("CheckRoot", skip_2016_10277=skip_2016_10277, skip_2020_0069=skip_2020_0069)).pack())
-                            return
-                    else:
-                        self.switch_menu("AcqMenu")
+                    log("No su-manager found.")
+                    if not self._check_existing_root():
                         return
-            elif not skip_2016_5195 and int(software.split(".")[0]) < 7 and spl < "2016-11-06":
-                self.choose = ctk.BooleanVar(self, False)
-                self.text.configure(text="This device may be vulnerable to CVE-2016-5195 (Dirty COW).\nFor temporary root access, an executable can be copied to the device's\ntmp directory and executed.\n\nDo you want to continue?")
-                self.yesb = ctk.CTkButton(self.dynamic_frame, text="YES", font=self.stfont, command=lambda: self.choose.set(True))
-                self.yesb.pack(side="left", pady=(20,330), padx=140)
-                self.nob = ctk.CTkButton(self.dynamic_frame, text="NO", font=self.stfont, command=lambda: self.choose.set(False))
-                self.nob.pack(side="left", pady=(20,330))
-                self.wait_variable(self.choose)
-                self.yesb.pack_forget()
-                self.nob.pack_forget()
-                if self.choose.get() == True:
-                    self.text.configure(text="Attempt to gain temp-root via CVE-2016-5195 (Dirty COW).\nPlease Wait ...")
-                    check_su = threading.Thread(target=lambda:temp_dirty_cow(self.change))
-                    check_su.start()
-                    print("devel su tried")
-                    self.wait_variable(self.change)
-                    if self.change.get() == 1:
-                        show_root = True
-                        dshell = True
-                    else:
-                        skip_2020_0069 = skip_2020_0069
-                        skip_2016_5195 = True
-                        self.text.configure(text="Root access has not been gained.\nDue to the nature of this process, another attempt may be successful.")
-                        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=20))
-                        self.after(110, lambda: ctk.CTkButton(self.dynamic_frame, text="Next Exploit", font=self.stfont, command=lambda: self.switch_menu("CheckRoot", skip_2016_10277=skip_2016_10277, skip_2020_0069=skip_2020_0069, skip_2016_5195=skip_2016_5195)).pack())
-                        return
-
-            elif su_app == None:
-                log("No su-manager found.")
-                self.text.configure(text="Please allow the following superuser request on the device.")
-                check_su = threading.Thread(target=lambda:has_root(self.change))
-                check_su.start()
-                self.wait_variable(self.change)
-                if self.change.get() == 1:
-                    show_root = True
-                else:
-                    self.text.configure(text="Root access has not been confirmed.")
-                    self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
-                    return
-        if show_root == True:
-            self.after(100, lambda: self.switch_menu("RootAcq"))
-            return
-        else:
-            self.text.configure(text="Root access has not been confirmed.")
-            self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
-            return
+        self.after(100, lambda: self.switch_menu("RootAcq"))
 
     # CVE-2016-10277 Initroot - Check
     def show_2016_10277(self):
@@ -1402,40 +1365,7 @@ class MyApp(ctk.CTk):
             return
 
     def check_initroot(self):
-        if spl < "2017-06-01":
-            if "google/shamu" in fingerprint:
-                return "shamu"
-            elif "motorola" in fingerprint:
-                if "XT1021" in {model.upper(), sku.upper()}:
-                    return "condor"
-                if "XT1032" in {model.upper(), sku.upper()}:
-                    return "falcon"
-                if "XT1033" in {model.upper(), sku.upper()}:
-                    return "falcon"
-                elif "XT1040" in {model.upper(), sku.upper()}:
-                    return "peregrine"
-                elif "XT1068" in {model.upper(), sku.upper()}:
-                    return "titan"
-                elif "XT1069" in {model.upper(), sku.upper()}:
-                    return "titan"
-                elif "XT1072" in {model.upper(), sku.upper()}:
-                    return "thea"
-                elif "XT1078" in {model.upper(), sku.upper()}:
-                    return "thea"
-                elif "XT1602" in {model.upper(), sku.upper()}:
-                    return "harpia"
-                elif "XT1607" in {model.upper(), sku.upper()}:
-                    return "harpia"
-                elif "XT1622" in {model.upper(), sku.upper()}:
-                    return "athene"
-                elif "XT1676" in {model.upper(), sku.upper()}:
-                    return "cedric"
-                else:
-                    return None
-            else:
-                return None
-        else:
-            return None
+        return root_methods.initroot_device(self._root_context())
 
     #Show rooted Backup Options
     def show_root_acq_menu(self):
