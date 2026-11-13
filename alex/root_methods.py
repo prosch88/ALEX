@@ -26,21 +26,29 @@ class RootContext:
         except (ValueError, AttributeError):
             return None
 
-    def older_than(self, android, patch):
-        # Missing/malformed versions must not advertise exploit compatibility.
+    @property
+    def patch_missing(self):
+        return self.spl is None or str(self.spl).strip().lower() in {"", "-", "unknown"}
+
+    def patch_before(self, patch):
+        # Legacy builds may omit the SPL property. This allows an attempt,
+        # not a claim that the vulnerability is present. Modern builds and
+        # malformed nonempty dates remain excluded when SPL is required.
+        cutoff = date.fromisoformat(patch)
+        if self.patch_missing:
+            return self.android_major is not None and self.android_major < 6
         try:
-            valid_patch = date.fromisoformat(self.spl)
+            return date.fromisoformat(self.spl) < cutoff
         except (ValueError, TypeError):
             return False
+
+    def older_than(self, android, patch):
         return (self.android_major is not None and self.android_major < android
-                and valid_patch < date.fromisoformat(patch))
+                and self.patch_before(patch))
 
 
 def initroot_device(context):
-    try:
-        if date.fromisoformat(context.spl) >= date(2017, 6, 1):
-            return None
-    except (ValueError, TypeError):
+    if not context.patch_before("2017-06-01"):
         return None
     if "google/shamu" in context.fingerprint:
         return "shamu"
@@ -78,6 +86,10 @@ def run_dirtycow(context, runtime):
     runtime.workers["dshell"](runtime.change)
 
 
+def dirtycow_compatible(context):
+    return context.older_than(7, "2016-11-06")
+
+
 ROOT_METHOD_ORDER = ["initroot", "mtk_su", "dirtycow"]
 
 METHODS = {
@@ -89,7 +101,7 @@ METHODS = {
         "This device may be vulnerable to CVE-2020-0069 (mtk-su).\nFor temporary root access, mtk-su can be copied to the device's\ntmp directory and executed.\n\nDo you want to continue?",
         'Attempt to gain temp-root via CVE-2020-0069 (mtk-su).\nPlease Wait ...',
         'Root access has not been gained.\nDue to the nature of this process, another attempt may be successful.', 'mtk_su'),
-    'dirtycow': RootMethod('dirtycow', lambda c: c.older_than(7, "2016-11-06"), run_dirtycow,
+    'dirtycow': RootMethod('dirtycow', dirtycow_compatible, run_dirtycow,
         "This device may be vulnerable to CVE-2016-5195 (Dirty COW).\nFor temporary root access, an executable can be copied to the device's\ntmp directory and executed.\n\nDo you want to continue?",
         'Attempt to gain temp-root via CVE-2016-5195 (Dirty COW).\nPlease Wait ...',
         'Root access has not been gained.\nDue to the nature of this process, another attempt may be successful.', 'dshell'),

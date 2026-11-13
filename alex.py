@@ -1059,6 +1059,9 @@ class MyApp(ctk.CTk):
                 context = self._root_context()
                 method = root_methods.select_method(context, methods, order, skipped)
                 if method is not None:
+                    if context.patch_missing:
+                        log(f"Root method {method.key}: security patch level unavailable on legacy Android; "
+                            "offering an attempt, vulnerability is not confirmed.")
                     if not self._run_root_method(method, context, skipped):
                         return
                 else:
@@ -1156,7 +1159,7 @@ class MyApp(ctk.CTk):
         global dcow
         dcow = False
         self.change = ctk.IntVar(self, 0)
-        if int(software.split(".")[0]) < 7 and spl < "2016-11-06":
+        if int(software.split(".")[0]) < 7 and self._root_context().patch_before("2016-11-06"):
             self.choose = ctk.BooleanVar(self, False)
             self.text.configure(text="This device may be vulnerable to CVE-2016-5195 (Dirty COW).\nFor temporary root access, an executable can be copied to the device's\ntmp directory and executed.\n\nDo you want to continue?")
             self.yesb = ctk.CTkButton(self.dynamic_frame, text="YES", font=self.stfont, command=lambda: self.choose.set(True))
@@ -1203,7 +1206,7 @@ class MyApp(ctk.CTk):
         self.change = ctk.IntVar(self, 0)
 
         if d_platform.upper().startswith(mtk_vers):
-            if int(software.split(".")[0]) < 10 and spl < "2020-03-01":
+            if int(software.split(".")[0]) < 10 and self._root_context().patch_before("2020-03-01"):
                 self.choose = ctk.BooleanVar(self, False)
                 self.text.configure(text="This device may be vulnerable to CVE-2020-0069 (mtk-su).\nFor temporary root access, mtk-su can be copied to the device's\ntmp directory and executed.\n\nDo you want to continue?")
                 self.yesb = ctk.CTkButton(self.dynamic_frame, text="YES", font=self.stfont, command=lambda: self.choose.set(True))
@@ -1247,7 +1250,7 @@ class MyApp(ctk.CTk):
         self.text = ctk.CTkLabel(self.dynamic_frame, text="Checking compatibility ...", width=585, height=60, font=self.stfont, anchor="w", justify="left")
         self.text.pack(anchor="center", pady=25)
         self.change = ctk.IntVar(self, 0)
-        if int(software.split(".")[0]) in range(9,12) or int(software.split(".")[0]) in range(12,14) and spl < "2024-06-01":
+        if int(software.split(".")[0]) in range(9,12) or int(software.split(".")[0]) in range(12,14) and self._root_context().patch_before("2024-06-01"):
             zip_path = f'System_{snr}_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}.zip'
             self.change.set(0)
             self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="", width=585, height=20, font=self.stfont, anchor="w", justify="left")
@@ -1316,7 +1319,7 @@ class MyApp(ctk.CTk):
         self.text = ctk.CTkLabel(self.dynamic_frame, text="Checking compatibility ...", width=585, height=60, font=self.stfont, anchor="w", justify="left")
         self.text.pack(anchor="center", pady=25)
         self.change = ctk.IntVar(self, 0)
-        if int(software.split(".")[0]) in range(12,14) and spl < "2024-03-01":
+        if int(software.split(".")[0]) in range(12,14) and self._root_context().patch_before("2024-03-01"):
             zip_path = f'App_Extration_{snr}_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}.zip'
             self.tlabel.configure(height=30)
             self.text.pack_forget()
@@ -2017,7 +2020,7 @@ class MyApp(ctk.CTk):
 
         # Exploiting attempt
         if incl_cve == "on":
-            if int(software.split(".")[0]) in range(9,12) or int(software.split(".")[0]) in range(12,16) and spl < "2024-06-01":
+            if int(software.split(".")[0]) in range(9,12) or int(software.split(".")[0]) in range(12,16) and self._root_context().patch_before("2024-06-01"):
                 self.change.set(0)
                 self.prog_text.configure(text="")
                 self.progress.pack_forget()
@@ -2029,7 +2032,7 @@ class MyApp(ctk.CTk):
                 self.wait_variable(self.change)
             else:
                 pass
-            if int(software.split(".")[0]) in range(12,14) and spl < "2024-03-01":
+            if int(software.split(".")[0]) in range(12,14) and self._root_context().patch_before("2024-03-01"):
                 self.change.set(0)
                 self.prog_text.configure(text="")
                 self.progress.pack_forget()
