@@ -5098,9 +5098,12 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
                     os.utime(new_dst, (mtime, mtime))
                 except:
                     pass
-            except:
-                log(f"Error pulling: {new_src}")
+            except Exception as e:
+                log(f"Error pulling: {new_src}: {type(e).__name__}: {e}. The file is not in the archive.")
                 size = 0
+                try: os.remove(new_dst)                                                                                 #a partly pulled file must not go into the archive as if it was complete
+                except OSError: pass
+                continue
             try:
                 with open(new_dst, "rb") as f:
                     data = f.read()
