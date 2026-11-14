@@ -3,11 +3,15 @@
 # This version isn't using pyaes
 import argparse
 import io
+import os
+import shutil
 import sys
 import tarfile
+import tempfile
 import zipfile
 import zlib
 import hashlib
+from datetime import datetime
 from Crypto.Cipher import AES
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Hash import SHA1
@@ -181,55 +185,143 @@ def extract_backup(ab_file, out_file, password, prog_text=None):
 
     print(f"Extracted: {out_file}")
 
-def backup_to_zip(ab_file, zip, password, change, prog_text=None):
-    outsize = 0
-    decompressor = zlib.decompressobj()
-    decrypted_buffer = io.BytesIO()
+class PayloadReader:
+    """Read the tar stream of a backup: decrypt and decompress in small steps.
 
-    with open(ab_file, "rb") as f:
-        header = parse_header(f, password)
-        f.seek(header["payload_offset"])
+    The backup is never held in memory as a whole, so its size is not limited by the RAM of the workstation.
+    """
+    CHUNK = 1024 * 1024
+    TAIL = 64 * 1024            # more than tarfile reads ahead (its buffer is 10 KB)
 
+    def __init__(self, f, header, on_progress=None):
+        self.f = f
+        self.cipher = None
         if header["encryption"] == "AES-256":
-            cipher = AES.new(
-                header["master_key"],
-                AES.MODE_CBC,
-                header["master_iv"]
-            )
+            self.cipher = AES.new(header["master_key"], AES.MODE_CBC, header["master_iv"])
+        self.compressed = header["compression"] == 1
+        self.decompressor = zlib.decompressobj()
+        self.on_progress = on_progress
+        self.pending = b""          # read from the file, not yet a full AES block
+        self.buffer = bytearray()   # tar data, not yet handed out
+        self.processed = 0
+        self.eof = False
+        self.delivered = 0          # tar bytes handed out
+        self.tail = b""             # the last of them, to check the end marker of the tar data
 
-            while True:
-                chunk = f.read(1024 * 1024)
-                if not chunk:
-                    break
-                decrypted_chunk = cipher.decrypt(chunk)
-                decrypted_buffer.write(decompressor.decompress(decrypted_chunk))
-                outsize += len(chunk)
-                if prog_text:
-                    prog_text.configure(text=f"{outsize/1024/1024:.1f} MB processed")
+    def _fill(self):
+        tail = self.decompressor.unconsumed_tail if self.compressed else b""
+        if tail:
+            data = tail
         else:
-            decrypted_buffer.write(decompressor.decompress(f.read()))
-    
-    decrypted_buffer.write(decompressor.flush())
-    decrypted_buffer.seek(0)
+            chunk = self.f.read(self.CHUNK)
+            if not chunk:
+                self.eof = True
+                if self.compressed:
+                    self.buffer += self.decompressor.flush()
+                    if not self.decompressor.eof:
+                        raise AndroidBackupError("The backup ends before the end of its data (incomplete backup)")
+                return
+            self.processed += len(chunk)
+            if self.on_progress:
+                self.on_progress(self.processed)
+            if self.cipher:
+                chunk = self.pending + chunk
+                usable = len(chunk) - (len(chunk) % 16)
+                self.pending = chunk[usable:]
+                chunk = self.cipher.decrypt(chunk[:usable])
+            data = chunk
+        if self.compressed:
+            try:
+                self.buffer += self.decompressor.decompress(data, 4 * self.CHUNK)
+            except zlib.error as e:
+                raise AndroidBackupError(f"zlib error: {e}")
+        else:
+            self.buffer += data
 
+    def read(self, size=-1):
+        while not self.eof and (size < 0 or len(self.buffer) < size):
+            self._fill()
+        if size < 0:
+            size = len(self.buffer)
+        out = bytes(self.buffer[:size])
+        del self.buffer[:size]
+        self.delivered += len(out)
+        self.tail = (self.tail + out)[-self.TAIL:]
+        return out
+
+    def delivered_block(self, offset):
+        """The 512 byte tar block at this offset, if it is among the data handed out last."""
+        start = self.delivered - len(self.tail)
+        if offset < start:
+            return b""
+        return self.tail[offset - start:offset - start + 512]
+
+
+def backup_to_zip(ab_file, zip, password, change, prog_text=None, log=None):
+    """Unpack the files of a backup into the ZIP. Returns True if the whole backup was unpacked.
+
+    change is set to 1 on success and to 2 if the backup could not be read to its end.
+    Files that were read before an error stay in the ZIP.
+    """
+    def report(text):
+        if log:
+            log(text)
+        else:
+            print(text)
+
+    def on_progress(processed):
+        if prog_text:
+            prog_text.configure(text=f"{processed/1024/1024:.1f} MB processed")
+
+    count = 0
+    complete = False
+    zip_name = getattr(zip, "filename", None)
+    spool_dir = os.path.dirname(os.path.abspath(zip_name)) if zip_name else None   # large files are buffered next to the ZIP, not in the system temp folder
     try:
-        with tarfile.open(fileobj=decrypted_buffer) as tar:
-            for member in tar.getmembers():
-                if not member.isfile():
-                    continue
-                original_path = member.name
-                clean_path = original_path.lstrip("/")
-                new_path = map_bu_path(clean_path)
-                if not new_path:
-                    new_path = f"extra/backup/{clean_path}"
-                
-                file_data = tar.extractfile(member).read()
-                zip.writestr(new_path, file_data)
+        with open(ab_file, "rb") as f:
+            header = parse_header(f, password)
+            f.seek(header["payload_offset"])
+            reader = PayloadReader(f, header, on_progress)
+            with tarfile.open(fileobj=reader, mode="r|") as tar:
+                for member in tar:
+                    if not member.isfile():
+                        continue
+                    original_path = member.name
+                    clean_path = original_path.lstrip("/")
+                    new_path = map_bu_path(clean_path)
+                    if not new_path:
+                        new_path = f"extra/backup/{clean_path}"
+
+                    zip_info = zipfile.ZipInfo(new_path)
+                    zip_info.compress_type = zip.compression
+                    try:
+                        zip_info.date_time = max(datetime.fromtimestamp(member.mtime).timetuple()[:6], (1980, 1, 1, 0, 0, 0))    # keep the file time of the backup
+                    except (OverflowError, OSError, ValueError):
+                        zip_info.date_time = (1980, 1, 1, 0, 0, 0)
+                    source = tar.extractfile(member)
+                    # Read the file completely before it goes into the ZIP: a file cut off by an incomplete backup is left out
+                    with tempfile.SpooledTemporaryFile(max_size=32 * 1024 * 1024, dir=spool_dir) as spool:
+                        shutil.copyfileobj(source, spool, 1024 * 1024)
+                        if spool.tell() != member.size:
+                            raise AndroidBackupError(f"The backup ends inside the file {member.name} (incomplete backup)")
+                        spool.seek(0)
+                        with zip.open(zip_info, "w", force_zip64=member.size >= 2**31) as target:
+                            shutil.copyfileobj(spool, target, 1024 * 1024)
+                    count += 1
+                # tarfile stops without an error at a damaged or cut-off header. Only the end marker, a block of zeros, is a regular end.
+                marker = reader.delivered_block(tar.offset)
+                if len(marker) != 512 or any(marker):
+                    raise AndroidBackupError("The tar data of the backup stops without its end marker (damaged or incomplete backup)")
+            while reader.read(1024 * 1024):                                 # read to the end: reports a backup whose compressed data is cut off after the last file
+                pass
+        complete = True
     except Exception as e:
-        print(f"Error unbacking: {e}")
+        report(f"Error unpacking the backup {ab_file} after {count} file(s): {type(e).__name__}: {e}")
     finally:
-        decrypted_buffer.close()
-        change.set(1)
+        if complete:
+            report(f"Unpacked {count} file(s) from the backup {ab_file}")
+        change.set(1 if complete else 2)
+    return complete
 
 def main():
     ap = argparse.ArgumentParser()
