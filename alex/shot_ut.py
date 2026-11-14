@@ -26,19 +26,25 @@ def Popen(cmd, **kwargs):
 
     return subprocess.Popen(cmd, **kwargs)
 
+#Serial of the device to work with, set by ALEX. Without it adb fails when a second device is attached.
+serial = None
+
+def adb_base():
+    return ['adb'] + (['-s', serial] if serial else [])
+
 def adb_shell(cmd):
-    result = run(['adb', 'shell'] + cmd, capture_output=True, text=True)
+    result = run(adb_base() + ['shell'] + cmd, capture_output=True, text=True)
     return result.stdout.strip()
 
 def adb_shell_raw(cmd):
     result = run(
-        ['adb', 'shell'] + cmd,
+        adb_base() + ['shell'] + cmd,
         capture_output=True
     )
     return result.stdout
 
 def adb_exec_out(cmd):
-    result = run(['adb', 'exec-out'] + cmd, capture_output=True)
+    result = run(adb_base() + ['exec-out'] + cmd, capture_output=True)
     return result.stdout
 
 def shot():
