@@ -26,6 +26,7 @@ from alex.hashing import sha256_file
 from alex import root_methods
 from types import SimpleNamespace
 import alex.fastboot as fastboot
+import alex.scope_preview as scope_preview
 import alex.ufed_style as ufed_style
 import alex.devdump as devdump
 import alex.wifi_adb as wifi_adb
@@ -1874,6 +1875,11 @@ class MyApp(ctk.CTk):
         self.startb.pack(pady=25)
         self.backb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=lambda: self.switch_menu("AcqMenu"))
         self.backb.pack()
+        preview_groups = [("/sdcard/", ["/sdcard/"])] + [(path, [path]) for path in sysfolders if path not in apps_path]
+        if apps_path:
+            preview_groups.append((f"app folders ({len(apps_path)})", list(apps_path)))
+        self.previewb = ctk.CTkButton(self.dynamic_frame, text="Preview what can be read", font=self.stfont, fg_color="#2E2E2E", text_color="#DCE4EE", command=lambda: self.show_scope_preview(preview_groups))
+        self.previewb.pack(pady=(10, 0))
         self.wait_variable(self.change)
         self.incl_adb_bu_box.pack_forget()
         self.incl_sdcard_box.pack_forget()
@@ -1883,6 +1889,7 @@ class MyApp(ctk.CTk):
         self.incl_logs_box.pack_forget()
         self.startb.pack_forget()
         self.backb.pack_forget()
+        self.previewb.pack_forget()
         incl_adb_bu = self.incl_adb_bu.get()
         incl_sdcard = self.incl_sdcard.get()
         incl_system = self.incl_system.get()
@@ -2117,6 +2124,56 @@ class MyApp(ctk.CTk):
         self.prog_text.pack_forget()
         self.progress.pack_forget()
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
+
+    #Window with the scope preview: per folder the size, the files, and how many of them a pull can read. Read-only on the device.
+    def show_scope_preview(self, groups):
+        win = ctk.CTkToplevel(self)
+        win.title("ALEX - what a pull can read")
+        win.geometry("880x560")
+        win.after(200, win.lift)
+        info = ctk.CTkLabel(win, font=self.stfont, anchor="w", justify="left",
+                            text="The device counts the files of every folder and opens each one for a single byte. Nothing is changed.\n"
+                                 "refused: the file is listed, the device refuses to open it. not listed: the shell cannot read the entry, a pull does not see it.")
+        info.pack(anchor="w", padx=12, pady=(10, 4))
+        box = ctk.CTkTextbox(win, width=856, height=440, font=("Consolas" if platform.uname().system == "Windows" else "monospace", 12), wrap="none")
+        box.pack(padx=12, pady=6, fill="both", expand=True)
+        box.insert("end", scope_preview.HEADER + "\n")
+        lines = queue.Queue()
+
+        def worker():
+            results = []
+            shell = lambda cmd: adb_call(device.shell, cmd)
+            try:
+                for label, paths in groups:
+                    scans = [scope_preview.scan_folder(shell, path) for path in paths]
+                    result = scans[0] if len(scans) == 1 else scope_preview.add_up(label, scans)
+                    results.append(result)
+                    lines.put(scope_preview.format_row(result))
+                lines.put("")
+                lines.put(scope_preview.totals_text(results))
+                log("Scope preview: " + scope_preview.totals_text(results))
+                for result in results:
+                    log("Scope preview: " + " ".join(scope_preview.format_row(result).split()))
+            except Exception as e:
+                lines.put(f"The preview stopped: {type(e).__name__}: {e}")
+            lines.put(None)
+
+        def poll():
+            if not win.winfo_exists():
+                return
+            try:
+                while True:
+                    line = lines.get_nowait()
+                    if line is None:
+                        return
+                    box.insert("end", line + "\n")
+                    box.see("end")
+            except queue.Empty:
+                pass
+            win.after(200, poll)
+
+        threading.Thread(target=worker, daemon=True).start()
+        poll()
 
     def adb_bu(self, change, incl_shared, incl_apps, incl_system, auto_bu=False):
         global bu_file
