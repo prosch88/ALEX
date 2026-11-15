@@ -28,6 +28,7 @@ from types import SimpleNamespace
 import alex.fastboot as fastboot
 import alex.ufed_style as ufed_style
 import alex.devdump as devdump
+import alex.apk_inventory as apk_inventory
 import alex.wifi_adb as wifi_adb
 import alex.exploits as exploits
 import alex.dirty_shell as dirty_shell
@@ -203,6 +204,7 @@ class MyApp(ctk.CTk):
             "ScreenDevice": self.screen_device,
             "ShotLoop": self.chat_shotloop,
             "FindAgent": self.show_find_agent,
+            "PullAPKs": self.show_pull_apks,
             "BugReport": self.show_bugreport,
             "Content": self.show_content_dump,
             "CheckRoot": self.show_check_root,
@@ -894,11 +896,12 @@ class MyApp(ctk.CTk):
         self.skip.grid(row=0, column=0, columnspan=2, sticky="w")
         if ut == False and aos == False:
             self.menu_buttons = [
-                ctk.CTkButton(self.dynamic_frame, text="Take screenshots", command=lambda: self.switch_menu("ScreenDevice"), width=200, height=70, font=self.stfont),
-                ctk.CTkButton(self.dynamic_frame, text="Chat Capture", command=lambda: self.switch_menu("ShotLoop"), width=200, height=70, font=self.stfont),
-                ctk.CTkButton(self.dynamic_frame, text="Query Content\nProviders", command=lambda: self.switch_menu("Content"), width=200, height=70, font=self.stfont),
-                ctk.CTkButton(self.dynamic_frame, text="Identify Forensic\nAgent-Apps", command=lambda: self.switch_menu("FindAgent"), width=200, height=70, font=self.stfont),
-                ctk.CTkButton(self.dynamic_frame, text="Switch to\nFile Operations", fg_color="#2E2E2E", text_color="#DCE4EE", command=lambda: self.switch_menu("DataMenu"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Take screenshots", command=lambda: self.switch_menu("ScreenDevice"), width=200, height=56, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Chat Capture", command=lambda: self.switch_menu("ShotLoop"), width=200, height=56, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Query Content\nProviders", command=lambda: self.switch_menu("Content"), width=200, height=56, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Identify Forensic\nAgent-Apps", command=lambda: self.switch_menu("FindAgent"), width=200, height=56, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Pull APKs", command=lambda: self.switch_menu("PullAPKs"), width=200, height=56, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Switch to\nFile Operations", fg_color="#2E2E2E", text_color="#DCE4EE", command=lambda: self.switch_menu("DataMenu"), width=200, height=56, font=self.stfont),
             ]
         else:
             self.menu_buttons = [
@@ -912,6 +915,7 @@ class MyApp(ctk.CTk):
                               "Loop through a chat taking screenshots.",
                               "Query Data from Content Providers\nas txt or json. (calls, sms, contacts, ...)",
                               "Find known Agent-Apps used by forensic\nsoftware products.",
+                              "Pull the APK files of the user-installed apps\nwith an inventory (versions, signer, SHA-256).",
                               "Show options for operations with\nexisting backups."]
         else:
             self.menu_text = ["Take screenshots from device screen.\nScreenshots will be saved under \"screenshots\"\nas PNG.",
@@ -919,13 +923,14 @@ class MyApp(ctk.CTk):
                               "Query Data from Content Providers\nas txt or json. (calls, sms, contacts, ...)",
                               "Show options for operations with\nexisting backups."]
         self.menu_textbox = []
+        row_height = 56 if len(self.menu_buttons) > 5 else 70
         for btn in self.menu_buttons:
-            self.menu_textbox.append(ctk.CTkLabel(self.dynamic_frame, width=right_content, height=70, font=self.stfont, anchor="w", justify="left"))
+            self.menu_textbox.append(ctk.CTkLabel(self.dynamic_frame, width=right_content, height=row_height, font=self.stfont, anchor="w", justify="left"))
         r=1
         i=0
         for btn in self.menu_buttons:
-            btn.grid(row=r,column=0, padx=30, pady=10)
-            self.menu_textbox[i].grid(row=r,column=1, padx=10, pady=10)
+            btn.grid(row=r,column=0, padx=30, pady=10 if row_height == 70 else 7)
+            self.menu_textbox[i].grid(row=r,column=1, padx=10, pady=10 if row_height == 70 else 7)
             self.menu_textbox[i].configure(text=self.menu_text[i])
             r+=1
             i+=1
@@ -2632,6 +2637,26 @@ class MyApp(ctk.CTk):
         self.wait_variable(self.change)
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AdvMenu")).pack(pady=20))
 
+    #Pull the APK files of the user-installed apps into a ZIP with an inventory
+    def show_pull_apks(self):
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
+        ctk.CTkLabel(self.dynamic_frame, text="Pull APKs", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
+        self.text = ctk.CTkLabel(self.dynamic_frame, text="Reading the list of user-installed apps ...", width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        self.text.pack(anchor="center", pady=25)
+        self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="0%", width=585, height=20, font=self.stfont, anchor="w", justify="left")
+        self.prog_text.pack()
+        self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0)
+        self.progress.set(0)
+        self.progress.pack()
+        self.change = ctk.IntVar(self, 0)
+        result = {}
+        threading.Thread(target=lambda: pull_apks(self.change, self.text, self.progress, self.prog_text, result)).start()
+        self.wait_variable(self.change)
+        self.prog_text.pack_forget()
+        self.progress.pack_forget()
+        self.text.configure(text=result.get("text", "APK capture failed. See the log."), height=100)
+        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AdvMenu")).pack(pady=40))
+
     def show_pdf_report(self):
         ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
         ctk.CTkLabel(self.dynamic_frame, text="Generate PDF Report", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
@@ -4078,6 +4103,41 @@ def find_agent(change, text, app_text):
                             "If you have identified a previously unknown agent app,\nplease report it back to the project. ")
         app_text.pack_forget()
     change.set(1)
+
+
+#APK files of the user-installed apps into APKs_<serial>_<time>.zip, with apk_inventory.csv in the ZIP. change: 1 = done, 2 = failed.
+def pull_apks(change, text, progress, prog_text, result):
+    zip_path = f'APKs_{snr}_{datetime.now().strftime("%Y_%m_%d_%H_%M_%S")}.zip'
+    temp_folder = f".temp_apks_{snr}"
+    try:
+        shell = lambda cmd: adb_call(device.shell, cmd)
+        log("Started APK capture (user-installed apps)")
+        packages = apk_inventory.read_details(shell, apk_inventory.list_packages(shell))
+        text.configure(text=f"Pulling the APK files of {len(packages)} apps.")
+
+        def on_progress(done, total, package):
+            progress.set(done / total if total else 1)
+            prog_text.configure(text=f"{done} of {total} files   {package[:50]}")
+
+        with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED) as zip:
+            rows = apk_inventory.pull_apks(lambda src, dst: adb_call(device.sync.pull_file, src, dst), packages, zip, temp_folder, log, on_progress)
+            inventory = apk_inventory.inventory_csv(rows)
+            zip.writestr("apk_inventory.csv", inventory)
+        text.configure(text="Calculating Zip-Hash. This may take a while.")
+        with open(zip_path, "rb") as f:
+            zip_hash = sha256_file(f)
+        summary = apk_inventory.summary(packages, rows)
+        log(f"APK capture: {summary}. Inventory SHA256={hashlib.sha256(inventory).hexdigest()}")
+        log(f"Created APK archive: {zip_path}, SHA256={zip_hash}")
+        result["text"] = f"APK capture complete.\n{summary}.\n{zip_path}\nSHA256: {zip_hash}"
+        change.set(1)
+    except Exception as e:
+        log(f"APK capture failed: {type(e).__name__}: {e}")
+        result["text"] = f"APK capture failed: {type(e).__name__}: {e}"
+        change.set(2)
+    finally:
+        try: shutil.rmtree(temp_folder)
+        except Exception: pass
 
 
 # Both GUI acquisition paths use the same binary-safe transfer engine.
