@@ -294,6 +294,7 @@ def backup_to_zip(ab_file, zip, password, change, prog_text=None, log=None):
 
                     zip_info = zipfile.ZipInfo(new_path)
                     zip_info.compress_type = zip.compression
+                    zip_info.external_attr = 0o600 << 16                    # as ZipFile.writestr() sets it for a name: without it the files unpack with no permissions
                     try:
                         zip_info.date_time = max(datetime.fromtimestamp(member.mtime).timetuple()[:6], (1980, 1, 1, 0, 0, 0))    # keep the file time of the backup
                     except (OverflowError, OSError, ValueError):
