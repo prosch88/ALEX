@@ -4577,7 +4577,7 @@ def recreate_dbs(change, text, zip_path=None):
         except:
             pdu_json = [{}]
         try:
-            addRecreatedr_data = adb_call(device.shell, "content query --uri content://mms/addr")
+            addr_data = adb_call(device.shell, "content query --uri content://mms/addr")
             addr_json = content_to_json(addr_data)
         except:
             addr_json = [{}]
@@ -4585,7 +4585,7 @@ def recreate_dbs(change, text, zip_path=None):
             part_data = adb_call(device.shell, "content query --uri content://mms/part")
             part_json = content_to_json(part_data)
         except:
-            part_data = [{}]
+            part_json = [{}]
 
         mmssms_schema = os.path.join(os.path.dirname(__file__), "ressources" , "mmssms.json")
         with open(mmssms_schema, "r", encoding="utf-8") as f:
