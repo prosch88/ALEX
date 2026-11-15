@@ -39,6 +39,7 @@ import uiautomator2 as u2
 import ipaddress
 import sqlite3
 import shutil
+import errno
 import json
 import queue
 import zipfile
@@ -1692,6 +1693,8 @@ class MyApp(ctk.CTk):
             try: shutil.rmtree(folder)
             except: pass
             self.text.configure(text="Data Extraction complete.")
+        elif self.change.get() == 3:
+            self.text.configure(text="The output drive is full. Data Extraction stopped.")
         else:
             self.text.configure(text="Data Extraction incomplete.")
         self.prog_text.pack_forget()
@@ -1805,8 +1808,11 @@ class MyApp(ctk.CTk):
         self.pull_data = threading.Thread(target=lambda: pull_dir_mod(device.sync, data_path, folder, text=self.text, prog_text=self.prog_text, progress=self.progress, change=self.change, zip=zip, mode="ufed"))
         self.pull_data.start()
         self.wait_variable(self.change)
-        if self.change.get() == 2:
-            self.text.configure(text="Advanced Logical Backup failed.")
+        if self.change.get() in (2, 3):
+            if self.change.get() == 3:
+                self.text.configure(text="The output drive is full. Advanced Logical Backup stopped.")
+            else:
+                self.text.configure(text="Advanced Logical Backup failed.")
             self.prog_text.pack_forget()
             self.progress.pack_forget()
             log("UFED-Style Logical+ Backup failed")
@@ -1832,6 +1838,14 @@ class MyApp(ctk.CTk):
             self.progress.pack_forget()
             log("UFED-Style Logical+ Backup complete")
             self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
+
+    #The output drive is full: show it and return to the menu
+    def show_disk_full(self, name):
+        self.text.configure(text=f"The output drive is full. {name} stopped.")
+        self.prog_text.pack_forget()
+        self.progress.pack_forget()
+        log(f"{name} stopped: the output drive is full")
+        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
 
     #Show the "PRFS"-Backup screen
     def show_prfs(self):
@@ -1988,6 +2002,9 @@ class MyApp(ctk.CTk):
             self.pull_data = threading.Thread(target=lambda: pull_dir_mod(device.sync, data_path, folder, text=self.text, prog_text=self.prog_text, progress=self.progress, change=self.change, zip=zip, mode="prfs"))
             self.pull_data.start()
             self.wait_variable(self.change)
+            if self.change.get() == 3:
+                self.show_disk_full("PRFS Backup")
+                return
             try: shutil.rmtree(folder)
             except: pass
         if incl_system == "on":
@@ -2010,6 +2027,9 @@ class MyApp(ctk.CTk):
                     self.pull_data = threading.Thread(target=lambda: pull_dir_mod(device.sync, data_path, folder, text=self.text, prog_text=self.prog_text, progress=self.progress, change=self.change, zip=zip,mode="prfs"))
                     self.pull_data.start()
                     self.wait_variable(self.change)
+                    if self.change.get() == 3:
+                        self.show_disk_full("PRFS Backup")
+                        return
                     try: shutil.rmtree(folder)
                     except: pass
                 else:
@@ -5098,7 +5118,9 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
                     os.utime(new_dst, (mtime, mtime))
                 except:
                     pass
-            except:
+            except Exception as e:
+                if is_disk_full(e):
+                    raise
                 log(f"Error pulling: {new_src}")
                 size = 0
             try:
@@ -5116,6 +5138,8 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
                 zip.writestr(zip_info, data)
                 os.remove(new_dst)
             except Exception as e:
+                if is_disk_full(e):
+                    raise
                 log(f"Error zipping: {new_dst}: {e}")
                 print(f"Error zipping {new_dst}: {e}")
 
@@ -5148,6 +5172,23 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
         change.set(1)
         return func_size
     except Exception as e:
+        if is_disk_full(e):
+            #the incomplete archive cannot be used: remove it and the temp folder, which also frees space for the log
+            removed = None
+            if zip is not None:
+                try: zip.close()
+                except Exception: pass
+                try:
+                    os.remove(zip.filename)
+                    removed = f"Removed the incomplete archive {os.path.basename(zip.filename)}"
+                except Exception as e2:
+                    removed = f"Could not remove the incomplete archive {zip.filename}: {e2}"
+            shutil.rmtree(dst, ignore_errors=True)
+            log(f"The output drive is full. Stopped pulling {rootf}")
+            if removed:
+                log(removed)
+            change.set(3)
+            return 0
         log(f"Error pulling {rootf}: {e}")
         zip.close()
         change.set(2)
@@ -5431,9 +5472,16 @@ def restart_adb():
 def log(text):
     if not cwd_selected:
         return
-    with open(f"ALEX_log_{snr}.log", 'a', encoding="utf-8") as logfile:
-        logtime = str(datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
-        logfile.write(f"{logtime}: {text}\n")
+    try:
+        with open(f"ALEX_log_{snr}.log", 'a', encoding="utf-8") as logfile:
+            logtime = str(datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+            logfile.write(f"{logtime}: {text}\n")
+    except OSError:
+        pass                                                                    #e.g. the output drive is full: a lost log line must not stop the extraction
+
+#True if an error means the drive is full (on Windows, WinError 112 is mapped to ENOSPC as well)
+def is_disk_full(e):
+    return isinstance(e, OSError) and e.errno == errno.ENOSPC
 
 #subprocess helper
 def run(cmd, **kwargs):
