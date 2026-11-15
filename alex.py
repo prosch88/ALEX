@@ -1842,7 +1842,8 @@ class MyApp(ctk.CTk):
         sysfolders = ["/system/apex/","/system/app/","/system/bin/", "/system/cameradata/", "/system/container/", "/system/etc/",
                       "/system/fake-libs/", "/system/fonts/", "/system/framework/", "/system/hidden/", "/system/lib/", "/system/lib64/",
                       "/system/media/", "/system/product/", "/system/priv-app/", "/system/saiv/", "/system/tts/", "/system/usr/", "/system/vendor/",
-                      "/system/xbin/, /product/, /vendor/, /etc/"]
+                      "/system/xbin/", "/product/", "/vendor/", "/etc/"]
+        sysfolders = without_linked_folders(sysfolders)                                                                 #e.g. /etc is a link to /system/etc: the same files must not go into the ZIP twice
         sysfolders.extend(apps_path)
         global data_size
         global total_size
@@ -4954,6 +4955,35 @@ def do_hash_file(change, filename, physical=False):
         f_hash = None
     if physical == False:
         change.set(1)
+
+linked_folders_logged = set()
+
+#The folders of the list without those that are an earlier folder of the list on the device: a link to it, the target of it, or a folder inside it.
+#On current devices /system/product, /system/vendor and /etc are links (to /product, /vendor and /system/etc). Pulled under both names the files are in the ZIP twice.
+#The first name in the list is kept. If the device cannot resolve the paths the list is returned as it is.
+def without_linked_folders(folders):
+    script = 'for d; do echo "$(realpath "$d" 2>/dev/null || readlink -f "$d" 2>/dev/null)"; done'
+    try:
+        quoted = " ".join("'" + folder.replace("'", "'\\''") + "'" for folder in folders)
+        real_paths = adb_call(device.shell, f"sh -c '{script}' sh {quoted}").split("\n")[:len(folders)]
+    except Exception:
+        return list(folders)
+    if len(real_paths) != len(folders):
+        return list(folders)
+    kept = []
+    kept_real = []
+    for folder, real in zip(folders, real_paths):
+        real = real.strip().rstrip("/")
+        earlier = next((name for name, known in kept_real if real.startswith("/") and (real == known or real.startswith(known + "/"))), None)
+        if earlier is not None:
+            if folder not in linked_folders_logged:
+                linked_folders_logged.add(folder)
+                log(f"{folder} is {real} on the device and is pulled as {earlier}. It is not pulled a second time.")
+            continue
+        kept.append(folder)
+        if real.startswith("/"):
+            kept_real.append((folder, real))
+    return kept
 
 def create_case_backup(bu_fname, bu_ext, bu_desc, type, method, bu_hash, case_begin, case_end, ufd=None):
     bu_files = []
