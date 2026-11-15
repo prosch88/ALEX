@@ -464,6 +464,8 @@ class MyApp(ctk.CTk):
         for entry in choices[:8]:
             label = f"{entry.serial}   {entry.tags.get('model', '')}   ({entry.state})"
             ctk.CTkButton(self.dynamic_frame, text=label, width=400, font=self.stfont, command=lambda serial=entry.serial: self.choose_device(serial)).pack(pady=4)
+        if len(choices) > 8:
+            ctk.CTkLabel(self.dynamic_frame, font=self.stfont, text=f"{len(choices) - 8} more device(s) are not shown. Start ALEX with --serial to use one of them.").pack(pady=(6, 0))
         ctk.CTkButton(self.dynamic_frame, text="Check again", command=self.show_noadbserver).pack(pady=20)
 
     def choose_device(self, serial):
@@ -3120,6 +3122,13 @@ def pick_device_entry(entries, wanted=None):
         return entries[0]
     return None
 
+#True if the adb server lists a device other than the one ALEX works with: the server must then not be restarted or killed
+def other_devices_attached():
+    try:
+        return any(entry.serial != snr_id for entry in adb_call(adb.list, extended=True))
+    except Exception:
+        return False
+
 #adb command line for the selected device. Without "-s" adb fails as soon as a second device is attached.
 def adb_cmd(*args):
     if snr_id:
@@ -5405,7 +5414,8 @@ def temp_initroot(change, text, m_init_device, timeout=120):
             try:
                 adb_call(device.shell, "echo ready")
             except:
-                restart_adb()
+                if not other_devices_attached():
+                    restart_adb()
             if "error" in str(result):
                 change.set(2)
             else:
