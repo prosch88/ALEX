@@ -758,11 +758,12 @@ class MyApp(ctk.CTk):
         self.change.set(0)
         zip = zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED, compresslevel=1)
         try:
-            self.decrypt_backup = threading.Thread(target=lambda: ab_decrypt.backup_to_zip(ab_path, zip, bu_pass, self.change, self.prog_text))
+            self.decrypt_backup = threading.Thread(target=lambda: ab_decrypt.backup_to_zip(ab_path, zip, bu_pass, self.change, self.prog_text, log=log))
             self.decrypt_backup.start()
             self.wait_variable(self.change)
         finally:
             zip.close()
+        ab_complete = self.change.get() == 1
 
         self.change.set(0)
         self.text.configure(text="Calculating Zip-Hash. This may take a while.")
@@ -775,7 +776,10 @@ class MyApp(ctk.CTk):
         self.progress.pack_forget()
         self.prog_text.pack_forget()
         hash_line = f"\nSHA256: {f_hash}" if f_hash else ""
-        self.text.configure(text=f"PRFS reconstruction complete.\n{zip_path}{hash_line}", height=80)
+        if ab_complete:
+            self.text.configure(text=f"PRFS reconstruction complete.\n{zip_path}{hash_line}", height=80)
+        else:
+            self.text.configure(text=f"The backup could not be read to its end. The ZIP is incomplete, see the log.\n{zip_path}{hash_line}", height=80)
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("DataMenu")).pack(pady=40))
 
     def show_save_device_info(self):
@@ -1780,6 +1784,8 @@ class MyApp(ctk.CTk):
             self.wait_variable(self.change)
             if self.change.get() == 1:
                 bu_pass = None
+            elif self.change.get() == 2:
+                bu_pass = "12345"                                                                                       #the backup is encrypted: the password ALEX sets or asks the user to enter
             self.prog_text.configure(text="")
             self.change.set(0)
             self.zip_backup = threading.Thread(target=lambda: self.zip_bu(zip, self.text, self.change))
@@ -1960,16 +1966,21 @@ class MyApp(ctk.CTk):
             self.wait_variable(self.change)
             if self.change.get() == 1:
                 bu_pass = None
+            elif self.change.get() == 2:
+                bu_pass = "12345"                                                                                       #the backup is encrypted: the password ALEX sets or asks the user to enter
             self.prog_text.configure(text="")
             if self.change.get() != 3:
                 self.change.set(0)
-                self.decrypt_backup = threading.Thread(target=lambda: ab_decrypt.backup_to_zip(bu_file, zip, bu_pass, self.change, self.prog_text))
+                self.decrypt_backup = threading.Thread(target=lambda: ab_decrypt.backup_to_zip(bu_file, zip, bu_pass, self.change, self.prog_text, log=log))
                 self.decrypt_backup.start()
                 self.wait_variable(self.change)
-                try:
-                    os.remove(bu_file)
-                except:
-                    pass
+                if self.change.get() == 1:
+                    try:
+                        os.remove(bu_file)
+                    except:
+                        pass
+                else:
+                    log(f"The Android backup was not unpacked completely (wrong password or incomplete backup). It is kept as {bu_file}")    #never delete a backup that is not completely in the ZIP
             else:
                 pass
 
