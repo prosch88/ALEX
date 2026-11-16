@@ -35,6 +35,7 @@ import alex.dirty_shell as dirty_shell
 import alex.shot_ut as shot_ut
 import alex.ab_decrypt as ab_decrypt
 import alex.case_uco as case_uco
+import alex.acquisition_record as acquisition_record
 import numpy as np
 import uiautomator2 as u2
 import ipaddress
@@ -1710,6 +1711,7 @@ class MyApp(ctk.CTk):
         self.get_dsize = threading.Thread(target=lambda: get_data_size(data_path, self.change))
         self.get_dsize.start()
         self.wait_variable(self.change)
+        record = start_record(f"Pull of {data_path}")
         folder = f'Data_{snr}_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}'
         zip_path = f"{folder}.zip"
         zip = zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED, compresslevel=1)
@@ -1734,6 +1736,7 @@ class MyApp(ctk.CTk):
             self.text.configure(text="The output drive is full. Data Extraction stopped.")
         else:
             self.text.configure(text="Data Extraction incomplete.")
+        end_record(record, zip_path, "ALEX_acquisition_record.json")
         self.prog_text.pack_forget()
         self.progress.pack_forget()
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
@@ -1779,6 +1782,7 @@ class MyApp(ctk.CTk):
         global bu_pass
         data_size = 0
         log("Started UFED-Style Logical+ Backup")
+        record = start_record("UFED-Style Logical+ Backup")
         now = datetime.now()
         case_begin = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         local_timezone = datetime.now(timezone.utc).astimezone().tzinfo
@@ -1855,6 +1859,7 @@ class MyApp(ctk.CTk):
             self.prog_text.pack_forget()
             self.progress.pack_forget()
             log("UFED-Style Logical+ Backup failed")
+            end_record(record, path=os.path.join(ufed_folder, f"{fname}_acquisition_record.json"))
             self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
         else:
             zip.close()
@@ -1876,6 +1881,7 @@ class MyApp(ctk.CTk):
             self.prog_text.pack_forget()
             self.progress.pack_forget()
             log("UFED-Style Logical+ Backup complete")
+            end_record(record, path=os.path.join(ufed_folder, f"{fname}_acquisition_record.json"))
             self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
 
     #The output drive is full: show it and return to the menu
@@ -1949,6 +1955,7 @@ class MyApp(ctk.CTk):
         now = datetime.now()
         case_begin = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         log("Started PRFS Backup.")
+        record = start_record("PRFS Backup")
 
         folder = f'{snr}_prfs_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}'
         zip_path = f"{folder}.zip"
@@ -2163,6 +2170,7 @@ class MyApp(ctk.CTk):
             self.prfs_cp.start()
             self.wait_variable(self.change)
             self.change.set(0)
+        end_record(record, zip_path, "extra/acquisition_record.json")
         case_end = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         self.change = ctk.IntVar(self, 0)
         self.progress.pack_forget()
@@ -5113,6 +5121,26 @@ def get_data_size(data_path, change):
         #print(e)
         total_size = 1
     change.set(1)
+
+#Device clock and state at the start of an acquisition. Never stops the acquisition: returns None if the record cannot be started.
+def start_record(what):
+    try:
+        return acquisition_record.AcquisitionRecord(lambda cmd: adb_call(device.shell, cmd), log, what, serial=snr_id, version=a_version)
+    except Exception as e:
+        log(f"Acquisition record not started: {type(e).__name__}: {e}")
+        return None
+
+#Device clock and state at the end of an acquisition, written into the ZIP (name) or to a file of its own (path)
+def end_record(record, zip_path=None, name=None, path=None):
+    if record is None:
+        return
+    try:
+        if path is not None:
+            record.write_file(path)
+        else:
+            record.write_into_zip(zip_path, name)
+    except Exception as e:
+        log(f"Acquisition record not written: {type(e).__name__}: {e}")
 
 def do_hash_file(change, filename, physical=False):
     global f_hash
