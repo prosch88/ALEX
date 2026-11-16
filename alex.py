@@ -4161,7 +4161,7 @@ def pull_apks(change, text, progress, prog_text, result):
         summary = apk_inventory.summary(packages, rows)
         log(f"APK capture: {summary}. Inventory SHA256={hashlib.sha256(inventory).hexdigest()}")
         log(f"Created APK archive: {zip_path}, SHA256={zip_hash}")
-        result["text"] = f"APK capture complete.\n{summary}.\n{zip_path}\nSHA256: {zip_hash}"
+        result["text"] = f"APK capture complete.\n\n{summary}.\nFilename: {zip_path}\n"
         change.set(1)
     except Exception as e:
         log(f"APK capture failed: {type(e).__name__}: {e}")

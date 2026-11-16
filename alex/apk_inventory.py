@@ -218,6 +218,6 @@ def inventory_csv(rows):
 def summary(packages, rows):
     ok = [row for row in rows if row["status"] == "ok"]
     differ = sum(1 for row in ok if row.get("signer_sha256") and row.get("signer_sha256_device") and row["signer_sha256"] != row["signer_sha256_device"])
-    return (f"{len(packages)} app(s), {len(ok)} APK file(s) pulled ({sum(row['size'] for row in ok)} bytes), {len(rows) - len(ok)} not pulled, "
-            f"signing certificate read from {sum(1 for row in ok if row.get('signer_sha256'))} file(s), "
+    return (f"{len(packages)} app(s), {len(ok)} APK file(s) pulled ({sum(row['size'] for row in ok)} bytes), {len(rows) - len(ok)} not pulled,\n"
+            f"signing certificate read from {sum(1 for row in ok if row.get('signer_sha256'))} file(s),\n"
             f"{differ} file(s) with a certificate other than the one the package manager reports")
