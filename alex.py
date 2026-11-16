@@ -1633,6 +1633,7 @@ class MyApp(ctk.CTk):
         now = datetime.now()
         case_begin = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         log("Started FFS Backup")
+        record = start_record("Full Filesystem (Zip)")
         filename = f'FFS_{snr}_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}'
         zip_path = f'{filename}.zip'
         case_json_name = f'{filename}.case.json'
@@ -1643,6 +1644,7 @@ class MyApp(ctk.CTk):
         self.progress.pack()
         self.progress.start()
         if not ffs_ui_job(self, zip_path, "zip"):
+            end_record(record, path=f"{filename}_acquisition_record.json")
             return
         case_end = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         self.change = ctk.IntVar(self, 0)
@@ -1653,6 +1655,7 @@ class MyApp(ctk.CTk):
         global f_hash
         case_backup = create_case_backup(bu_fname=zip_path, bu_ext=".zip", bu_desc= "ALEX Full Filesystem (Zip)", type="Logical", method="Full Filesystem", bu_hash=f_hash, case_begin=case_begin, case_end=case_end)
         call_case_json(case_device, case_backup, case_json_name, change=None)
+        end_record(record, path=f"{filename}_acquisition_record.json")
         self.text.configure(text="Data Extraction complete.")
         self.prog_text.pack_forget()
         self.progress.pack_forget()
@@ -1669,6 +1672,7 @@ class MyApp(ctk.CTk):
         now = datetime.now()
         case_begin = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         log("Started FFS Backup")
+        record = start_record("Full Filesystem (Tar)")
         file_name = f'FFS_{snr}_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}'
         tar_path = f'{file_name}.tar'
         case_json_name = f'{file_name}.case.json'
@@ -1678,6 +1682,7 @@ class MyApp(ctk.CTk):
         self.progress.pack()
         self.progress.start()
         if not ffs_ui_job(self, tar_path, "tar"):
+            end_record(record, path=f"{file_name}_acquisition_record.json")
             return
         case_end = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         self.change = ctk.IntVar(self, 0)
@@ -1688,6 +1693,7 @@ class MyApp(ctk.CTk):
         global f_hash
         case_backup = create_case_backup(bu_fname=tar_path, bu_ext=".tar", bu_desc= "ALEX Full Filesystem (Tar)", type="Logical", method="Full Filesystem", bu_hash=f_hash, case_begin=case_begin, case_end=case_end)
         call_case_json(case_device, case_backup, case_json_name, change=None)
+        end_record(record, path=f"{file_name}_acquisition_record.json")
         self.text.configure(text="Data Extraction complete.")
         self.prog_text.pack_forget()
         self.progress.pack_forget()
@@ -4367,6 +4373,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
     now = datetime.now()
     case_begin = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     log("Started physical extraction.")
+    record = start_record("Physical Extraction")
     #Find block device
     block = ""
     if show_root == True:
@@ -4534,6 +4541,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                 bu_files.append({"bu_fname": f"{snr}_{target}.bin", "bu_ext": ".bin", "bu_hash": f_hash})
             case_backup = create_multi_file_case_backup(bu_files=bu_files, type="Physical", method="Physical", bu_desc= "ALEX Physical Extraction", case_begin=case_begin, case_end=case_end)
             call_case_json(case_device, case_backup, case_json_name, change=None)
+            end_record(record, path=case_json_name.replace(".case.json", "_acquisition_record.json"))
             complete = True
             prog_text.pack_forget()
             progress.pack_forget()
@@ -4612,6 +4620,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             do_hash_file(change=None, filename=out_file, physical=True)
             case_backup = create_case_backup(bu_fname=out_file, bu_ext=".bin", bu_desc= "ALEX Physical Extraction", type="Physical", method="Physical", bu_hash=f_hash, case_begin=case_begin, case_end=case_end)
             call_case_json(case_device, case_backup, case_json_name, change=None)
+            end_record(record, path=case_json_name.replace(".case.json", "_acquisition_record.json"))
             complete = True
             prog_text.pack_forget()
             progress.pack_forget()
@@ -4678,6 +4687,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             do_hash_file(change=None, filename=out_file, physical=True)
             case_backup = create_case_backup(bu_fname=out_file, bu_ext=".bin", bu_desc= "ALEX Physical Extraction", type="Physical", method="Physical", bu_hash=f_hash, case_begin=case_begin, case_end=case_end)
             call_case_json(case_device, case_backup, case_json_name, change=None)
+            end_record(record, path=case_json_name.replace(".case.json", "_acquisition_record.json"))
             complete = True
             prog_text.pack_forget()
             progress.pack_forget()
