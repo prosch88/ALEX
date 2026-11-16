@@ -227,7 +227,9 @@ class MyApp(ctk.CTk):
 
     def on_close(self):
         try:
-            adb_call(adb.server_kill)
+            others = [entry for entry in adb_call(adb.list, extended=True) if entry.serial != snr_id]
+            if not others:                                                                                              #other devices are attached: a second ALEX may be using the same adb server
+                adb_call(adb.server_kill)
         except Exception as e:
             print(e)
         self.destroy()
@@ -367,6 +369,12 @@ class MyApp(ctk.CTk):
         self.text.pack(pady=50)
         self.text.update()
 
+        if fixed_serial is None and selected_serial is None:
+            choices = list_adb_devices()
+            if len(choices) > 1:
+                self.show_device_choice(choices)
+                return
+
         try:
             get_client()
         except Exception as e:
@@ -447,6 +455,26 @@ class MyApp(ctk.CTk):
                 self.text.configure(text="ADB Server found!")
                 self.text.pack(pady=50)
                 pass
+
+    #More than one device is attached: the examiner chooses the device to work with
+    def show_device_choice(self, choices):
+        for widget in self.dynamic_frame.winfo_children():
+            widget.destroy()
+        ctk.CTkLabel(self.dynamic_frame, text="ALEX by Christian Peter", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="center")
+        self.text = ctk.CTkLabel(self.dynamic_frame, width=400, height=60, font=self.stfont, anchor="w", justify="left",
+                                 text="More than one device is connected.\nChoose the device to work with:")
+        self.text.pack(pady=(40, 15))
+        for entry in choices[:8]:
+            label = f"{entry.serial}   {entry.tags.get('model', '')}   ({entry.state})"
+            ctk.CTkButton(self.dynamic_frame, text=label, width=400, font=self.stfont, command=lambda serial=entry.serial: self.choose_device(serial)).pack(pady=4)
+        if len(choices) > 8:
+            ctk.CTkLabel(self.dynamic_frame, font=self.stfont, text=f"{len(choices) - 8} more device(s) are not shown. Start ALEX with --serial to use one of them.").pack(pady=(6, 0))
+        ctk.CTkButton(self.dynamic_frame, text="Check again", command=self.show_noadbserver).pack(pady=20)
+
+    def choose_device(self, serial):
+        global selected_serial
+        selected_serial = serial
+        self.show_noadbserver()
 
     #Show the Wifi-Pairing
     def show_wifi_pairing(self):
@@ -2035,7 +2063,7 @@ class MyApp(ctk.CTk):
                 self.get_dsize.start()
                 self.wait_variable(self.change)
                 if total_size > 1:
-                    folder = ".temp_folder"
+                    folder = f".temp_folder_{snr}"
                     try: os.mkdir(folder)
                     except: pass
                     self.change.set(0)
@@ -2220,7 +2248,7 @@ class MyApp(ctk.CTk):
         global bu_pass
         try:
             with open(bu_file, "wb") as f:
-                proc = Popen(["adb", "exec-out", f"bu backup{bu_options}"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                proc = Popen(adb_cmd("exec-out", f"bu backup{bu_options}"), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
                 #stdout=subprocess.PIPE
                 t = threading.Thread(target=reader, args=(proc.stdout, q))
                 t.daemon = True
@@ -3122,6 +3150,48 @@ def get_adb_version():
     except (OSError, subprocess.TimeoutExpired):
         return "not found"
 
+#Serial given on the command line (--serial / -s): ALEX then only works with this device
+def serial_from_argv(argv):
+    for i, arg in enumerate(argv):
+        if arg in ("-s", "--serial") and i + 1 < len(argv):
+            return argv[i + 1]
+        if arg.startswith("--serial="):
+            return arg.split("=", 1)[1]
+    return None
+
+#All devices the adb server knows (empty if there is no server)
+def list_adb_devices(host=None, port=None):
+    try:
+        ensure_adb_server()
+        client = adbutils.AdbClient(host=host or default_host, port=port or default_port)
+        return list(adb_call(client.list, extended=True))
+    except Exception:
+        return []
+
+#The entry of "adb devices" to work with: the wanted serial, or the first device if none is wanted
+def pick_device_entry(entries, wanted=None):
+    if wanted:
+        for entry in entries:
+            if entry.serial == wanted:
+                return entry
+        return None
+    if entries:
+        return entries[0]
+    return None
+
+#True if the adb server lists a device other than the one ALEX works with: the server must then not be restarted or killed
+def other_devices_attached():
+    try:
+        return any(entry.serial != snr_id for entry in adb_call(adb.list, extended=True))
+    except Exception:
+        return False
+
+#adb command line for the selected device. Without "-s" adb fails as soon as a second device is attached.
+def adb_cmd(*args):
+    if snr_id:
+        return ["adb", "-s", snr_id, *args]
+    return ["adb", *args]
+
 def add_space(value: str) -> str:
         if value and value[-1].isalpha():
             return value[:-1] + " " + value[-1]
@@ -3194,6 +3264,7 @@ def get_client(host=default_host, port=default_port, check=False):
     global apps
     global ut
     global aos
+    global selected_serial
     if check == True:
         try:
             connected = adb != None and device != None and any(
@@ -3215,20 +3286,29 @@ def get_client(host=default_host, port=default_port, check=False):
         adb = None
 
     if adb != None:
+        entries = []
         try:
-            snr_id = adb_call(adb.list, extended=True)[0].serial
-            state = adb_call(adb.list, extended=True)[0].state
+            entries = adb_call(adb.list, extended=True)
+            entry = pick_device_entry(entries, fixed_serial or selected_serial)
+            if entry is None:
+                raise IndexError
+            snr_id = entry.serial
+            state = entry.state
             device = adb.device(snr_id)
+            shot_ut.serial = snr_id
             try:
-                device_auto = u2.connect()
+                device_auto = u2.connect(snr_id)
             except:
                 device_auto = None
         except IndexError:
             snr = None
             state = None
             device = None
+            if selected_serial is not None:                                                                             #the chosen device is gone: choose again on the next check
+                selected_serial = None
         if device == None:
-            restart_adb()
+            if not entries:                                                                                             #never restart the server while it serves other devices (a second ALEX may be using it)
+                restart_adb()
             device_info = nodevice_text = ("No device detected!\n" +
                     "\n" + '{:13}'.format("Python: ") + "\t" + platform.python_version() +
                     "\n" + '{:13}'.format("adb: ") + "\t" + get_adb_version() +
@@ -4369,7 +4449,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                     except: pass
                     device_path = f"/dev/{block + target}"
                     proc = Popen(
-                        ["adb", "pull", device_path, out_file],
+                        adb_cmd("pull", device_path, out_file),
                         stdout=subprocess.DEVNULL,
                         stderr=subprocess.DEVNULL
                     )
@@ -4395,18 +4475,18 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                         if show_root == True:
                             if device_has_su():
                                 if c_su:
-                                    cmd = ['adb', out_cmd, f"su -c \'cat {device_path} 2>/dev/null\'"]
+                                    cmd = adb_cmd(out_cmd, f"su -c \'cat {device_path} 2>/dev/null\'")
                                 else:
-                                    cmd = ['adb', out_cmd, f"echo \'cat {device_path} 2>/dev/null\' | su"]
+                                    cmd = adb_cmd(out_cmd, f"echo \'cat {device_path} 2>/dev/null\' | su")
 
                             elif mtk_su == True:
-                                cmd = ['adb', "exec-out", f"/data/local/tmp/mtk-su -c cat {device_path} 2>/dev/null"]
+                                cmd = adb_cmd("exec-out", f"/data/local/tmp/mtk-su -c cat {device_path} 2>/dev/null")
 
                             else:
-                                cmd = ['adb', "exec-out", f"cat {device_path} 2>/dev/null"]
+                                cmd = adb_cmd("exec-out", f"cat {device_path} 2>/dev/null")
 
                         else:
-                            cmd = ['adb', out_cmd, f"cat {device_path} 2>/dev/null"]
+                            cmd = adb_cmd(out_cmd, f"cat {device_path} 2>/dev/null")
 
                         proc = Popen(
                             cmd,
@@ -4494,11 +4574,11 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             device_path = f"/dev/{block + target}"
             out_file = f"{snr}_{target}.bin"
             if dshell is True:
-                with dirty_shell.DirtyShell(["shell", "run-as"]) as ds:
+                with dirty_shell.DirtyShell(["shell", "run-as"], serial=snr_id) as ds:
                     ds.execute(f"setenforce 0")
                     ds.execute(f"chmod 644 {device_path}")
             proc = Popen(
-                ["adb", "pull", device_path, out_file],
+                adb_cmd("pull", device_path, out_file),
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL
             )
@@ -4542,25 +4622,25 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
 
             with open(out_file, "wb") as f:
                 if ut == True:
-                    cmd = ['adb', "exec-out",  f"echo {sh_pwd} | sudo -S cat {device_path} 2>/dev/null"]
+                    cmd = adb_cmd("exec-out",  f"echo {sh_pwd} | sudo -S cat {device_path} 2>/dev/null")
                 else:
                     if show_root == True:
                         if device_has_su():
                             if c_su:
                                 print("c_su")
-                                cmd = ['adb', out_cmd, f"su -c \'cat {device_path} 2>/dev/null\'"]
+                                cmd = adb_cmd(out_cmd, f"su -c \'cat {device_path} 2>/dev/null\'")
                             else:
                                 print("su without c")
-                                cmd = ['adb', {out_cmd}, f"echo \'cat {device_path} 2>/dev/null\' | su"]
+                                cmd = adb_cmd(out_cmd, f"echo \'cat {device_path} 2>/dev/null\' | su")
 
                         elif mtk_su == True:
-                            cmd = ['adb', "exec-out", f"/data/local/tmp/mtk-su -c cat {device_path} 2>/dev/null"]
+                            cmd = adb_cmd("exec-out", f"/data/local/tmp/mtk-su -c cat {device_path} 2>/dev/null")
 
                         else:
-                            cmd = ['adb', "exec-out", f"cat {device_path} 2>/dev/null"]
+                            cmd = adb_cmd("exec-out", f"cat {device_path} 2>/dev/null")
 
                     else:
-                        cmd = ['adb', out_cmd, f"cat {device_path} 2>/dev/null"]
+                        cmd = adb_cmd(out_cmd, f"cat {device_path} 2>/dev/null")
                 proc = Popen(
                     cmd,
                     stdout=f,
@@ -5338,7 +5418,7 @@ def has_root(change, timeout=30):
 def device_has_su() -> bool:
     try:
         result = run(
-            ["adb", "shell", "which", "su"],
+            adb_cmd("shell", "which", "su"),
             capture_output=True, text=True
         )
         if "not found" in result.stdout.lower() or "not found" in result.stderr.lower():
@@ -5349,7 +5429,7 @@ def device_has_su() -> bool:
         return False
 
 def supports_exec_out() -> bool:
-    cmd = ["adb", "exec-out", "echo", "OK"]
+    cmd = adb_cmd("exec-out", "echo", "OK")
 
     proc = run(
         cmd,
@@ -5381,15 +5461,15 @@ def temp_dirty_cow(change, timeout=30):
     remote_dcow = "/data/local/tmp/dcow"
     remote_rnas = "/data/local/tmp/run-as"
     try:
-        run(["adb", "push", dcow_bin, remote_dcow], check=True)
+        run(adb_cmd("push", dcow_bin, remote_dcow), check=True)
         log("Pushed dcow binary to /data/local/tmp")
-        run(["adb", "push", rnas_bin, remote_rnas], check=True)
+        run(adb_cmd("push", rnas_bin, remote_rnas), check=True)
         log("Pushed run-as binary to /data/local/tmp")
     except Exception as e:
         print(e)
         pass
-    run(["adb", "shell", f"chmod 777 {remote_dcow}"], check=True)
-    run(["adb", "shell", "/data/local/tmp/dcow /data/local/tmp/run-as /system/bin/run-as --no-pad"], check=True)
+    run(adb_cmd("shell", f"chmod 777 {remote_dcow}"), check=True)
+    run(adb_cmd("shell", "/data/local/tmp/dcow /data/local/tmp/run-as /system/bin/run-as --no-pad"), check=True)
     time.sleep(4)
     try:
         stream = adb_call(device.shell, "run-as", stream=True)
@@ -5400,7 +5480,7 @@ def temp_dirty_cow(change, timeout=30):
 
         if "root" in check_dirty.decode():
             """
-            with dirty_shell.DirtyShell(["shell", "run-as"]) as ds:
+            with dirty_shell.DirtyShell(["shell", "run-as"], serial=snr_id) as ds:
                 print(ds.execute("id"))
             """
             dshell = True
@@ -5428,7 +5508,7 @@ def temp_initroot(change, text, m_init_device, timeout=120):
     b_info_text = "Attempt to gain temp-root via CVE-2016-10277 (initroot).\nPlease Wait ..."
     info_text = f"{b_info_text}\n\nCurrent step: Reboot to fastboot"
     text.configure(text=info_text)
-    run(["adb", "reboot", "bootloader"], check=True)
+    run(adb_cmd("reboot", "bootloader"), check=True)
     #device.shell("reboot bootloader")
     time.sleep(4)
     wait_start = time.time()
@@ -5476,7 +5556,8 @@ def temp_initroot(change, text, m_init_device, timeout=120):
             try:
                 adb_call(device.shell, "echo ready")
             except:
-                restart_adb()
+                if not other_devices_attached():
+                    restart_adb()
             if "error" in str(result):
                 change.set(2)
             else:
@@ -5492,7 +5573,7 @@ def fix_initroot_bootloop(change, text, timeout=30):
     b_info_text = "Reset initramfs value.\nPlease Wait ..."
     info_text = f"{b_info_text}\n\nCurrent step: Reboot to fastboot"
     text.configure(text=info_text)
-    run(["adb", "reboot", "bootloader"], check=True)
+    run(adb_cmd("reboot", "bootloader"), check=True)
     #device.shell("reboot bootloader")
     time.sleep(4)
     wait_start = time.time()
@@ -5518,12 +5599,12 @@ def temp_mtk_su(change, timeout=30):
         mtk_su_bin = os.path.join(os.path.dirname(__file__), "ressources" , "cve", "2020-0069", "arm64", "mtk-su")
     remote_path = "/data/local/tmp/mtk-su"
     try:
-        run(["adb", "push", mtk_su_bin, remote_path], check=True)
+        run(adb_cmd("push", mtk_su_bin, remote_path), check=True)
         log("Pushed mtk-su binary to /data/local/tmp")
     except Exception as e:
         print(e)
         pass
-    run(["adb", "shell", f"chmod 755 {remote_path}"], check=True)
+    run(adb_cmd("shell", f"chmod 755 {remote_path}"), check=True)
     try:
         result_holder["value"] = adb_call(device.shell, f"{remote_path} -c whoami").strip() == "root"
 
@@ -5616,6 +5697,9 @@ def sanitize_for_pdf(text) -> str:
 
 cwd_selected = False
 device = None
+snr_id = None
+selected_serial = None                                                                                                  #device chosen in the window when several are attached
+fixed_serial = serial_from_argv(sys.argv) or os.environ.get("ANDROID_SERIAL") or None                                   #device named at start: --serial / -s or ANDROID_SERIAL
 device_auto = None
 fb = fastboot.Fastboot()
 fb_found = "found" if fb.available else "not found"
@@ -5692,14 +5776,10 @@ undict ={'â€¦': '…',"â€ž":"„" ,'â€“': '–', 'â€™': '’',
 
 guiv = "default"
 try:
-    if sys.argv[1] == "1368":
-        guiv = "1368"
-    elif sys.argv[1] == "1024":
-        guiv = "1024"
-    elif sys.argv[1] == "800":
-        guiv = "800"
-    else:
-        pass
+    for arg in sys.argv[1:]:                                                                                            #the size may come before or after --serial
+        if arg in ("1368", "1024", "800") and arg != fixed_serial:
+            guiv = arg
+            break
 except:
     pass
 
