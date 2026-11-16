@@ -2448,13 +2448,14 @@ class MyApp(ctk.CTk):
         self.doshot.start()
 
     def shot(self, imglabel, namefield):
+        case_begin = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         hsize = 426
         shotfail = False
         name = snr + "_" + str(datetime.now().strftime("%m_%d_%Y_%H_%M_%S"))
         filename = name + ".png"
-        hashname = name + ".txt"
+        case_name = name + ".case.json"
         filepath = os.path.join("screenshots", filename)
-        hashpath = os.path.join("screenshots", hashname)
+        case_path = os.path.join("screenshots", case_name)
         if ut == True:
             #shot = ut_app_shot()
             try: shot = shot_ut.shot()
@@ -2505,10 +2506,9 @@ class MyApp(ctk.CTk):
         if shotfail == False:
             with open(filepath, "wb") as file:
                 file.write(png)
-        with open(hashpath, "w") as hash_file:
-            hash_file.write(hash_sha256)
+        screenshot_case_json(filepath, hash_sha256, case_path, case_begin)
         log(f"Created screenshot {filename} with hash {hash_sha256}")
-        namefield.configure(text=f"Screenshot saved as:\n{filename}\nHash saved as:\n{hashname}")
+        namefield.configure(text=f"Screenshot saved as:\n{filename}\nCase JSON saved as:\n{case_name}")
         self.pdf_report(pdf_type="screenshot", shot=filename, sha256=hash_sha256, shot_png=filepath, w=wsize, h=hsize)
 
     def chat_shotloop(self):
@@ -2557,11 +2557,12 @@ class MyApp(ctk.CTk):
         self.stop_event.set()
 
     def shotloop(self, app_name, chat_name, ab_count, sc_count, abs_count, direction, imglabel, namefield, text, png=None, first=False, seen_hashes=None, first_hash=None, w=0, h=0):
+        case_begin = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         name = chat_name + "_" + str(datetime.now().strftime("%m_%d_%Y_%H_%M_%S"))
         filename = name + ".png"
-        hashname = name + ".txt"
+        case_name = name + ".case.json"
         filepath = os.path.join("screenshots", app_name, chat_name, filename)
-        hashpath = os.path.join("screenshots", app_name, chat_name, hashname)
+        case_path = os.path.join("screenshots", app_name, chat_name, case_name)
         shotfail = False
         hsize = 426
         if direction == "down":
@@ -2607,10 +2608,9 @@ class MyApp(ctk.CTk):
                 hash_sha256 = hashlib.sha256(png).hexdigest()
             else:
                 hash_sha256 = hashlib.sha256(open(filepath, "rb").read()).hexdigest()
-            with open(os.path.join(hashpath), "w") as hash_file:
-                hash_file.write(hash_sha256)
+            screenshot_case_json(filepath, hash_sha256, case_path, case_begin, app_name, chat_name, direction)
             log(f"Created screenshot {filename} with hash {hash_sha256}")
-            namefield.configure(text=f"Screenshot saved as:\n{filename}\nHash saved as:\n{hashname}")
+            namefield.configure(text=f"Screenshot saved as:\n{filename}\nCase JSON saved as:\n{case_name}")
             first_hash = imagehash.phash(shot)
             seen_hashes.append(first_hash)
             self.pdf_report(pdf_type="screenshot", shot=filename, sha256=hash_sha256, shot_png=filepath, app_name=app_name, chat_name=chat_name, w=wsize, h=hsize)
@@ -2662,10 +2662,9 @@ class MyApp(ctk.CTk):
                                 hash_sha256 = hashlib.sha256(png).hexdigest()
                             else:
                                 hash_sha256 = hashlib.sha256(open(filepath, "rb").read()).hexdigest()
-                            with open(os.path.join(hashpath), "w") as hash_file:
-                                hash_file.write(hash_sha256)
+                            screenshot_case_json(filepath, hash_sha256, case_path, case_begin, app_name, chat_name, direction)
                             log(f"Created screenshot {filename} with hash {hash_sha256}")
-                            namefield.configure(text=f"Screenshot saved as:\n{filename}\nHash saved as:\n{hashname}")
+                            namefield.configure(text=f"Screenshot saved as:\n{filename}\nCase JSON saved as:\n{case_name}")
                             self.pdf_report(pdf_type="screenshot", shot=filename, sha256=hash_sha256, shot_png=filepath, app_name=app_name, chat_name=chat_name, w=wsize, h=hsize)
                             sc_count += 1
                             ab_count = 0
@@ -5261,6 +5260,19 @@ def create_multi_file_case_backup(bu_files, type, method, bu_desc, case_begin, c
         "endTime": case_end
         }
     return case_backup
+
+def screenshot_case_json(filepath, sha256, case_path, case_begin, app_name=None, chat_name=None, direction=None):
+    case_end = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    backup = create_case_backup(
+        bu_fname=filepath, bu_ext=".png", bu_desc="ALEX Screenshot",
+        type="Logical", method="Chat Capture" if direction is not None else "Screenshot",
+        bu_hash=sha256, case_begin=case_begin, case_end=case_end)
+    backup["Files"][0]["Type"] = "screenshot"
+    backup["Files"][0]["FileName"] = os.path.basename(filepath)
+    if direction is not None:
+        backup["Configuration"] = {"AppName": app_name, "ConversationPartner": chat_name,
+                                   "CaptureDirection": direction}
+    call_case_json(case_device, backup, case_path)
 
 def call_case_json(case_device, case_backup, case_json_name, change=None):
     case_json = case_uco.backup_case_json(case_device, case_backup)
