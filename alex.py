@@ -1907,7 +1907,7 @@ class MyApp(ctk.CTk):
         sysfolders = ["/system/apex/","/system/app/","/system/bin/", "/system/cameradata/", "/system/container/", "/system/etc/",
                       "/system/fake-libs/", "/system/fonts/", "/system/framework/", "/system/hidden/", "/system/lib/", "/system/lib64/",
                       "/system/media/", "/system/product/", "/system/priv-app/", "/system/saiv/", "/system/tts/", "/system/usr/", "/system/vendor/",
-                      "/system/xbin/", "/product/", "/vendor/", "/etc/"]
+                      "/system/xbin/"]
         sysfolders = without_linked_folders(sysfolders)                                                                 #e.g. /etc is a link to /system/etc: the same files must not go into the ZIP twice
         sysfolders.extend(apps_path)
         global data_size
