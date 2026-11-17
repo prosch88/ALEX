@@ -2367,7 +2367,7 @@ class MyApp(ctk.CTk):
                         or 12 <= major < 16 and context.patch_before("2024-06-01")
                         or 12 <= major < 14 and context.patch_before("2024-03-01"))
                     if prfs_exploit or root_methods.select_method(context, methods, order) is not None:
-                        recommendation = ("The device may be vulnerable to an embedded exploit. "
+                        recommendation = ("The device may be vulnerable to an embedded exploit.\n"
                                           "There may be additional files available.")
                 if recommendation:
                     note += "\n" + recommendation
