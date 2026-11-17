@@ -1938,15 +1938,22 @@ class MyApp(ctk.CTk):
         self.incl_logfiles = ctk.StringVar(value="on")
         self.incl_logs_box = ctk.CTkCheckBox(self.dynamic_frame, text="Include Logs and queried Data.", variable=self.incl_logfiles, onvalue="on", offvalue="off")
         self.incl_logs_box.pack(anchor="w", padx= 80, pady=4)
-        self.startb = ctk.CTkButton(self.dynamic_frame, text="Start", font=self.stfont, command=lambda: self.change.set(1))
-        self.startb.pack(pady=25)
-        self.backb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=lambda: self.switch_menu("AcqMenu"))
-        self.backb.pack()
+        actions = ctk.CTkFrame(self.dynamic_frame, fg_color="transparent")
+        actions.pack(fill="x", padx=80, pady=(25, 0))
+        actions.grid_columnconfigure((0, 1), weight=1, uniform="prfs_actions")
+        preview_actions = ctk.CTkFrame(actions, fg_color="transparent")
+        preview_actions.grid(row=0, column=0, sticky="nsew")
+        backup_actions = ctk.CTkFrame(actions, fg_color="transparent")
+        backup_actions.grid(row=0, column=1, sticky="nsew")
+        self.startb = ctk.CTkButton(backup_actions, text="Start", font=self.stfont, command=lambda: self.change.set(1))
+        self.startb.pack(anchor="w", padx=(10, 0), pady=(0, 10))
+        self.backb = ctk.CTkButton(backup_actions, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=lambda: self.switch_menu("AcqMenu"))
+        self.backb.pack(anchor="w", padx=(10, 0))
         preview_groups = [("/sdcard/", ["/sdcard/"])] + [(path, [path]) for path in sysfolders if path not in apps_path]
         if apps_path:
             preview_groups.append((f"app folders ({len(apps_path)})", list(apps_path)))
-        self.previewb = ctk.CTkButton(self.dynamic_frame, text="Preview what can be read", font=self.stfont, fg_color="#2E2E2E", text_color="#DCE4EE", command=lambda: self.show_scope_preview(preview_groups))
-        self.previewb.pack(pady=(10, 0))
+        self.previewb = ctk.CTkButton(preview_actions, text='Scope Preview\n(for \"adb pull\")', font=self.stfont, fg_color="#2E2E2E", text_color=self.info_text.cget("text_color"), command=lambda: self.show_scope_preview(preview_groups))
+        self.previewb.pack(side="right", fill="y", padx=(0, 10))
         self.wait_variable(self.change)
         self.incl_adb_bu_box.pack_forget()
         self.incl_sdcard_box.pack_forget()
@@ -1957,6 +1964,7 @@ class MyApp(ctk.CTk):
         self.startb.pack_forget()
         self.backb.pack_forget()
         self.previewb.pack_forget()
+        actions.pack_forget()
         incl_adb_bu = self.incl_adb_bu.get()
         incl_sdcard = self.incl_sdcard.get()
         incl_system = self.incl_system.get()
@@ -2205,19 +2213,50 @@ class MyApp(ctk.CTk):
         self.progress.pack_forget()
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
 
-    #Window with the scope preview: per folder the size, the files, and how many of them a pull can read. Read-only on the device.
+    # Inline scope preview: folder sizes and readable files. Read-only on the device.
     def show_scope_preview(self, groups):
-        win = ctk.CTkToplevel(self)
-        win.title("ALEX - what a pull can read")
-        win.geometry("880x560")
-        win.after(200, win.lift)
-        info = ctk.CTkLabel(win, font=self.stfont, anchor="w", justify="left",
-                            text="The device counts the files of every folder and opens each one for a single byte. Nothing is changed.\n"
-                                 "refused: the file is listed, the device refuses to open it. not listed: the shell cannot read the entry, a pull does not see it.")
-        info.pack(anchor="w", padx=12, pady=(10, 4))
-        box = ctk.CTkTextbox(win, width=856, height=440, font=("Consolas" if platform.uname().system == "Windows" else "monospace", 12), wrap="none")
-        box.pack(padx=12, pady=6, fill="both", expand=True)
-        box.insert("end", scope_preview.HEADER + "\n")
+        # Keep the PRFS widgets and their variables alive while its wait_variable is active.
+        selection = [(widget, widget.pack_info()) for widget in self.dynamic_frame.winfo_children()
+                     if widget.winfo_manager() == "pack"]
+        for widget, _ in selection:
+            widget.pack_forget()
+        preview = ctk.CTkFrame(self.dynamic_frame, fg_color="transparent", corner_radius=0)
+        preview.pack(fill="both", expand=True)
+        stopped = threading.Event()
+        preview.bind("<Destroy>", lambda event: stopped.set() if event.widget is preview else None, add="+")
+
+        def back():
+            stopped.set()
+            preview.destroy()
+            for widget, options in selection:
+                if widget.winfo_exists():
+                    widget.pack(**options)
+
+        ctk.CTkLabel(preview, text="PRFS Scope Preview", height=60, font=("standard", 24)).pack(pady=(20, 10))
+        status = ctk.CTkLabel(preview, text="Scanning accessible folders …", font=self.stfont,
+                              width=560, height=70, wraplength=560, justify="left")
+        status.pack(padx=20, pady=(0, 15))
+        content = ctk.CTkFrame(preview, fg_color="transparent", width=560, height=280)
+        content.pack(padx=12, pady=10)
+        content.pack_propagate(False)
+        content.grid_propagate(False)
+        chart_frame = ctk.CTkFrame(content, fg_color="#212121", width=260, height=260)
+        chart_frame.grid(row=0, column=0, padx=(0, 16))
+        chart_frame.grid_propagate(False)
+        legend = ctk.CTkFrame(content, fg_color="transparent", width=284, height=280)
+        legend.grid(row=0, column=1, sticky="w")
+        legend.grid_propagate(False)
+        colors = {"sdcard": "#80FD9C", "system": "#195727", "app folders": "#D4C65A"}
+        app_count = sum(len(paths) for label, paths in groups if label.startswith("app folders"))
+        display_names = {"app folders": f"app folders ({app_count} {'app' if app_count == 1 else 'apps'})"}
+        labels = {}
+        for row, (name, color) in enumerate({**colors, "not in scope": "#8c2c27"}.items()):
+            ctk.CTkLabel(legend, text="●", text_color=color, font=("standard", 22)).grid(
+                row=row, column=0, padx=(0, 10), sticky="n", pady=5)
+            labels[name] = ctk.CTkLabel(legend, text=f"{display_names.get(name, name)}: …\n", font=self.stfont,
+                                       width=245, height=60, wraplength=245, anchor="w", justify="left")
+            labels[name].grid(row=row, column=1, sticky="w", pady=5)
+        ctk.CTkButton(preview, text="Back", font=self.stfont, command=back).pack(pady=25)
         lines = queue.Queue()
 
         def worker():
@@ -2225,33 +2264,139 @@ class MyApp(ctk.CTk):
             shell = lambda cmd: adb_call(device.shell, cmd)
             try:
                 for label, paths in groups:
-                    scans = [scope_preview.scan_folder(shell, path) for path in paths]
-                    result = scans[0] if len(scans) == 1 else scope_preview.add_up(label, scans)
+                    scans = []
+                    for index, path in enumerate(paths, 1):
+                        if stopped.is_set():
+                            return
+                        message = f"Scanning app folders ({index}/{len(paths)})" if label.startswith("app folders") else f"Scanning {path}"
+                        lines.put(("status", message))
+                        scans.append(scope_preview.scan_folder(shell, path))
+                    result = scope_preview.add_up(label, scans)
                     results.append(result)
-                    lines.put(scope_preview.format_row(result))
-                lines.put("")
-                lines.put(scope_preview.totals_text(results))
+                    category = "sdcard" if label.rstrip("/") == "/sdcard" else (
+                        "app folders" if label.startswith("app folders") else "system")
+                    lines.put(("result", (category, result)))
+                lines.put(("done", None))
                 log("Scope preview: " + scope_preview.totals_text(results))
                 for result in results:
                     log("Scope preview: " + " ".join(scope_preview.format_row(result).split()))
             except Exception as e:
-                lines.put(f"The preview stopped: {type(e).__name__}: {e}")
-            lines.put(None)
+                lines.put(("error", f"The preview stopped: {type(e).__name__}: {e}"))
+
+        results = {name: [] for name in colors}
+
+        chart = None
+        center_label = None
+
+        def render(complete=False):
+            nonlocal chart, center_label
+            totals = {name: scope_preview.add_up(name, rows) for name, rows in results.items()}
+            for name, result in totals.items():
+                if not results[name] and not complete:
+                    continue
+                readable_text = "\n"
+                if result["files"] is not None and result["refused"] is not None:
+                    readable = max(0, result["files"] - result["refused"])
+                    readable_text = f"\n{readable} readable files ({result['refused']} not readable)"
+                labels[name].configure(text=f"{display_names.get(name, name)}: {scope_preview.size_text(result['kb'])}{readable_text}")
+            # Keep the initial ring untouched until the entire scan is complete.
+            if chart is not None and not complete:
+                return
+            listed_kb = sum(result["kb"] or 0 for result in totals.values())
+            capacity = str(globals().get("data_s", "-")).strip()
+            match = re.fullmatch(r"([\d.]+)\s*([KMGTPE]?)(?:i?B)?", capacity, re.IGNORECASE)
+            system_kb = totals["system"]["kb"] or 0
+            # sdcard and app folders are already included in Data; system is additional.
+            data_kb = float(match[1]) * 1024 ** ("KMGTPE".index(match[2].upper()) if match[2] else -1) if match else 0
+            if data_kb <= 0:
+                # Without Data capacity, retain the listed total as the 100% fallback.
+                data_kb = listed_kb - system_kb
+            total_kb = data_kb + system_kb
+            # A neutral segment also keeps an empty scan safe for CTkPieChart's division.
+            values = {name: {"value": result["kb"], "color": colors[name], "text_color": "#00000000"}
+                      for name, result in totals.items() if result["kb"] and result["kb"] > 0}
+            scoped_data_kb = (totals["sdcard"]["kb"] or 0) + (totals["app folders"]["kb"] or 0)
+            remaining = max(0, data_kb - scoped_data_kb)
+
+            def storage_kb(value):
+                parsed = re.fullmatch(r"([\d.]+)\s*([KMGTPE]?)(?:i?B)?", str(value).strip(), re.IGNORECASE)
+                if parsed is None:
+                    return None
+                return float(parsed[1]) * 1024 ** ("KMGTPE".index(parsed[2].upper()) if parsed[2] else -1)
+
+            used_kb = storage_kb(globals().get("used_s", "-"))
+            free_kb = storage_kb(globals().get("free", "-"))
+            if used_kb is None and free_kb is not None and match:
+                used_kb = max(0, data_kb - free_kb)
+            not_in_scope_kb = None
+            if match and used_kb is not None:
+                # Clamp to Data's remaining capacity to tolerate rounded df -h values.
+                not_in_scope_kb = min(remaining, max(0, used_kb - scoped_data_kb))
+                if not_in_scope_kb:
+                    values["not in scope"] = {"value": not_in_scope_kb, "color": "#8c2c27", "text_color": "#00000000"}
+                remaining -= not_in_scope_kb
+            if complete:
+                labels["not in scope"].configure(text=f"not in scope: {scope_preview.size_text(not_in_scope_kb)}\n")
+            if remaining or not values:
+                values["remaining"] = {"value": remaining or 1, "color": "#3F3F3F", "text_color": "#00000000"}
+            if chart is None:
+                chart = ctk_pie_chart.CTkPieChart(
+                    chart_frame, values={"remaining": {"value": 1, "color": "#3F3F3F"}},
+                    radius=260, line_width=25, show_percentages=False)
+                chart.place(relx=0.5, rely=0.5, anchor="center")
+                center_label = ctk.CTkLabel(chart_frame, text="", font=self.stfont, fg_color="#212121")
+                center_label.place(relx=0.5, rely=0.5, anchor="center")
+            if complete:
+                chart.values = values
+                chart.draw_pie_chart()
+            center_text = scope_preview.size_text(total_kb) if complete else "…"
+            center_label.configure(text=f"100%\n{center_text}")
+            note = "" if listed_kb <= total_kb else "\nListed folders exceed data capacity; segments show their relative sizes."
+            if complete:
+                recommendation = ""
+                if whoami == "root":
+                    recommendation = "The device is rooted. A physical or FFS backup is recommended."
+                elif su_app is not None:
+                    recommendation = "The device may be rooted. A physical or FFS backup is recommended."
+                else:
+                    context = self._root_context()
+                    methods, order = root_methods.load_methods()
+                    major = context.android_major
+                    prfs_exploit = major is not None and (
+                        9 <= major < 12
+                        or 12 <= major < 16 and context.patch_before("2024-06-01")
+                        or 12 <= major < 14 and context.patch_before("2024-03-01"))
+                    if prfs_exploit or root_methods.select_method(context, methods, order) is not None:
+                        recommendation = ("The device may be vulnerable to an embedded exploit. "
+                                          "There may be additional files available.")
+                if recommendation:
+                    note += "\n" + recommendation
+                status.configure(text="Scan complete." + ((" Grey: free data capacity." if not_in_scope_kb is not None else " Grey: remaining data capacity.") if remaining else "") + note)
 
         def poll():
-            if not win.winfo_exists():
+            if stopped.is_set() or not preview.winfo_exists():
                 return
             try:
                 while True:
-                    line = lines.get_nowait()
-                    if line is None:
+                    kind, value = lines.get_nowait()
+                    if kind == "result":
+                        category, result = value
+                        results[category].append(result)
+                        render()
+                    elif kind == "status":
+                        status.configure(text=value)
+                    elif kind == "done":
+                        render(complete=True)
                         return
-                    box.insert("end", line + "\n")
-                    box.see("end")
+                    elif kind == "error":
+                        render()
+                        status.configure(text=value)
+                        return
             except queue.Empty:
                 pass
-            win.after(200, poll)
+            preview.after(200, poll)
 
+        render()
         threading.Thread(target=worker, daemon=True).start()
         poll()
 
