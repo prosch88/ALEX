@@ -2272,6 +2272,14 @@ class MyApp(ctk.CTk):
                         lines.put(("status", message))
                         scans.append(scope_preview.scan_folder(shell, path))
                     result = scope_preview.add_up(label, scans)
+                    if label.startswith("app folders"):
+                        # These paths name the same shared storage scanned as /sdcard/.
+                        sdcard_roots = ("/sdcard", "/storage/emulated/0", "/storage/self/primary",
+                                        "/mnt/sdcard", "/data/media/0")
+                        overlapping = [scan for path, scan in zip(paths, scans)
+                                       if any(path.rstrip("/") == root or path.startswith(root + "/")
+                                              for root in sdcard_roots)]
+                        result["sdcard_kb"] = scope_preview.add_up("overlap", overlapping)["kb"]
                     results.append(result)
                     category = "sdcard" if label.rstrip("/") == "/sdcard" else (
                         "app folders" if label.startswith("app folders") else "system")
@@ -2302,7 +2310,14 @@ class MyApp(ctk.CTk):
             # Keep the initial ring untouched until the entire scan is complete.
             if chart is not None and not complete:
                 return
-            listed_kb = sum(result["kb"] or 0 for result in totals.values())
+            sdcard_kb = totals["sdcard"]["kb"] or 0
+            app_kb = totals["app folders"]["kb"] or 0
+            overlap_kb = min(sdcard_kb, app_kb, sum(
+                result.get("sdcard_kb") or 0 for result in results["app folders"]))
+            # Split shared storage into disjoint sdcard and app segments.
+            segment_kb = {"sdcard": sdcard_kb - overlap_kb,
+                          "system": totals["system"]["kb"] or 0, "app folders": app_kb}
+            listed_kb = sum(segment_kb.values())
             capacity = str(globals().get("data_s", "-")).strip()
             match = re.fullmatch(r"([\d.]+)\s*([KMGTPE]?)(?:i?B)?", capacity, re.IGNORECASE)
             system_kb = totals["system"]["kb"] or 0
@@ -2313,9 +2328,9 @@ class MyApp(ctk.CTk):
                 data_kb = listed_kb - system_kb
             total_kb = data_kb + system_kb
             # A neutral segment also keeps an empty scan safe for CTkPieChart's division.
-            values = {name: {"value": result["kb"], "color": colors[name], "text_color": "#00000000"}
-                      for name, result in totals.items() if result["kb"] and result["kb"] > 0}
-            scoped_data_kb = (totals["sdcard"]["kb"] or 0) + (totals["app folders"]["kb"] or 0)
+            values = {name: {"value": kb, "color": colors[name], "text_color": "#00000000"}
+                      for name, kb in segment_kb.items() if kb > 0}
+            scoped_data_kb = sdcard_kb + app_kb - overlap_kb
             remaining = max(0, data_kb - scoped_data_kb)
 
             def storage_kb(value):
