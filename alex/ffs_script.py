@@ -4,7 +4,6 @@ Base64 costs 33% wire bandwidth but keeps framing intact when live files change
 size, cannot be read, or contain arbitrary bytes. No file is buffered in RAM.
 """
 import base64
-import json
 import os
 import shlex
 import stat
@@ -122,7 +121,7 @@ def acquire_script(output, *, stream, root, excludes, progress=None, log=print, 
                     raise RuntimeError('Could not upload filesystem script')
         finally:
             os.unlink(local)
-        with tempfile.TemporaryFile() as err, open(output + '.metadata.jsonl.partial', 'w', encoding='utf-8') as meta:
+        with tempfile.TemporaryFile() as err:
             proc = process(stream.adb + stream.transport + [stream.root('sh ' + script + ' 2>' + errors)],
                            stdout=subprocess.PIPE, stderr=err, stdin=subprocess.DEVNULL, bufsize=0)
             reader = Reader(proc.stdout, progress=progress)
@@ -186,9 +185,9 @@ def acquire_script(output, *, stream, root, excludes, progress=None, log=print, 
                         rc = fields.field()
                         warning = rc != b'0' or (stat.S_ISREG(mode) and written != size)
                         warnings |= warning
-                        meta.write(json.dumps(dict(path=name, size=size, acquired_size=written, mtime=mtime,
-                                                   mode=mode, uid=int(uid), gid=int(gid), device=dev.decode('ascii', errors='replace'),
-                                                   inode=int(inode), warning=warning), ensure_ascii=True) + '\n')
+                        if warning:
+                            log(f'Filesystem acquisition [{output}]: Read warning for {name!r} '
+                                f'(status={rc!r}, expected={size}, acquired={written}).')
                         count += 1
                     while reader.read(CHUNK):
                         pass
@@ -202,7 +201,7 @@ def acquire_script(output, *, stream, root, excludes, progress=None, log=print, 
                 log_diagnostics(log, output, diagnostics)
                 diagnostics_logged = True
                 if warnings:
-                    log(f'Filesystem acquisition [{output}]: Live-file/read warnings; see {output}.metadata.jsonl for per-file status.')
+                    log(f'Filesystem acquisition [{output}]: Live-file/read warnings; see preceding log entries for details.')
             finally:
                 done.set()
                 if proc.poll() is None:
@@ -210,7 +209,6 @@ def acquire_script(output, *, stream, root, excludes, progress=None, log=print, 
                 proc.wait()
                 proc.stdout.close()
                 watcher.join(timeout=2)
-        os.replace(output + '.metadata.jsonl.partial', output + '.metadata.jsonl')
         os.replace(output + '.partial', output)
         return dict(members=count, bytes=reader.total, warnings=warnings, backend='script')
     except Exception as error:

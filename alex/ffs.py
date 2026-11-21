@@ -1,7 +1,5 @@
 """Binary-safe, bounded-memory filesystem acquisition shared by TAR and ZIP."""
-import json
 import io
-from contextlib import ExitStack
 import os
 import posixpath
 import shlex
@@ -205,7 +203,7 @@ def acquire(output, *, stream, root='/data', excludes=(), output_format='tar',
             progress=None, log=print, zip_backend='auto', on_file=None):
     """Publish only validated output; keep failed acquisitions as *.partial.
 
-    ZIP stores Unix links plus metadata for links/special files in a sidecar.
+    ZIP stores Unix links and permissions in its archive entries.
     Diagnostics are forwarded to the supplied device logger.
     """
     if output_format not in ('tar', 'zip'):
@@ -266,9 +264,7 @@ def acquire(output, *, stream, root='/data', excludes=(), output_format='tar',
     count = 0
     diagnostics_logged = False
     try:
-        with tempfile.TemporaryFile() as local_errors, open(partial, 'w+b') as target, ExitStack() as resources:
-            metadata = (resources.enter_context(open(output + '.metadata.jsonl.partial', 'w', encoding='utf-8'))
-                        if output_format == 'zip' else None)
+        with tempfile.TemporaryFile() as local_errors, open(partial, 'w+b') as target:
             proc = process(stream.adb + stream.transport + [stream.root(wrapped)],
                            stdout=subprocess.PIPE, stderr=local_errors,
                            stdin=subprocess.DEVNULL, bufsize=0)
@@ -296,10 +292,6 @@ def acquire(output, *, stream, root='/data', excludes=(), output_format='tar',
                                     zip_member(archive, member, source)
                                 for note in notes:
                                     local_errors.write(('ZIP warning: ' + str(note.message) + '\n').encode('utf-8'))
-                                metadata.write(json.dumps(dict(path=member.name, link=member.linkname,
-                                    type=member.type.decode('ascii'), mode=member.mode, size=member.size,
-                                    uid=member.uid, gid=member.gid, mtime=member.mtime,
-                                    pax_headers=member.pax_headers), ensure_ascii=True) + '\n')
                             source.members.clear()
                     # Drain through EOF, including tar padding, before checking process/status.
                     while reader.read(CHUNK):
@@ -325,8 +317,6 @@ def acquire(output, *, stream, root='/data', excludes=(), output_format='tar',
                 proc.wait()
                 proc.stdout.close()
                 watcher.join(timeout=2)
-        if output_format == 'zip':
-            os.replace(output + '.metadata.jsonl.partial', output + '.metadata.jsonl')
         os.replace(partial, output)
         return dict(members=count, bytes=reader.total, warnings=bool(diagnostics or adb_errors), backend='tar')
     except Exception as error:

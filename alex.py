@@ -26,19 +26,24 @@ from alex.hashing import sha256_file
 from alex import root_methods
 from types import SimpleNamespace
 import alex.fastboot as fastboot
+import alex.scope_preview as scope_preview
 import alex.ufed_style as ufed_style
 import alex.devdump as devdump
+import alex.apk_inventory as apk_inventory
 import alex.wifi_adb as wifi_adb
 import alex.exploits as exploits
 import alex.dirty_shell as dirty_shell
 import alex.shot_ut as shot_ut
 import alex.ab_decrypt as ab_decrypt
 import alex.case_uco as case_uco
+import alex.acquisition_record as acquisition_record
+import alex.ctk_pie_chart as ctk_pie_chart
 import numpy as np
 import uiautomator2 as u2
 import ipaddress
 import sqlite3
 import shutil
+import errno
 import json
 import queue
 import zipfile
@@ -203,6 +208,7 @@ class MyApp(ctk.CTk):
             "ScreenDevice": self.screen_device,
             "ShotLoop": self.chat_shotloop,
             "FindAgent": self.show_find_agent,
+            "PullAPKs": self.show_pull_apks,
             "BugReport": self.show_bugreport,
             "Content": self.show_content_dump,
             "CheckRoot": self.show_check_root,
@@ -224,7 +230,9 @@ class MyApp(ctk.CTk):
 
     def on_close(self):
         try:
-            adb_call(adb.server_kill)
+            others = [entry for entry in adb_call(adb.list, extended=True) if entry.serial != snr_id]
+            if not others:                                                                                              #other devices are attached: a second ALEX may be using the same adb server
+                adb_call(adb.server_kill)
         except Exception as e:
             print(e)
         self.destroy()
@@ -364,6 +372,12 @@ class MyApp(ctk.CTk):
         self.text.pack(pady=50)
         self.text.update()
 
+        if fixed_serial is None and selected_serial is None:
+            choices = list_adb_devices()
+            if len(choices) > 1:
+                self.show_device_choice(choices)
+                return
+
         try:
             get_client()
         except Exception as e:
@@ -444,6 +458,26 @@ class MyApp(ctk.CTk):
                 self.text.configure(text="ADB Server found!")
                 self.text.pack(pady=50)
                 pass
+
+    #More than one device is attached: the examiner chooses the device to work with
+    def show_device_choice(self, choices):
+        for widget in self.dynamic_frame.winfo_children():
+            widget.destroy()
+        ctk.CTkLabel(self.dynamic_frame, text="ALEX by Christian Peter", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="center")
+        self.text = ctk.CTkLabel(self.dynamic_frame, width=400, height=60, font=self.stfont, anchor="w", justify="left",
+                                 text="More than one device is connected.\nChoose the device to work with:")
+        self.text.pack(pady=(40, 15))
+        for entry in choices[:8]:
+            label = f"{entry.serial}   {entry.tags.get('model', '')}   ({entry.state})"
+            ctk.CTkButton(self.dynamic_frame, text=label, width=400, font=self.stfont, command=lambda serial=entry.serial: self.choose_device(serial)).pack(pady=4)
+        if len(choices) > 8:
+            ctk.CTkLabel(self.dynamic_frame, font=self.stfont, text=f"{len(choices) - 8} more device(s) are not shown. Start ALEX with --serial to use one of them.").pack(pady=(6, 0))
+        ctk.CTkButton(self.dynamic_frame, text="Check again", command=self.show_noadbserver).pack(pady=20)
+
+    def choose_device(self, serial):
+        global selected_serial
+        selected_serial = serial
+        self.show_noadbserver()
 
     #Show the Wifi-Pairing
     def show_wifi_pairing(self):
@@ -757,11 +791,12 @@ class MyApp(ctk.CTk):
         self.change.set(0)
         zip = zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED, compresslevel=1)
         try:
-            self.decrypt_backup = threading.Thread(target=lambda: ab_decrypt.backup_to_zip(ab_path, zip, bu_pass, self.change, self.prog_text))
+            self.decrypt_backup = threading.Thread(target=lambda: ab_decrypt.backup_to_zip(ab_path, zip, bu_pass, self.change, self.prog_text, log=log))
             self.decrypt_backup.start()
             self.wait_variable(self.change)
         finally:
             zip.close()
+        ab_complete = self.change.get() == 1
 
         self.change.set(0)
         self.text.configure(text="Calculating Zip-Hash. This may take a while.")
@@ -774,7 +809,10 @@ class MyApp(ctk.CTk):
         self.progress.pack_forget()
         self.prog_text.pack_forget()
         hash_line = f"\nSHA256: {f_hash}" if f_hash else ""
-        self.text.configure(text=f"PRFS reconstruction complete.\n{zip_path}{hash_line}", height=80)
+        if ab_complete:
+            self.text.configure(text=f"PRFS reconstruction complete.\n{zip_path}{hash_line}", height=80)
+        else:
+            self.text.configure(text=f"The backup could not be read to its end. The ZIP is incomplete, see the log.\n{zip_path}{hash_line}", height=80)
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("DataMenu")).pack(pady=40))
 
     def show_save_device_info(self):
@@ -894,11 +932,12 @@ class MyApp(ctk.CTk):
         self.skip.grid(row=0, column=0, columnspan=2, sticky="w")
         if ut == False and aos == False:
             self.menu_buttons = [
-                ctk.CTkButton(self.dynamic_frame, text="Take screenshots", command=lambda: self.switch_menu("ScreenDevice"), width=200, height=70, font=self.stfont),
-                ctk.CTkButton(self.dynamic_frame, text="Chat Capture", command=lambda: self.switch_menu("ShotLoop"), width=200, height=70, font=self.stfont),
-                ctk.CTkButton(self.dynamic_frame, text="Query Content\nProviders", command=lambda: self.switch_menu("Content"), width=200, height=70, font=self.stfont),
-                ctk.CTkButton(self.dynamic_frame, text="Identify Forensic\nAgent-Apps", command=lambda: self.switch_menu("FindAgent"), width=200, height=70, font=self.stfont),
-                ctk.CTkButton(self.dynamic_frame, text="Switch to\nFile Operations", fg_color="#2E2E2E", text_color="#DCE4EE", command=lambda: self.switch_menu("DataMenu"), width=200, height=70, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Take screenshots", command=lambda: self.switch_menu("ScreenDevice"), width=200, height=56, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Chat Capture", command=lambda: self.switch_menu("ShotLoop"), width=200, height=56, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Query Content\nProviders", command=lambda: self.switch_menu("Content"), width=200, height=56, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Identify Forensic\nAgent-Apps", command=lambda: self.switch_menu("FindAgent"), width=200, height=56, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Pull APKs", command=lambda: self.switch_menu("PullAPKs"), width=200, height=56, font=self.stfont),
+                ctk.CTkButton(self.dynamic_frame, text="Switch to\nFile Operations", fg_color="#2E2E2E", text_color="#DCE4EE", command=lambda: self.switch_menu("DataMenu"), width=200, height=56, font=self.stfont),
             ]
         else:
             self.menu_buttons = [
@@ -912,6 +951,7 @@ class MyApp(ctk.CTk):
                               "Loop through a chat taking screenshots.",
                               "Query Data from Content Providers\nas txt or json. (calls, sms, contacts, ...)",
                               "Find known Agent-Apps used by forensic\nsoftware products.",
+                              "Pull the APK files of the user-installed apps\nwith an inventory (versions, signer, SHA-256).",
                               "Show options for operations with\nexisting backups."]
         else:
             self.menu_text = ["Take screenshots from device screen.\nScreenshots will be saved under \"screenshots\"\nas PNG.",
@@ -919,13 +959,14 @@ class MyApp(ctk.CTk):
                               "Query Data from Content Providers\nas txt or json. (calls, sms, contacts, ...)",
                               "Show options for operations with\nexisting backups."]
         self.menu_textbox = []
+        row_height = 56 if len(self.menu_buttons) > 5 else 70
         for btn in self.menu_buttons:
-            self.menu_textbox.append(ctk.CTkLabel(self.dynamic_frame, width=right_content, height=70, font=self.stfont, anchor="w", justify="left"))
+            self.menu_textbox.append(ctk.CTkLabel(self.dynamic_frame, width=right_content, height=row_height, font=self.stfont, anchor="w", justify="left"))
         r=1
         i=0
         for btn in self.menu_buttons:
-            btn.grid(row=r,column=0, padx=30, pady=10)
-            self.menu_textbox[i].grid(row=r,column=1, padx=10, pady=10)
+            btn.grid(row=r,column=0, padx=30, pady=10 if row_height == 70 else 7)
+            self.menu_textbox[i].grid(row=r,column=1, padx=10, pady=10 if row_height == 70 else 7)
             self.menu_textbox[i].configure(text=self.menu_text[i])
             r+=1
             i+=1
@@ -1594,6 +1635,7 @@ class MyApp(ctk.CTk):
         now = datetime.now()
         case_begin = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         log("Started FFS Backup")
+        record = start_record("Full Filesystem (Zip)")
         filename = f'FFS_{snr}_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}'
         zip_path = f'{filename}.zip'
         case_json_name = f'{filename}.case.json'
@@ -1604,6 +1646,7 @@ class MyApp(ctk.CTk):
         self.progress.pack()
         self.progress.start()
         if not ffs_ui_job(self, zip_path, "zip"):
+            end_record(record, path=f"{filename}_acquisition_record.json")
             return
         case_end = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         self.change = ctk.IntVar(self, 0)
@@ -1614,6 +1657,7 @@ class MyApp(ctk.CTk):
         global f_hash
         case_backup = create_case_backup(bu_fname=zip_path, bu_ext=".zip", bu_desc= "ALEX Full Filesystem (Zip)", type="Logical", method="Full Filesystem", bu_hash=f_hash, case_begin=case_begin, case_end=case_end)
         call_case_json(case_device, case_backup, case_json_name, change=None)
+        end_record(record, path=f"{filename}_acquisition_record.json")
         self.text.configure(text="Data Extraction complete.")
         self.prog_text.pack_forget()
         self.progress.pack_forget()
@@ -1630,6 +1674,7 @@ class MyApp(ctk.CTk):
         now = datetime.now()
         case_begin = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         log("Started FFS Backup")
+        record = start_record("Full Filesystem (Tar)")
         file_name = f'FFS_{snr}_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}'
         tar_path = f'{file_name}.tar'
         case_json_name = f'{file_name}.case.json'
@@ -1639,6 +1684,7 @@ class MyApp(ctk.CTk):
         self.progress.pack()
         self.progress.start()
         if not ffs_ui_job(self, tar_path, "tar"):
+            end_record(record, path=f"{file_name}_acquisition_record.json")
             return
         case_end = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         self.change = ctk.IntVar(self, 0)
@@ -1649,6 +1695,7 @@ class MyApp(ctk.CTk):
         global f_hash
         case_backup = create_case_backup(bu_fname=tar_path, bu_ext=".tar", bu_desc= "ALEX Full Filesystem (Tar)", type="Logical", method="Full Filesystem", bu_hash=f_hash, case_begin=case_begin, case_end=case_end)
         call_case_json(case_device, case_backup, case_json_name, change=None)
+        end_record(record, path=f"{file_name}_acquisition_record.json")
         self.text.configure(text="Data Extraction complete.")
         self.prog_text.pack_forget()
         self.progress.pack_forget()
@@ -1672,6 +1719,7 @@ class MyApp(ctk.CTk):
         self.get_dsize = threading.Thread(target=lambda: get_data_size(data_path, self.change))
         self.get_dsize.start()
         self.wait_variable(self.change)
+        record = start_record(f"Pull of {data_path}")
         folder = f'Data_{snr}_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}'
         zip_path = f"{folder}.zip"
         zip = zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED, compresslevel=1)
@@ -1692,8 +1740,11 @@ class MyApp(ctk.CTk):
             try: shutil.rmtree(folder)
             except: pass
             self.text.configure(text="Data Extraction complete.")
+        elif self.change.get() == 3:
+            self.text.configure(text="The output drive is full. Data Extraction stopped.")
         else:
             self.text.configure(text="Data Extraction incomplete.")
+        end_record(record, zip_path, "ALEX_acquisition_record.json")
         self.prog_text.pack_forget()
         self.progress.pack_forget()
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
@@ -1739,6 +1790,7 @@ class MyApp(ctk.CTk):
         global bu_pass
         data_size = 0
         log("Started UFED-Style Logical+ Backup")
+        record = start_record("UFED-Style Logical+ Backup")
         now = datetime.now()
         case_begin = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         local_timezone = datetime.now(timezone.utc).astimezone().tzinfo
@@ -1777,6 +1829,8 @@ class MyApp(ctk.CTk):
             self.wait_variable(self.change)
             if self.change.get() == 1:
                 bu_pass = None
+            elif self.change.get() == 2:
+                bu_pass = "12345"                                                                                       #the backup is encrypted: the password ALEX sets or asks the user to enter
             self.prog_text.configure(text="")
             self.change.set(0)
             self.zip_backup = threading.Thread(target=lambda: self.zip_bu(zip, self.text, self.change))
@@ -1805,11 +1859,15 @@ class MyApp(ctk.CTk):
         self.pull_data = threading.Thread(target=lambda: pull_dir_mod(device.sync, data_path, folder, text=self.text, prog_text=self.prog_text, progress=self.progress, change=self.change, zip=zip, mode="ufed"))
         self.pull_data.start()
         self.wait_variable(self.change)
-        if self.change.get() == 2:
-            self.text.configure(text="Advanced Logical Backup failed.")
+        if self.change.get() in (2, 3):
+            if self.change.get() == 3:
+                self.text.configure(text="The output drive is full. Advanced Logical Backup stopped.")
+            else:
+                self.text.configure(text="Advanced Logical Backup failed.")
             self.prog_text.pack_forget()
             self.progress.pack_forget()
             log("UFED-Style Logical+ Backup failed")
+            end_record(record, path=os.path.join(ufed_folder, f"{fname}_acquisition_record.json"))
             self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
         else:
             zip.close()
@@ -1831,7 +1889,16 @@ class MyApp(ctk.CTk):
             self.prog_text.pack_forget()
             self.progress.pack_forget()
             log("UFED-Style Logical+ Backup complete")
+            end_record(record, path=os.path.join(ufed_folder, f"{fname}_acquisition_record.json"))
             self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
+
+    #The output drive is full: show it and return to the menu
+    def show_disk_full(self, name):
+        self.text.configure(text=f"The output drive is full. {name} stopped.")
+        self.prog_text.pack_forget()
+        self.progress.pack_forget()
+        log(f"{name} stopped: the output drive is full")
+        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
 
     #Show the "PRFS"-Backup screen
     def show_prfs(self):
@@ -1842,7 +1909,8 @@ class MyApp(ctk.CTk):
         sysfolders = ["/system/apex/","/system/app/","/system/bin/", "/system/cameradata/", "/system/container/", "/system/etc/",
                       "/system/fake-libs/", "/system/fonts/", "/system/framework/", "/system/hidden/", "/system/lib/", "/system/lib64/",
                       "/system/media/", "/system/product/", "/system/priv-app/", "/system/saiv/", "/system/tts/", "/system/usr/", "/system/vendor/",
-                      "/system/xbin/, /product/, /vendor/, /etc/"]
+                      "/system/xbin/"]
+        sysfolders = without_linked_folders(sysfolders)                                                                 #e.g. /etc is a link to /system/etc: the same files must not go into the ZIP twice
         sysfolders.extend(apps_path)
         global data_size
         global total_size
@@ -1870,10 +1938,22 @@ class MyApp(ctk.CTk):
         self.incl_logfiles = ctk.StringVar(value="on")
         self.incl_logs_box = ctk.CTkCheckBox(self.dynamic_frame, text="Include Logs and queried Data.", variable=self.incl_logfiles, onvalue="on", offvalue="off")
         self.incl_logs_box.pack(anchor="w", padx= 80, pady=4)
-        self.startb = ctk.CTkButton(self.dynamic_frame, text="Start", font=self.stfont, command=lambda: self.change.set(1))
-        self.startb.pack(pady=25)
-        self.backb = ctk.CTkButton(self.dynamic_frame, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=lambda: self.switch_menu("AcqMenu"))
-        self.backb.pack()
+        actions = ctk.CTkFrame(self.dynamic_frame, fg_color="transparent")
+        actions.pack(fill="x", padx=80, pady=(25, 0))
+        actions.grid_columnconfigure((0, 1), weight=1, uniform="prfs_actions")
+        preview_actions = ctk.CTkFrame(actions, fg_color="transparent")
+        preview_actions.grid(row=0, column=0, sticky="nsew")
+        backup_actions = ctk.CTkFrame(actions, fg_color="transparent")
+        backup_actions.grid(row=0, column=1, sticky="nsew")
+        self.startb = ctk.CTkButton(backup_actions, text="Start", font=self.stfont, command=lambda: self.change.set(1))
+        self.startb.pack(anchor="w", padx=(10, 0), pady=(0, 10))
+        self.backb = ctk.CTkButton(backup_actions, text="Back", font=self.stfont, fg_color="#8c2c27", text_color="#DCE4EE", command=lambda: self.switch_menu("AcqMenu"))
+        self.backb.pack(anchor="w", padx=(10, 0))
+        preview_groups = [("/sdcard/", ["/sdcard/"])] + [(path, [path]) for path in sysfolders if path not in apps_path]
+        if apps_path:
+            preview_groups.append((f"app folders ({len(apps_path)})", list(apps_path)))
+        self.previewb = ctk.CTkButton(preview_actions, text='Scope Preview\n(for \"adb pull\")', font=self.stfont, fg_color="#2E2E2E", text_color=self.info_text.cget("text_color"), command=lambda: self.show_scope_preview(preview_groups))
+        self.previewb.pack(side="right", fill="y", padx=(0, 10))
         self.wait_variable(self.change)
         self.incl_adb_bu_box.pack_forget()
         self.incl_sdcard_box.pack_forget()
@@ -1883,6 +1963,8 @@ class MyApp(ctk.CTk):
         self.incl_logs_box.pack_forget()
         self.startb.pack_forget()
         self.backb.pack_forget()
+        self.previewb.pack_forget()
+        actions.pack_forget()
         incl_adb_bu = self.incl_adb_bu.get()
         incl_sdcard = self.incl_sdcard.get()
         incl_system = self.incl_system.get()
@@ -1895,6 +1977,7 @@ class MyApp(ctk.CTk):
         now = datetime.now()
         case_begin = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         log("Started PRFS Backup.")
+        record = start_record("PRFS Backup")
 
         folder = f'{snr}_prfs_{str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))}'
         zip_path = f"{folder}.zip"
@@ -1945,16 +2028,21 @@ class MyApp(ctk.CTk):
             self.wait_variable(self.change)
             if self.change.get() == 1:
                 bu_pass = None
+            elif self.change.get() == 2:
+                bu_pass = "12345"                                                                                       #the backup is encrypted: the password ALEX sets or asks the user to enter
             self.prog_text.configure(text="")
             if self.change.get() != 3:
                 self.change.set(0)
-                self.decrypt_backup = threading.Thread(target=lambda: ab_decrypt.backup_to_zip(bu_file, zip, bu_pass, self.change, self.prog_text))
+                self.decrypt_backup = threading.Thread(target=lambda: ab_decrypt.backup_to_zip(bu_file, zip, bu_pass, self.change, self.prog_text, log=log))
                 self.decrypt_backup.start()
                 self.wait_variable(self.change)
-                try:
-                    os.remove(bu_file)
-                except:
-                    pass
+                if self.change.get() == 1:
+                    try:
+                        os.remove(bu_file)
+                    except:
+                        pass
+                else:
+                    log(f"The Android backup was not unpacked completely (wrong password or incomplete backup). It is kept as {bu_file}")    #never delete a backup that is not completely in the ZIP
             else:
                 pass
 
@@ -1988,6 +2076,9 @@ class MyApp(ctk.CTk):
             self.pull_data = threading.Thread(target=lambda: pull_dir_mod(device.sync, data_path, folder, text=self.text, prog_text=self.prog_text, progress=self.progress, change=self.change, zip=zip, mode="prfs"))
             self.pull_data.start()
             self.wait_variable(self.change)
+            if self.change.get() == 3:
+                self.show_disk_full("PRFS Backup")
+                return
             try: shutil.rmtree(folder)
             except: pass
         if incl_system == "on":
@@ -2001,7 +2092,7 @@ class MyApp(ctk.CTk):
                 self.get_dsize.start()
                 self.wait_variable(self.change)
                 if total_size > 1:
-                    folder = ".temp_folder"
+                    folder = f".temp_folder_{snr}"
                     try: os.mkdir(folder)
                     except: pass
                     self.change.set(0)
@@ -2010,6 +2101,9 @@ class MyApp(ctk.CTk):
                     self.pull_data = threading.Thread(target=lambda: pull_dir_mod(device.sync, data_path, folder, text=self.text, prog_text=self.prog_text, progress=self.progress, change=self.change, zip=zip,mode="prfs"))
                     self.pull_data.start()
                     self.wait_variable(self.change)
+                    if self.change.get() == 3:
+                        self.show_disk_full("PRFS Backup")
+                        return
                     try: shutil.rmtree(folder)
                     except: pass
                 else:
@@ -2098,6 +2192,7 @@ class MyApp(ctk.CTk):
             self.prfs_cp.start()
             self.wait_variable(self.change)
             self.change.set(0)
+        end_record(record, zip_path, "extra/acquisition_record.json")
         case_end = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         self.change = ctk.IntVar(self, 0)
         self.progress.pack_forget()
@@ -2117,6 +2212,208 @@ class MyApp(ctk.CTk):
         self.prog_text.pack_forget()
         self.progress.pack_forget()
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AcqMenu")).pack(pady=40))
+
+    # Inline scope preview: folder sizes and readable files. Read-only on the device.
+    def show_scope_preview(self, groups):
+        # Keep the PRFS widgets and their variables alive while its wait_variable is active.
+        selection = [(widget, widget.pack_info()) for widget in self.dynamic_frame.winfo_children()
+                     if widget.winfo_manager() == "pack"]
+        for widget, _ in selection:
+            widget.pack_forget()
+        preview = ctk.CTkFrame(self.dynamic_frame, fg_color="transparent", corner_radius=0)
+        preview.pack(fill="both", expand=True)
+        stopped = threading.Event()
+        preview.bind("<Destroy>", lambda event: stopped.set() if event.widget is preview else None, add="+")
+
+        def back():
+            stopped.set()
+            preview.destroy()
+            for widget, options in selection:
+                if widget.winfo_exists():
+                    widget.pack(**options)
+
+        ctk.CTkLabel(preview, text="PRFS Scope Preview", height=60, font=("standard", 24)).pack(pady=(20, 10))
+        status = ctk.CTkLabel(preview, text="Scanning accessible folders …", font=self.stfont,
+                              width=560, height=70, wraplength=560, justify="left")
+        status.pack(padx=20, pady=(0, 15))
+        content = ctk.CTkFrame(preview, fg_color="transparent", width=560, height=280)
+        content.pack(padx=12, pady=10)
+        content.pack_propagate(False)
+        content.grid_propagate(False)
+        chart_frame = ctk.CTkFrame(content, fg_color="#212121", width=260, height=260)
+        chart_frame.grid(row=0, column=0, padx=(0, 16))
+        chart_frame.grid_propagate(False)
+        legend = ctk.CTkFrame(content, fg_color="transparent", width=284, height=280)
+        legend.grid(row=0, column=1, sticky="w")
+        legend.grid_propagate(False)
+        colors = {"sdcard": "#80FD9C", "system": "#195727", "app folders": "#D4C65A"}
+        app_count = sum(len(paths) for label, paths in groups if label.startswith("app folders"))
+        display_names = {"app folders": f"app folders ({app_count} {'app' if app_count == 1 else 'apps'})"}
+        labels = {}
+        for row, (name, color) in enumerate({**colors, "not in scope": "#8c2c27"}.items()):
+            ctk.CTkLabel(legend, text="●", text_color=color, font=("standard", 22)).grid(
+                row=row, column=0, padx=(0, 10), sticky="n", pady=5)
+            labels[name] = ctk.CTkLabel(legend, text=f"{display_names.get(name, name)}: …\n", font=self.stfont,
+                                       width=245, height=60, wraplength=245, anchor="w", justify="left")
+            labels[name].grid(row=row, column=1, sticky="w", pady=5)
+        ctk.CTkButton(preview, text="Back", font=self.stfont, command=back).pack(pady=25)
+        lines = queue.Queue()
+
+        def worker():
+            results = []
+            shell = lambda cmd: adb_call(device.shell, cmd)
+            try:
+                for label, paths in groups:
+                    scans = []
+                    for index, path in enumerate(paths, 1):
+                        if stopped.is_set():
+                            return
+                        message = f"Scanning app folders ({index}/{len(paths)})" if label.startswith("app folders") else f"Scanning {path}"
+                        lines.put(("status", message))
+                        scans.append(scope_preview.scan_folder(shell, path))
+                    result = scope_preview.add_up(label, scans)
+                    if label.startswith("app folders"):
+                        # These paths name the same shared storage scanned as /sdcard/.
+                        sdcard_roots = ("/sdcard", "/storage/emulated/0", "/storage/self/primary",
+                                        "/mnt/sdcard", "/data/media/0")
+                        overlapping = [scan for path, scan in zip(paths, scans)
+                                       if any(path.rstrip("/") == root or path.startswith(root + "/")
+                                              for root in sdcard_roots)]
+                        result["sdcard_kb"] = scope_preview.add_up("overlap", overlapping)["kb"]
+                    results.append(result)
+                    category = "sdcard" if label.rstrip("/") == "/sdcard" else (
+                        "app folders" if label.startswith("app folders") else "system")
+                    lines.put(("result", (category, result)))
+                lines.put(("done", None))
+                log("Scope preview: " + scope_preview.totals_text(results))
+                for result in results:
+                    log("Scope preview: " + " ".join(scope_preview.format_row(result).split()))
+            except Exception as e:
+                lines.put(("error", f"The preview stopped: {type(e).__name__}: {e}"))
+
+        results = {name: [] for name in colors}
+
+        chart = None
+        center_label = None
+
+        def render(complete=False):
+            nonlocal chart, center_label
+            totals = {name: scope_preview.add_up(name, rows) for name, rows in results.items()}
+            for name, result in totals.items():
+                if not results[name] and not complete:
+                    continue
+                readable_text = "\n"
+                if result["files"] is not None and result["refused"] is not None:
+                    readable = max(0, result["files"] - result["refused"])
+                    readable_text = f"\n{readable} readable files ({result['refused']} not readable)"
+                labels[name].configure(text=f"{display_names.get(name, name)}: {scope_preview.size_text(result['kb'])}{readable_text}")
+            # Keep the initial ring untouched until the entire scan is complete.
+            if chart is not None and not complete:
+                return
+            sdcard_kb = totals["sdcard"]["kb"] or 0
+            app_kb = totals["app folders"]["kb"] or 0
+            overlap_kb = min(sdcard_kb, app_kb, sum(
+                result.get("sdcard_kb") or 0 for result in results["app folders"]))
+            # Split shared storage into disjoint sdcard and app segments.
+            segment_kb = {"sdcard": sdcard_kb - overlap_kb,
+                          "system": totals["system"]["kb"] or 0, "app folders": app_kb}
+            listed_kb = sum(segment_kb.values())
+            capacity = str(globals().get("data_s", "-")).strip()
+            match = re.fullmatch(r"([\d.]+)\s*([KMGTPE]?)(?:i?B)?", capacity, re.IGNORECASE)
+            system_kb = totals["system"]["kb"] or 0
+            # sdcard and app folders are already included in Data; system is additional.
+            data_kb = float(match[1]) * 1024 ** ("KMGTPE".index(match[2].upper()) if match[2] else -1) if match else 0
+            if data_kb <= 0:
+                # Without Data capacity, retain the listed total as the 100% fallback.
+                data_kb = listed_kb - system_kb
+            total_kb = data_kb + system_kb
+            # A neutral segment also keeps an empty scan safe for CTkPieChart's division.
+            values = {name: {"value": kb, "color": colors[name], "text_color": "#00000000"}
+                      for name, kb in segment_kb.items() if kb > 0}
+            scoped_data_kb = sdcard_kb + app_kb - overlap_kb
+            remaining = max(0, data_kb - scoped_data_kb)
+
+            def storage_kb(value):
+                parsed = re.fullmatch(r"([\d.]+)\s*([KMGTPE]?)(?:i?B)?", str(value).strip(), re.IGNORECASE)
+                if parsed is None:
+                    return None
+                return float(parsed[1]) * 1024 ** ("KMGTPE".index(parsed[2].upper()) if parsed[2] else -1)
+
+            used_kb = storage_kb(globals().get("used_s", "-"))
+            free_kb = storage_kb(globals().get("free", "-"))
+            if used_kb is None and free_kb is not None and match:
+                used_kb = max(0, data_kb - free_kb)
+            not_in_scope_kb = None
+            if match and used_kb is not None:
+                # Clamp to Data's remaining capacity to tolerate rounded df -h values.
+                not_in_scope_kb = min(remaining, max(0, used_kb - scoped_data_kb))
+                if not_in_scope_kb:
+                    values["not in scope"] = {"value": not_in_scope_kb, "color": "#8c2c27", "text_color": "#00000000"}
+                remaining -= not_in_scope_kb
+            if complete:
+                labels["not in scope"].configure(text=f"not in scope: {scope_preview.size_text(not_in_scope_kb)}\n")
+            if remaining or not values:
+                values["remaining"] = {"value": remaining or 1, "color": "#3F3F3F", "text_color": "#00000000"}
+            if chart is None:
+                chart = ctk_pie_chart.CTkPieChart(
+                    chart_frame, values={"remaining": {"value": 1, "color": "#3F3F3F"}},
+                    radius=260, line_width=25, show_percentages=False)
+                chart.place(relx=0.5, rely=0.5, anchor="center")
+                center_label = ctk.CTkLabel(chart_frame, text="", font=self.stfont, fg_color="#212121")
+                center_label.place(relx=0.5, rely=0.5, anchor="center")
+            if complete:
+                chart.values = values
+                chart.draw_pie_chart()
+            center_text = scope_preview.size_text(total_kb) if complete else "…"
+            center_label.configure(text=f"100%\n{center_text}")
+            note = "" if listed_kb <= total_kb else "\nListed folders exceed data capacity; segments show their relative sizes."
+            if complete:
+                recommendation = ""
+                if whoami == "root":
+                    recommendation = "The device is rooted. A physical or FFS backup is recommended."
+                elif su_app is not None:
+                    recommendation = "The device may be rooted. A physical or FFS backup is recommended."
+                else:
+                    context = self._root_context()
+                    methods, order = root_methods.load_methods()
+                    major = context.android_major
+                    prfs_exploit = major is not None and (
+                        9 <= major < 12
+                        or 12 <= major < 16 and context.patch_before("2024-06-01")
+                        or 12 <= major < 14 and context.patch_before("2024-03-01"))
+                    if prfs_exploit or root_methods.select_method(context, methods, order) is not None:
+                        recommendation = ("The device may be vulnerable to an embedded exploit.\n"
+                                          "There may be additional files available.")
+                if recommendation:
+                    note += "\n" + recommendation
+                status.configure(text="Scan complete." + ((" Grey: free data capacity." if not_in_scope_kb is not None else " Grey: remaining data capacity.") if remaining else "") + note)
+
+        def poll():
+            if stopped.is_set() or not preview.winfo_exists():
+                return
+            try:
+                while True:
+                    kind, value = lines.get_nowait()
+                    if kind == "result":
+                        category, result = value
+                        results[category].append(result)
+                        render()
+                    elif kind == "status":
+                        status.configure(text=value)
+                    elif kind == "done":
+                        render(complete=True)
+                        return
+                    elif kind == "error":
+                        render()
+                        status.configure(text=value)
+                        return
+            except queue.Empty:
+                pass
+            preview.after(200, poll)
+
+        render()
+        threading.Thread(target=worker, daemon=True).start()
+        poll()
 
     def adb_bu(self, change, incl_shared, incl_apps, incl_system, auto_bu=False):
         global bu_file
@@ -2183,7 +2480,7 @@ class MyApp(ctk.CTk):
         global bu_pass
         try:
             with open(bu_file, "wb") as f:
-                proc = Popen(["adb", "exec-out", f"bu backup{bu_options}"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                proc = Popen(adb_cmd("exec-out", f"bu backup{bu_options}"), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
                 #stdout=subprocess.PIPE
                 t = threading.Thread(target=reader, args=(proc.stdout, q))
                 t.daemon = True
@@ -2369,13 +2666,14 @@ class MyApp(ctk.CTk):
         self.doshot.start()
 
     def shot(self, imglabel, namefield):
+        case_begin = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         hsize = 426
         shotfail = False
         name = snr + "_" + str(datetime.now().strftime("%m_%d_%Y_%H_%M_%S"))
         filename = name + ".png"
-        hashname = name + ".txt"
+        case_name = name + ".case.json"
         filepath = os.path.join("screenshots", filename)
-        hashpath = os.path.join("screenshots", hashname)
+        case_path = os.path.join("screenshots", case_name)
         if ut == True:
             #shot = ut_app_shot()
             try: shot = shot_ut.shot()
@@ -2426,10 +2724,9 @@ class MyApp(ctk.CTk):
         if shotfail == False:
             with open(filepath, "wb") as file:
                 file.write(png)
-        with open(hashpath, "w") as hash_file:
-            hash_file.write(hash_sha256)
+        screenshot_case_json(filepath, hash_sha256, case_path, case_begin)
         log(f"Created screenshot {filename} with hash {hash_sha256}")
-        namefield.configure(text=f"Screenshot saved as:\n{filename}\nHash saved as:\n{hashname}")
+        namefield.configure(text=f"Screenshot saved as:\n{filename}\nCase JSON saved as:\n{case_name}")
         self.pdf_report(pdf_type="screenshot", shot=filename, sha256=hash_sha256, shot_png=filepath, w=wsize, h=hsize)
 
     def chat_shotloop(self):
@@ -2478,11 +2775,12 @@ class MyApp(ctk.CTk):
         self.stop_event.set()
 
     def shotloop(self, app_name, chat_name, ab_count, sc_count, abs_count, direction, imglabel, namefield, text, png=None, first=False, seen_hashes=None, first_hash=None, w=0, h=0):
+        case_begin = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         name = chat_name + "_" + str(datetime.now().strftime("%m_%d_%Y_%H_%M_%S"))
         filename = name + ".png"
-        hashname = name + ".txt"
+        case_name = name + ".case.json"
         filepath = os.path.join("screenshots", app_name, chat_name, filename)
-        hashpath = os.path.join("screenshots", app_name, chat_name, hashname)
+        case_path = os.path.join("screenshots", app_name, chat_name, case_name)
         shotfail = False
         hsize = 426
         if direction == "down":
@@ -2528,10 +2826,9 @@ class MyApp(ctk.CTk):
                 hash_sha256 = hashlib.sha256(png).hexdigest()
             else:
                 hash_sha256 = hashlib.sha256(open(filepath, "rb").read()).hexdigest()
-            with open(os.path.join(hashpath), "w") as hash_file:
-                hash_file.write(hash_sha256)
+            screenshot_case_json(filepath, hash_sha256, case_path, case_begin, app_name, chat_name, direction)
             log(f"Created screenshot {filename} with hash {hash_sha256}")
-            namefield.configure(text=f"Screenshot saved as:\n{filename}\nHash saved as:\n{hashname}")
+            namefield.configure(text=f"Screenshot saved as:\n{filename}\nCase JSON saved as:\n{case_name}")
             first_hash = imagehash.phash(shot)
             seen_hashes.append(first_hash)
             self.pdf_report(pdf_type="screenshot", shot=filename, sha256=hash_sha256, shot_png=filepath, app_name=app_name, chat_name=chat_name, w=wsize, h=hsize)
@@ -2583,10 +2880,9 @@ class MyApp(ctk.CTk):
                                 hash_sha256 = hashlib.sha256(png).hexdigest()
                             else:
                                 hash_sha256 = hashlib.sha256(open(filepath, "rb").read()).hexdigest()
-                            with open(os.path.join(hashpath), "w") as hash_file:
-                                hash_file.write(hash_sha256)
+                            screenshot_case_json(filepath, hash_sha256, case_path, case_begin, app_name, chat_name, direction)
                             log(f"Created screenshot {filename} with hash {hash_sha256}")
-                            namefield.configure(text=f"Screenshot saved as:\n{filename}\nHash saved as:\n{hashname}")
+                            namefield.configure(text=f"Screenshot saved as:\n{filename}\nCase JSON saved as:\n{case_name}")
                             self.pdf_report(pdf_type="screenshot", shot=filename, sha256=hash_sha256, shot_png=filepath, app_name=app_name, chat_name=chat_name, w=wsize, h=hsize)
                             sc_count += 1
                             ab_count = 0
@@ -2631,6 +2927,26 @@ class MyApp(ctk.CTk):
         find_agent_app.start()
         self.wait_variable(self.change)
         self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AdvMenu")).pack(pady=20))
+
+    #Pull the APK files of the user-installed apps into a ZIP with an inventory
+    def show_pull_apks(self):
+        ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
+        ctk.CTkLabel(self.dynamic_frame, text="Pull APKs", height=60, width=585, font=("standard",24), justify="left").pack(pady=20)
+        self.text = ctk.CTkLabel(self.dynamic_frame, text="Reading the list of user-installed apps ...", width=585, height=60, font=self.stfont, anchor="w", justify="left")
+        self.text.pack(anchor="center", pady=25)
+        self.prog_text = ctk.CTkLabel(self.dynamic_frame, text="0%", width=585, height=20, font=self.stfont, anchor="w", justify="left")
+        self.prog_text.pack()
+        self.progress = ctk.CTkProgressBar(self.dynamic_frame, width=585, height=30, corner_radius=0)
+        self.progress.set(0)
+        self.progress.pack()
+        self.change = ctk.IntVar(self, 0)
+        result = {}
+        threading.Thread(target=lambda: pull_apks(self.change, self.text, self.progress, self.prog_text, result)).start()
+        self.wait_variable(self.change)
+        self.prog_text.pack_forget()
+        self.progress.pack_forget()
+        self.text.configure(text=result.get("text", "APK capture failed. See the log."), height=100)
+        self.after(100, lambda: ctk.CTkButton(self.dynamic_frame, text="OK", font=self.stfont, command=lambda: self.switch_menu("AdvMenu")).pack(pady=40))
 
     def show_pdf_report(self):
         ctk.CTkLabel(self.dynamic_frame, text=f"ALEX by Christian Peter  -  Output: {dir_top}", text_color="#3f3f3f", height=60, padx=40, font=self.stfont).pack(anchor="w")
@@ -3065,6 +3381,48 @@ def get_adb_version():
     except (OSError, subprocess.TimeoutExpired):
         return "not found"
 
+#Serial given on the command line (--serial / -s): ALEX then only works with this device
+def serial_from_argv(argv):
+    for i, arg in enumerate(argv):
+        if arg in ("-s", "--serial") and i + 1 < len(argv):
+            return argv[i + 1]
+        if arg.startswith("--serial="):
+            return arg.split("=", 1)[1]
+    return None
+
+#All devices the adb server knows (empty if there is no server)
+def list_adb_devices(host=None, port=None):
+    try:
+        ensure_adb_server()
+        client = adbutils.AdbClient(host=host or default_host, port=port or default_port)
+        return list(adb_call(client.list, extended=True))
+    except Exception:
+        return []
+
+#The entry of "adb devices" to work with: the wanted serial, or the first device if none is wanted
+def pick_device_entry(entries, wanted=None):
+    if wanted:
+        for entry in entries:
+            if entry.serial == wanted:
+                return entry
+        return None
+    if entries:
+        return entries[0]
+    return None
+
+#True if the adb server lists a device other than the one ALEX works with: the server must then not be restarted or killed
+def other_devices_attached():
+    try:
+        return any(entry.serial != snr_id for entry in adb_call(adb.list, extended=True))
+    except Exception:
+        return False
+
+#adb command line for the selected device. Without "-s" adb fails as soon as a second device is attached.
+def adb_cmd(*args):
+    if snr_id:
+        return ["adb", "-s", snr_id, *args]
+    return ["adb", *args]
+
 def add_space(value: str) -> str:
         if value and value[-1].isalpha():
             return value[:-1] + " " + value[-1]
@@ -3137,6 +3495,7 @@ def get_client(host=default_host, port=default_port, check=False):
     global apps
     global ut
     global aos
+    global selected_serial
     if check == True:
         try:
             connected = adb != None and device != None and any(
@@ -3158,20 +3517,29 @@ def get_client(host=default_host, port=default_port, check=False):
         adb = None
 
     if adb != None:
+        entries = []
         try:
-            snr_id = adb_call(adb.list, extended=True)[0].serial
-            state = adb_call(adb.list, extended=True)[0].state
+            entries = adb_call(adb.list, extended=True)
+            entry = pick_device_entry(entries, fixed_serial or selected_serial)
+            if entry is None:
+                raise IndexError
+            snr_id = entry.serial
+            state = entry.state
             device = adb.device(snr_id)
+            shot_ut.serial = snr_id
             try:
-                device_auto = u2.connect()
+                device_auto = u2.connect(snr_id)
             except:
                 device_auto = None
         except IndexError:
             snr = None
             state = None
             device = None
+            if selected_serial is not None:                                                                             #the chosen device is gone: choose again on the next check
+                selected_serial = None
         if device == None:
-            restart_adb()
+            if not entries:                                                                                             #never restart the server while it serves other devices (a second ALEX may be using it)
+                restart_adb()
             device_info = nodevice_text = ("No device detected!\n" +
                     "\n" + '{:13}'.format("Python: ") + "\t" + platform.python_version() +
                     "\n" + '{:13}'.format("adb: ") + "\t" + get_adb_version() +
@@ -4080,6 +4448,41 @@ def find_agent(change, text, app_text):
     change.set(1)
 
 
+#APK files of the user-installed apps into APKs_<serial>_<time>.zip, with apk_inventory.csv in the ZIP. change: 1 = done, 2 = failed.
+def pull_apks(change, text, progress, prog_text, result):
+    zip_path = f'APKs_{snr}_{datetime.now().strftime("%Y_%m_%d_%H_%M_%S")}.zip'
+    temp_folder = f".temp_apks_{snr}"
+    try:
+        shell = lambda cmd: adb_call(device.shell, cmd)
+        log("Started APK capture (user-installed apps)")
+        packages = apk_inventory.read_details(shell, apk_inventory.list_packages(shell))
+        text.configure(text=f"Pulling the APK files of {len(packages)} apps.")
+
+        def on_progress(done, total, package):
+            progress.set(done / total if total else 1)
+            prog_text.configure(text=f"{done} of {total} files   {package[:50]}")
+
+        with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_STORED) as zip:
+            rows = apk_inventory.pull_apks(lambda src, dst: adb_call(device.sync.pull_file, src, dst), packages, zip, temp_folder, log, on_progress)
+            inventory = apk_inventory.inventory_csv(rows)
+            zip.writestr("apk_inventory.csv", inventory)
+        text.configure(text="Calculating Zip-Hash. This may take a while.")
+        with open(zip_path, "rb") as f:
+            zip_hash = sha256_file(f)
+        summary = apk_inventory.summary(packages, rows)
+        log(f"APK capture: {summary}. Inventory SHA256={hashlib.sha256(inventory).hexdigest()}")
+        log(f"Created APK archive: {zip_path}, SHA256={zip_hash}")
+        result["text"] = f"APK capture complete.\n\n{summary}.\nFilename: {zip_path}\n"
+        change.set(1)
+    except Exception as e:
+        log(f"APK capture failed: {type(e).__name__}: {e}")
+        result["text"] = f"APK capture failed: {type(e).__name__}: {e}"
+        change.set(2)
+    finally:
+        try: shutil.rmtree(temp_folder)
+        except Exception: pass
+
+
 # Both GUI acquisition paths use the same binary-safe transfer engine.
 def ffs_ui_job(app, output, output_format):
     from alex.ffs import DeviceStream, acquire
@@ -4187,6 +4590,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
     now = datetime.now()
     case_begin = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     log("Started physical extraction.")
+    record = start_record("Physical Extraction")
     #Find block device
     block = ""
     if show_root == True:
@@ -4277,7 +4681,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                     except: pass
                     device_path = f"/dev/{block + target}"
                     proc = Popen(
-                        ["adb", "pull", device_path, out_file],
+                        adb_cmd("pull", device_path, out_file),
                         stdout=subprocess.DEVNULL,
                         stderr=subprocess.DEVNULL
                     )
@@ -4303,18 +4707,18 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                         if show_root == True:
                             if device_has_su():
                                 if c_su:
-                                    cmd = ['adb', out_cmd, f"su -c \'cat {device_path} 2>/dev/null\'"]
+                                    cmd = adb_cmd(out_cmd, f"su -c \'cat {device_path} 2>/dev/null\'")
                                 else:
-                                    cmd = ['adb', out_cmd, f"echo \'cat {device_path} 2>/dev/null\' | su"]
+                                    cmd = adb_cmd(out_cmd, f"echo \'cat {device_path} 2>/dev/null\' | su")
 
                             elif mtk_su == True:
-                                cmd = ['adb', "exec-out", f"/data/local/tmp/mtk-su -c cat {device_path} 2>/dev/null"]
+                                cmd = adb_cmd("exec-out", f"/data/local/tmp/mtk-su -c cat {device_path} 2>/dev/null")
 
                             else:
-                                cmd = ['adb', "exec-out", f"cat {device_path} 2>/dev/null"]
+                                cmd = adb_cmd("exec-out", f"cat {device_path} 2>/dev/null")
 
                         else:
-                            cmd = ['adb', out_cmd, f"cat {device_path} 2>/dev/null"]
+                            cmd = adb_cmd(out_cmd, f"cat {device_path} 2>/dev/null")
 
                         proc = Popen(
                             cmd,
@@ -4354,6 +4758,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
                 bu_files.append({"bu_fname": f"{snr}_{target}.bin", "bu_ext": ".bin", "bu_hash": f_hash})
             case_backup = create_multi_file_case_backup(bu_files=bu_files, type="Physical", method="Physical", bu_desc= "ALEX Physical Extraction", case_begin=case_begin, case_end=case_end)
             call_case_json(case_device, case_backup, case_json_name, change=None)
+            end_record(record, path=case_json_name.replace(".case.json", "_acquisition_record.json"))
             complete = True
             prog_text.pack_forget()
             progress.pack_forget()
@@ -4402,11 +4807,11 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             device_path = f"/dev/{block + target}"
             out_file = f"{snr}_{target}.bin"
             if dshell is True:
-                with dirty_shell.DirtyShell(["shell", "run-as"]) as ds:
+                with dirty_shell.DirtyShell(["shell", "run-as"], serial=snr_id) as ds:
                     ds.execute(f"setenforce 0")
                     ds.execute(f"chmod 644 {device_path}")
             proc = Popen(
-                ["adb", "pull", device_path, out_file],
+                adb_cmd("pull", device_path, out_file),
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL
             )
@@ -4432,6 +4837,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             do_hash_file(change=None, filename=out_file, physical=True)
             case_backup = create_case_backup(bu_fname=out_file, bu_ext=".bin", bu_desc= "ALEX Physical Extraction", type="Physical", method="Physical", bu_hash=f_hash, case_begin=case_begin, case_end=case_end)
             call_case_json(case_device, case_backup, case_json_name, change=None)
+            end_record(record, path=case_json_name.replace(".case.json", "_acquisition_record.json"))
             complete = True
             prog_text.pack_forget()
             progress.pack_forget()
@@ -4450,25 +4856,25 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
 
             with open(out_file, "wb") as f:
                 if ut == True:
-                    cmd = ['adb', "exec-out",  f"echo {sh_pwd} | sudo -S cat {device_path} 2>/dev/null"]
+                    cmd = adb_cmd("exec-out",  f"echo {sh_pwd} | sudo -S cat {device_path} 2>/dev/null")
                 else:
                     if show_root == True:
                         if device_has_su():
                             if c_su:
                                 print("c_su")
-                                cmd = ['adb', out_cmd, f"su -c \'cat {device_path} 2>/dev/null\'"]
+                                cmd = adb_cmd(out_cmd, f"su -c \'cat {device_path} 2>/dev/null\'")
                             else:
                                 print("su without c")
-                                cmd = ['adb', {out_cmd}, f"echo \'cat {device_path} 2>/dev/null\' | su"]
+                                cmd = adb_cmd(out_cmd, f"echo \'cat {device_path} 2>/dev/null\' | su")
 
                         elif mtk_su == True:
-                            cmd = ['adb', "exec-out", f"/data/local/tmp/mtk-su -c cat {device_path} 2>/dev/null"]
+                            cmd = adb_cmd("exec-out", f"/data/local/tmp/mtk-su -c cat {device_path} 2>/dev/null")
 
                         else:
-                            cmd = ['adb', "exec-out", f"cat {device_path} 2>/dev/null"]
+                            cmd = adb_cmd("exec-out", f"cat {device_path} 2>/dev/null")
 
                     else:
-                        cmd = ['adb', out_cmd, f"cat {device_path} 2>/dev/null"]
+                        cmd = adb_cmd(out_cmd, f"cat {device_path} 2>/dev/null")
                 proc = Popen(
                     cmd,
                     stdout=f,
@@ -4498,6 +4904,7 @@ def physical(change, text, progress, prog_text, pw_box=None, ok_button=None, bac
             do_hash_file(change=None, filename=out_file, physical=True)
             case_backup = create_case_backup(bu_fname=out_file, bu_ext=".bin", bu_desc= "ALEX Physical Extraction", type="Physical", method="Physical", bu_hash=f_hash, case_begin=case_begin, case_end=case_end)
             call_case_json(case_device, case_backup, case_json_name, change=None)
+            end_record(record, path=case_json_name.replace(".case.json", "_acquisition_record.json"))
             complete = True
             prog_text.pack_forget()
             progress.pack_forget()
@@ -4557,7 +4964,7 @@ def recreate_dbs(change, text, zip_path=None):
         except:
             pdu_json = [{}]
         try:
-            addRecreatedr_data = adb_call(device.shell, "content query --uri content://mms/addr")
+            addr_data = adb_call(device.shell, "content query --uri content://mms/addr")
             addr_json = content_to_json(addr_data)
         except:
             addr_json = [{}]
@@ -4565,7 +4972,7 @@ def recreate_dbs(change, text, zip_path=None):
             part_data = adb_call(device.shell, "content query --uri content://mms/part")
             part_json = content_to_json(part_data)
         except:
-            part_data = [{}]
+            part_json = [{}]
 
         mmssms_schema = os.path.join(os.path.dirname(__file__), "ressources" , "mmssms.json")
         with open(mmssms_schema, "r", encoding="utf-8") as f:
@@ -4942,6 +5349,26 @@ def get_data_size(data_path, change):
         total_size = 1
     change.set(1)
 
+#Device clock and state at the start of an acquisition. Never stops the acquisition: returns None if the record cannot be started.
+def start_record(what):
+    try:
+        return acquisition_record.AcquisitionRecord(lambda cmd: adb_call(device.shell, cmd), log, what, serial=snr_id, version=a_version)
+    except Exception as e:
+        log(f"Acquisition record not started: {type(e).__name__}: {e}")
+        return None
+
+#Device clock and state at the end of an acquisition, written into the ZIP (name) or to a file of its own (path)
+def end_record(record, zip_path=None, name=None, path=None):
+    if record is None:
+        return
+    try:
+        if path is not None:
+            record.write_file(path)
+        else:
+            record.write_into_zip(zip_path, name)
+    except Exception as e:
+        log(f"Acquisition record not written: {type(e).__name__}: {e}")
+
 def do_hash_file(change, filename, physical=False):
     global f_hash
     f_hash = None
@@ -4954,6 +5381,35 @@ def do_hash_file(change, filename, physical=False):
         f_hash = None
     if physical == False:
         change.set(1)
+
+linked_folders_logged = set()
+
+#The folders of the list without those that are an earlier folder of the list on the device: a link to it, the target of it, or a folder inside it.
+#On current devices /system/product, /system/vendor and /etc are links (to /product, /vendor and /system/etc). Pulled under both names the files are in the ZIP twice.
+#The first name in the list is kept. If the device cannot resolve the paths the list is returned as it is.
+def without_linked_folders(folders):
+    script = 'for d; do echo "$(realpath "$d" 2>/dev/null || readlink -f "$d" 2>/dev/null)"; done'
+    try:
+        quoted = " ".join("'" + folder.replace("'", "'\\''") + "'" for folder in folders)
+        real_paths = adb_call(device.shell, f"sh -c '{script}' sh {quoted}").split("\n")[:len(folders)]
+    except Exception:
+        return list(folders)
+    if len(real_paths) != len(folders):
+        return list(folders)
+    kept = []
+    kept_real = []
+    for folder, real in zip(folders, real_paths):
+        real = real.strip().rstrip("/")
+        earlier = next((name for name, known in kept_real if real.startswith("/") and (real == known or real.startswith(known + "/"))), None)
+        if earlier is not None:
+            if folder not in linked_folders_logged:
+                linked_folders_logged.add(folder)
+                log(f"{folder} is {real} on the device and is pulled as {earlier}. It is not pulled a second time.")
+            continue
+        kept.append(folder)
+        if real.startswith("/"):
+            kept_real.append((folder, real))
+    return kept
 
 def create_case_backup(bu_fname, bu_ext, bu_desc, type, method, bu_hash, case_begin, case_end, ufd=None):
     bu_files = []
@@ -5022,6 +5478,19 @@ def create_multi_file_case_backup(bu_files, type, method, bu_desc, case_begin, c
         "endTime": case_end
         }
     return case_backup
+
+def screenshot_case_json(filepath, sha256, case_path, case_begin, app_name=None, chat_name=None, direction=None):
+    case_end = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    backup = create_case_backup(
+        bu_fname=filepath, bu_ext=".png", bu_desc="ALEX Screenshot",
+        type="Logical", method="Chat Capture" if direction is not None else "Screenshot",
+        bu_hash=sha256, case_begin=case_begin, case_end=case_end)
+    backup["Files"][0]["Type"] = "screenshot"
+    backup["Files"][0]["FileName"] = os.path.basename(filepath)
+    if direction is not None:
+        backup["Configuration"] = {"AppName": app_name, "ConversationPartner": chat_name,
+                                   "CaptureDirection": direction}
+    call_case_json(case_device, backup, case_path)
 
 def call_case_json(case_device, case_backup, case_json_name, change=None):
     case_json = case_uco.backup_case_json(case_device, case_backup)
@@ -5099,7 +5568,9 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
                 except:
                     pass
             except Exception as e:
-                log(f"Error pulling: {new_src}: {type(e).__name__}: {e}. The file is not in the archive.")
+                if is_disk_full(e):
+                    raise
+                log(f"Error pulling: {new_src}")
                 size = 0
                 try: os.remove(new_dst)                                                                                 #a partly pulled file must not go into the archive as if it was complete
                 except OSError: pass
@@ -5119,6 +5590,8 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
                 zip.writestr(zip_info, data)
                 os.remove(new_dst)
             except Exception as e:
+                if is_disk_full(e):
+                    raise
                 log(f"Error zipping: {new_dst}: {e}")
                 print(f"Error zipping {new_dst}: {e}")
 
@@ -5151,6 +5624,23 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
         change.set(1)
         return func_size
     except Exception as e:
+        if is_disk_full(e):
+            #the incomplete archive cannot be used: remove it and the temp folder, which also frees space for the log
+            removed = None
+            if zip is not None:
+                try: zip.close()
+                except Exception: pass
+                try:
+                    os.remove(zip.filename)
+                    removed = f"Removed the incomplete archive {os.path.basename(zip.filename)}"
+                except Exception as e2:
+                    removed = f"Could not remove the incomplete archive {zip.filename}: {e2}"
+            shutil.rmtree(dst, ignore_errors=True)
+            log(f"The output drive is full. Stopped pulling {rootf}")
+            if removed:
+                log(removed)
+            change.set(3)
+            return 0
         log(f"Error pulling {rootf}: {e}")
         zip.close()
         change.set(2)
@@ -5199,7 +5689,7 @@ def has_root(change, timeout=30):
 def device_has_su() -> bool:
     try:
         result = run(
-            ["adb", "shell", "which", "su"],
+            adb_cmd("shell", "which", "su"),
             capture_output=True, text=True
         )
         if "not found" in result.stdout.lower() or "not found" in result.stderr.lower():
@@ -5210,7 +5700,7 @@ def device_has_su() -> bool:
         return False
 
 def supports_exec_out() -> bool:
-    cmd = ["adb", "exec-out", "echo", "OK"]
+    cmd = adb_cmd("exec-out", "echo", "OK")
 
     proc = run(
         cmd,
@@ -5242,15 +5732,15 @@ def temp_dirty_cow(change, timeout=30):
     remote_dcow = "/data/local/tmp/dcow"
     remote_rnas = "/data/local/tmp/run-as"
     try:
-        run(["adb", "push", dcow_bin, remote_dcow], check=True)
+        run(adb_cmd("push", dcow_bin, remote_dcow), check=True)
         log("Pushed dcow binary to /data/local/tmp")
-        run(["adb", "push", rnas_bin, remote_rnas], check=True)
+        run(adb_cmd("push", rnas_bin, remote_rnas), check=True)
         log("Pushed run-as binary to /data/local/tmp")
     except Exception as e:
         print(e)
         pass
-    run(["adb", "shell", f"chmod 777 {remote_dcow}"], check=True)
-    run(["adb", "shell", "/data/local/tmp/dcow /data/local/tmp/run-as /system/bin/run-as --no-pad"], check=True)
+    run(adb_cmd("shell", f"chmod 777 {remote_dcow}"), check=True)
+    run(adb_cmd("shell", "/data/local/tmp/dcow /data/local/tmp/run-as /system/bin/run-as --no-pad"), check=True)
     time.sleep(4)
     try:
         stream = adb_call(device.shell, "run-as", stream=True)
@@ -5261,7 +5751,7 @@ def temp_dirty_cow(change, timeout=30):
 
         if "root" in check_dirty.decode():
             """
-            with dirty_shell.DirtyShell(["shell", "run-as"]) as ds:
+            with dirty_shell.DirtyShell(["shell", "run-as"], serial=snr_id) as ds:
                 print(ds.execute("id"))
             """
             dshell = True
@@ -5289,7 +5779,7 @@ def temp_initroot(change, text, m_init_device, timeout=120):
     b_info_text = "Attempt to gain temp-root via CVE-2016-10277 (initroot).\nPlease Wait ..."
     info_text = f"{b_info_text}\n\nCurrent step: Reboot to fastboot"
     text.configure(text=info_text)
-    run(["adb", "reboot", "bootloader"], check=True)
+    run(adb_cmd("reboot", "bootloader"), check=True)
     #device.shell("reboot bootloader")
     time.sleep(4)
     wait_start = time.time()
@@ -5337,7 +5827,8 @@ def temp_initroot(change, text, m_init_device, timeout=120):
             try:
                 adb_call(device.shell, "echo ready")
             except:
-                restart_adb()
+                if not other_devices_attached():
+                    restart_adb()
             if "error" in str(result):
                 change.set(2)
             else:
@@ -5353,7 +5844,7 @@ def fix_initroot_bootloop(change, text, timeout=30):
     b_info_text = "Reset initramfs value.\nPlease Wait ..."
     info_text = f"{b_info_text}\n\nCurrent step: Reboot to fastboot"
     text.configure(text=info_text)
-    run(["adb", "reboot", "bootloader"], check=True)
+    run(adb_cmd("reboot", "bootloader"), check=True)
     #device.shell("reboot bootloader")
     time.sleep(4)
     wait_start = time.time()
@@ -5379,12 +5870,12 @@ def temp_mtk_su(change, timeout=30):
         mtk_su_bin = os.path.join(os.path.dirname(__file__), "ressources" , "cve", "2020-0069", "arm64", "mtk-su")
     remote_path = "/data/local/tmp/mtk-su"
     try:
-        run(["adb", "push", mtk_su_bin, remote_path], check=True)
+        run(adb_cmd("push", mtk_su_bin, remote_path), check=True)
         log("Pushed mtk-su binary to /data/local/tmp")
     except Exception as e:
         print(e)
         pass
-    run(["adb", "shell", f"chmod 755 {remote_path}"], check=True)
+    run(adb_cmd("shell", f"chmod 755 {remote_path}"), check=True)
     try:
         result_holder["value"] = adb_call(device.shell, f"{remote_path} -c whoami").strip() == "root"
 
@@ -5434,9 +5925,16 @@ def restart_adb():
 def log(text):
     if not cwd_selected:
         return
-    with open(f"ALEX_log_{snr}.log", 'a', encoding="utf-8") as logfile:
-        logtime = str(datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
-        logfile.write(f"{logtime}: {text}\n")
+    try:
+        with open(f"ALEX_log_{snr}.log", 'a', encoding="utf-8") as logfile:
+            logtime = str(datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+            logfile.write(f"{logtime}: {text}\n")
+    except OSError:
+        pass                                                                    #e.g. the output drive is full: a lost log line must not stop the extraction
+
+#True if an error means the drive is full (on Windows, WinError 112 is mapped to ENOSPC as well)
+def is_disk_full(e):
+    return isinstance(e, OSError) and e.errno == errno.ENOSPC
 
 #subprocess helper
 def run(cmd, **kwargs):
@@ -5470,6 +5968,9 @@ def sanitize_for_pdf(text) -> str:
 
 cwd_selected = False
 device = None
+snr_id = None
+selected_serial = None                                                                                                  #device chosen in the window when several are attached
+fixed_serial = serial_from_argv(sys.argv) or os.environ.get("ANDROID_SERIAL") or None                                   #device named at start: --serial / -s or ANDROID_SERIAL
 device_auto = None
 fb = fastboot.Fastboot()
 fb_found = "found" if fb.available else "not found"
@@ -5546,14 +6047,10 @@ undict ={'â€¦': '…',"â€ž":"„" ,'â€“': '–', 'â€™': '’',
 
 guiv = "default"
 try:
-    if sys.argv[1] == "1368":
-        guiv = "1368"
-    elif sys.argv[1] == "1024":
-        guiv = "1024"
-    elif sys.argv[1] == "800":
-        guiv = "800"
-    else:
-        pass
+    for arg in sys.argv[1:]:                                                                                            #the size may come before or after --serial
+        if arg in ("1368", "1024", "800") and arg != fixed_serial:
+            guiv = arg
+            break
 except:
     pass
 

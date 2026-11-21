@@ -15,7 +15,7 @@ Since I only have a limited supply of test devices and the features offered vary
 
 The interface is based on [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter). This project is at an early stage and compiled versions will follow, when more testing is done.
 
-Requires Python == 3.11.
+Requires Python >= 3.11.
 
 More features may follow.
 
@@ -91,10 +91,14 @@ This script utilizes the following projects:
 
 [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) by [TomSchimansky](https://github.com/TomSchimansky) 
 
+[CTkPieChart](https://github.com/Akascape/CTkPieChart) by [Akascape](https://github.com/Akascape) 
+
 [crossfiledialog](https://github.com/maikelwever/crossfiledialog) by [maikelwever](https://github.com/maikelwever)
 
 [mtk-su](https://xdaforums.com/t/amazing-temp-root-for-mediatek-armv8-2020-08-24.3922213/) by [diplomatic](
 https://xdaforums.com/m/diplomatic.8132642/)
+
+[initroot](https://github.com/alephsecurity/initroot) by [alephsecurity](https://github.com/alephsecurity)
 
 [lyto](https://github.com/eeriemyxi/lyto) by [eeriemyxi](https://github.com/eeriemyxi)
 
