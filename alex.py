@@ -5572,6 +5572,9 @@ def pull_dir_mod(self, src: str, dst: typing.Union[str, pathlib.Path], text, pro
                     raise
                 log(f"Error pulling: {new_src}")
                 size = 0
+                try: os.remove(new_dst)                                                                                 #a partly pulled file must not go into the archive as if it was complete
+                except OSError: pass
+                continue
             try:
                 with open(new_dst, "rb") as f:
                     data = f.read()
