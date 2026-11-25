@@ -4278,131 +4278,86 @@ def dump_appops(change, text, progress, prog_text, folder=None, jsonout=False):
 
 #Query Content Providers (from the dict: content_provider.json)
 def query_content(change, text, progress, prog_text, json_out=False, zip_path=None):
-    prov_file = os.path.join(os.path.dirname(__file__), "ressources" , "content_provider.json")
-    error_text = ["Error while accessing provider", "Unsupported argument", "No result found", "command not found"]
-    if zip_path != None:
-        out = f"content_provider_{snr}_tmp"
-    else:
-        out = f"content_provider_{snr}"
-    with open(prov_file) as f:
+    prov_file = os.path.join(os.path.dirname(__file__), "ressources", "content_provider.json")
+    with open(prov_file, encoding="utf-8") as f:
         providers = json.load(f)
-    #prov_len = len(providers)
-    prov_len = 0
+
+    queries = []
     for key, value in providers.items():
-        prov_len += 1
-        prov_len += 1
-        if isinstance(value, list):
-            prov_len += len(value)
+        queries.append((key, key, key))
+        subpaths = value if isinstance(value, list) else [value] if value else []
+        for subpath in subpaths:
+            queries.append((key, f"{key}/{subpath}", f"{key}_{subpath.replace('/', '_')}"))
 
-    i = 0
-    for key, value in providers.items():
-        #print(key)
-        i+=1
-        current = i/prov_len
+    for index, (key, uri, filename) in enumerate(queries, start=1):
+        text.configure(text=f"Extracting Data from Content Providers.\nThis may take some time.\nCurrent: {uri}")
+        content_out = adb_call(device.shell, f"content query --uri content://{uri}", rstrip=False)
+        rows = content_to_json(content_out, uri)
+        if not rows:
+            log(f"No content output for {uri}")
+
+        if zip_path is not None:
+            status = "rows"
+            if not rows:
+                status = "empty" if content_out.strip() in ("", "No result found.") else "error"
+            archive_path = f"extra/content_provider/{key}/{filename}"
+            with zipfile.ZipFile(zip_path, mode="a") as zf:
+                zf.writestr(f"{archive_path}.txt", content_out)
+                zf.writestr(f"{archive_path}.status.json", json.dumps({"uri": f"content://{uri}", "status": status}))
+                if json_out and rows:
+                    zf.writestr(f"{archive_path}.json", json.dumps(rows, ensure_ascii=False, indent=2))
+        elif rows:
+            extension = "json" if json_out else "txt"
+            content_path = Path(f"content_provider_{snr}/{key}/{filename}.{extension}")
+            content_path.parent.mkdir(parents=True, exist_ok=True)
+            output = json.dumps(rows, ensure_ascii=False, indent=2) if json_out else content_out
+            content_path.write_text(output, encoding="utf-8")
+
+        current = index / len(queries)
         progress.set(current)
-        prog_text.configure(text=f"{int(current*100)}%")
-        text.configure(text=f"Extracting Data from Content Providers.\nThis may take some time.\nCurrent: {key}")
-        content_out = adb_call(device.shell, f"content query --uri content://{key}")
-        if any(error in content_out for error in error_text):
-            log(f"No content output for {key}")
-            pass
-        else:
-            if json_out == False:
-                content_path = Path(f'{out}/{key}/{key}.txt')
-                content_path.parent.mkdir(parents=True, exist_ok=True)
-                content_path.write_text(content_out, encoding="utf-8")
-            else:
-                cjson = content_to_json(content_out)
-                json_out = json.dumps(cjson, ensure_ascii=False, indent=2)
-                json_path = Path(f'{out}/{key}/{key}.json')
-                json_path.parent.mkdir(parents=True, exist_ok=True)
-                json_path.write_text(json_out, encoding="utf-8")
-                if zip_path != None:
-                    with zipfile.ZipFile(zip_path, mode="a") as zf:
-                        zf.write(json_path, f"extra/content_provider/{key}/{key}.json")
-                    try: os.remove(json_path)
-                    except: pass
-        if isinstance(value, list):
-            for item in value:
-                i+=1
-                current = i/prov_len
-                progress.set(current)
-                prog_text.configure(text=f"{int(current*100)}%")
-                text.configure(text=f"Extracting Data from Content Providers.\nThis may take some time.\nCurrent: {key}/{item}")
-                #print((f"content query --uri content://{key}/{item}"))
-                content_out = adb_call(device.shell, f"content query --uri content://{key}/{item}")
-                if any(error in content_out for error in error_text):
-                    log(f"No content output for {key}/{item}")
-                    pass
-                else:
-                    if json_out == False:
-                        content_path = Path(f'{out}/{key}/{key}_{item.replace("/","_")}.txt')
-                        content_path.parent.mkdir(parents=True, exist_ok=True)
-                        content_path.write_text(content_out, encoding="utf-8")
-                    else:
-                        cjson = content_to_json(content_out)
-                        json_out = json.dumps(cjson, ensure_ascii=False, indent=2)
-                        json_path = Path(f'{out}/{key}/{key}_{item.replace("/","_")}.json')
-                        json_path.parent.mkdir(parents=True, exist_ok=True)
-                        json_path.write_text(json_out, encoding="utf-8")
-                        if zip_path != None:
-                            with zipfile.ZipFile(zip_path, mode="a") as zf:
-                                zf.write(json_path, f"extra/content_provider/{key}/{key}_{item.replace('/','_')}.json")
-                            try: os.remove(json_path)
-                            except: pass
+        prog_text.configure(text=f"{int(current * 100)}%")
 
-        i+=1
-        current = i/prov_len
-        progress.set(current)
-        prog_text.configure(text=f"{int(current*100)}%")
-        if value == "":
-            pass
-        else:
-            if not isinstance(value, list):
-                content_out = adb_call(device.shell, f"content query --uri content://{key}/{value}")
-                if any(error in content_out for error in error_text):
-                    if not isinstance(value, list):
-                        log(f"No content output for {key}/{value}")
-                    pass
-                else:
-                    text.configure(text=f"Extracting Data from Content Providers.\nThis may take some time.\nCurrent: {key}/{value}")
-                    if json_out == False:
-                        content_path = Path(f'{out}/{key}/{key}_{value.replace("/","_")}.txt')
-                        content_path.parent.mkdir(parents=True, exist_ok=True)
-                        content_path.write_text(content_out, encoding="utf-8")
-                    else:
-                        cjson = content_to_json(content_out)
-                        json_out = json.dumps(cjson, ensure_ascii=False, indent=2)
-                        json_path = Path(f'{out}/{key}/{key}_{value.replace("/","_")}.json')
-                        json_path.parent.mkdir(parents=True, exist_ok=True)
-                        json_path.write_text(json_out, encoding="utf-8")
-                        if zip_path != None:
-                            with zipfile.ZipFile(zip_path, mode="a") as zf:
-                                zf.write(json_path, f"extra/content_provider/{key}/{key}_{value.replace('/','_')}.json")
-                            try: os.remove(json_path)
-                            except: pass
-
-    if zip_path != None:
-        try: shutil.rmtree(out)
-        except: pass
     change.set(1)
 
-# Convert the content provider output to JSON
-def content_to_json(text: str):
-    rows = re.split(r'\bRow:\s*\d+\s*', text)
+
+def content_to_json(text: str, uri=""):
+    # Android prints one line ending per row, in addition to any in the values.
+    text = re.sub(r"\r?\n\Z", "", text)
+    rows = re.split(r"(?:\A|\r?\n)Row: [0-9]+ (?=\w+=)", text)[1:]
+    field = re.compile(r"(?:\A|, )(\w+)=")
+    common_columns = None
+    known_columns = None
+
+    if len(rows) > 1:
+        # Cursor columns are present in every row, even when their values are NULL.
+        common_columns = {match[1] for match in field.finditer(rows[0])}
+        for row in rows[1:]:
+            common_columns.intersection_update(match[1] for match in field.finditer(row))
+    elif rows and uri.split("/", 1)[0] in ("sms", "mms"):
+        # For a single messaging row, use the bundled schema after free-text fields.
+        provider = uri.split("/", 1)[0]
+        table = {"mms/part": "part", "mms/addr": "addr"}.get(uri, "sms" if provider == "sms" else "pdu")
+        schema_path = Path(__file__).with_name("ressources") / "mmssms.json"
+        with schema_path.open(encoding="utf-8") as f:
+            known_columns = json.load(f)[table]
+
     result = []
     for row in rows:
-        row = row.strip()
-        if not row:
-            continue
-        pairs = re.findall(r'(\w+)=((?:[^,]|,(?!\s*\w+=))*)', row)
         entry = {}
-        for key, value in pairs:
-            value = value.strip()
-            if value in ("NULL", ""):
-                entry[key] = None
-            else:
-                entry[key] = value
+        previous = None
+        for match in field.finditer(row):
+            column = match[1]
+            if previous is not None:
+                if common_columns is not None and column not in common_columns:
+                    continue
+                if (known_columns is not None and previous[1] in {"body", "subject", "text", "sub", "retr_txt"}
+                        and column not in known_columns):
+                    continue
+                value = row[previous.end():match.start()]
+                entry[previous[1]] = None if value == "NULL" else value
+            previous = match
+        value = row[previous.end():]
+        entry[previous[1]] = None if value == "NULL" else value
         result.append(entry)
     return result
 
@@ -4956,23 +4911,23 @@ def recreate_dbs(change, text, zip_path=None):
         try: os.remove(mmssms_db)
         except: pass
         try:
-            sms_data = adb_call(device.shell, "content query --uri content://sms")
-            sms_json = content_to_json(sms_data)
+            sms_data = adb_call(device.shell, "content query --uri content://sms", rstrip=False)
+            sms_json = content_to_json(sms_data, "sms")
         except:
             sms_json = []
         try:
-            pdu_data = adb_call(device.shell, "content query --uri content://mms")
-            pdu_json = content_to_json(pdu_data)
+            pdu_data = adb_call(device.shell, "content query --uri content://mms", rstrip=False)
+            pdu_json = content_to_json(pdu_data, "mms")
         except:
             pdu_json = []
         try:
-            addr_data = adb_call(device.shell, "content query --uri content://mms/addr")
-            addr_json = content_to_json(addr_data)
+            addr_data = adb_call(device.shell, "content query --uri content://mms/addr", rstrip=False)
+            addr_json = content_to_json(addr_data, "mms/addr")
         except:
             addr_json = []
         try:
-            part_data = adb_call(device.shell, "content query --uri content://mms/part")
-            part_json = content_to_json(part_data)
+            part_data = adb_call(device.shell, "content query --uri content://mms/part", rstrip=False)
+            part_json = content_to_json(part_data, "mms/part")
         except:
             part_json = []
 
@@ -5016,8 +4971,8 @@ def recreate_dbs(change, text, zip_path=None):
         try: os.remove(call_db)
         except: pass
         try:
-            call_data = adb_call(device.shell, "content query --uri content://call_log/calls")
-            call_json = content_to_json(call_data)
+            call_data = adb_call(device.shell, "content query --uri content://call_log/calls", rstrip=False)
+            call_json = content_to_json(call_data, "call_log/calls")
         except:
             call_json = []
         call_schema = os.path.join(os.path.dirname(__file__), "ressources" , "calllog.json")
@@ -5049,13 +5004,13 @@ def recreate_dbs(change, text, zip_path=None):
         try: os.remove(contact_db)
         except: pass
         try:
-            contact_contacts = adb_call(device.shell, "content query --uri content://com.android.contacts/contacts")
-            contact_contacts_json = content_to_json(contact_contacts)
+            contact_contacts = adb_call(device.shell, "content query --uri content://com.android.contacts/contacts", rstrip=False)
+            contact_contacts_json = content_to_json(contact_contacts, "com.android.contacts/contacts")
         except:
             contact_contacts_json = []
         try:
-            contact_data = adb_call(device.shell, "content query --uri content://com.android.contacts/data")
-            contact_data_json = content_to_json(contact_data)
+            contact_data = adb_call(device.shell, "content query --uri content://com.android.contacts/data", rstrip=False)
+            contact_data_json = content_to_json(contact_data, "com.android.contacts/data")
             unique_mimetypes = {}
             next_id = 1
             for entry in contact_data_json:
@@ -5071,13 +5026,13 @@ def recreate_dbs(change, text, zip_path=None):
             contact_data_json = []
             mimetype_json = []
         try:
-            contact_raw_contacts_data = adb_call(device.shell, "content query --uri content://com.android.contacts/raw_contacts")
-            contact_raw_contacts_json = content_to_json(contact_raw_contacts_data)
+            contact_raw_contacts_data = adb_call(device.shell, "content query --uri content://com.android.contacts/raw_contacts", rstrip=False)
+            contact_raw_contacts_json = content_to_json(contact_raw_contacts_data, "com.android.contacts/raw_contacts")
         except:
             contact_raw_contacts_json = []
         try:
-            contact_settings_data = adb_call(device.shell, "content query --uri content://com.android.contacts/settings")
-            contact_settings_json = content_to_json(contact_settings_data)
+            contact_settings_data = adb_call(device.shell, "content query --uri content://com.android.contacts/settings", rstrip=False)
+            contact_settings_json = content_to_json(contact_settings_data, "com.android.contacts/settings")
         except:
             contact_settings_json = []
         contact_schema = os.path.join(os.path.dirname(__file__), "ressources" , "contacts2.json")
@@ -5114,33 +5069,33 @@ def recreate_dbs(change, text, zip_path=None):
         try: os.remove(calendar_db)
         except: pass
         try:
-            colors_data = adb_call(device.shell, "content query --uri content://com.android.calendar/colors")
-            colors_json = content_to_json(colors_data)
+            colors_data = adb_call(device.shell, "content query --uri content://com.android.calendar/colors", rstrip=False)
+            colors_json = content_to_json(colors_data, "com.android.calendar/colors")
         except:
             colors_json = []
         try:
-            calendars_data = adb_call(device.shell, "content query --uri content://com.android.calendar/calendars")
-            calendars_json = content_to_json(calendars_data)
+            calendars_data = adb_call(device.shell, "content query --uri content://com.android.calendar/calendars", rstrip=False)
+            calendars_json = content_to_json(calendars_data, "com.android.calendar/calendars")
         except:
             calendars_json = []
         try:
-            event_data = adb_call(device.shell, "content query --uri content://com.android.calendar/event_entities")
-            event_json = content_to_json(event_data)
+            event_data = adb_call(device.shell, "content query --uri content://com.android.calendar/event_entities", rstrip=False)
+            event_json = content_to_json(event_data, "com.android.calendar/event_entities")
         except:
             event_json = []
         try:
-            extended_data = adb_call(device.shell, "content query --uri content://com.android.calendar/extendedproperties")
-            extended_json = content_to_json(extended_data)
+            extended_data = adb_call(device.shell, "content query --uri content://com.android.calendar/extendedproperties", rstrip=False)
+            extended_json = content_to_json(extended_data, "com.android.calendar/extendedproperties")
         except:
             extended_json = []
         try:
-            reminders_data = adb_call(device.shell, "content query --uri content://com.android.calendar/reminders")
-            reminders_json = content_to_json(reminders_data)
+            reminders_data = adb_call(device.shell, "content query --uri content://com.android.calendar/reminders", rstrip=False)
+            reminders_json = content_to_json(reminders_data, "com.android.calendar/reminders")
         except:
             reminders_json = []
         try:
-            syncstate_data = adb_call(device.shell, "content query --uri content://com.android.calendar/syncstate")
-            syncstate_json = content_to_json(syncstate_data)
+            syncstate_data = adb_call(device.shell, "content query --uri content://com.android.calendar/syncstate", rstrip=False)
+            syncstate_json = content_to_json(syncstate_data, "com.android.calendar/syncstate")
         except:
             syncstate_json = []
 
@@ -5252,30 +5207,30 @@ def ufed_style_files(change, ufed_folder, zip, zipname, starttime, text):
             apps_file.write(f"{app}\n")
     #Contacts
     text.configure(text="Creating UFED-Style Report files.\nQuery: content://com.android.contacts/data/phones")
-    contact_query = adb_call(device.shell, "content query --uri content://com.android.contacts/data/phones")
-    contact_json = content_to_json(contact_query)
+    contact_query = adb_call(device.shell, "content query --uri content://com.android.contacts/data/phones", rstrip=False)
+    contact_json = content_to_json(contact_query, "com.android.contacts/data/phones")
     #Calls
     text.configure(text="Creating UFED-Style Report files.\nQuery: content://call_log/calls")
-    calls_query = adb_call(device.shell, "content query --uri content://call_log/calls")
-    calls_json = content_to_json(calls_query)
+    calls_query = adb_call(device.shell, "content query --uri content://call_log/calls", rstrip=False)
+    calls_json = content_to_json(calls_query, "call_log/calls")
     #Calendar
     text.configure(text="Creating UFED-Style Report files.\nQuery: content://com.android.calendar/event_entities")
-    calendar_query = adb_call(device.shell, "content query --uri content://com.android.calendar/event_entities")
-    calendar_json = content_to_json(calendar_query)
+    calendar_query = adb_call(device.shell, "content query --uri content://com.android.calendar/event_entities", rstrip=False)
+    calendar_json = content_to_json(calendar_query, "com.android.calendar/event_entities")
     #SMS
     text.configure(text="Creating UFED-Style Report files.\nQuery: content://sms")
-    sms_query = adb_call(device.shell, "content query --uri content://sms")
-    sms_json = content_to_json(sms_query)
+    sms_query = adb_call(device.shell, "content query --uri content://sms", rstrip=False)
+    sms_json = content_to_json(sms_query, "sms")
     #MMS
     text.configure(text="Creating UFED-Style Report files.\nQuery: content://mms")
-    mms_query = adb_call(device.shell, "content query --uri content://mms")
-    mms_json = content_to_json(mms_query)
+    mms_query = adb_call(device.shell, "content query --uri content://mms", rstrip=False)
+    mms_json = content_to_json(mms_query, "mms")
     text.configure(text="Creating UFED-Style Report files.\nQuery: content://mms/part")
-    mms_part_query = adb_call(device.shell, "content query --uri content://mms/part")
-    mms_part_json = content_to_json(mms_part_query)
+    mms_part_query = adb_call(device.shell, "content query --uri content://mms/part", rstrip=False)
+    mms_part_json = content_to_json(mms_part_query, "mms/part")
     text.configure(text="Creating UFED-Style Report files.\nQuery: content://mms/addr")
-    mms_addr_query = adb_call(device.shell, "content query --uri content://mms/addr")
-    mms_addr_json = content_to_json(mms_addr_query)
+    mms_addr_query = adb_call(device.shell, "content query --uri content://mms/addr", rstrip=False)
+    mms_addr_json = content_to_json(mms_addr_query, "mms/addr")
 
     end = datetime.now()
     local_timezone = datetime.now(timezone.utc).astimezone().tzinfo
