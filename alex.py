@@ -4929,6 +4929,8 @@ def insert_data(cur, table_name, schema_defaults, data_rows):
     sql = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({placeholders})"
 
     for row in data_rows:
+        if not row:
+            continue
         values = []
         for col in columns:
             if col in row:
@@ -4957,22 +4959,22 @@ def recreate_dbs(change, text, zip_path=None):
             sms_data = adb_call(device.shell, "content query --uri content://sms")
             sms_json = content_to_json(sms_data)
         except:
-            sms_json = [{}]
+            sms_json = []
         try:
             pdu_data = adb_call(device.shell, "content query --uri content://mms")
             pdu_json = content_to_json(pdu_data)
         except:
-            pdu_json = [{}]
+            pdu_json = []
         try:
             addr_data = adb_call(device.shell, "content query --uri content://mms/addr")
             addr_json = content_to_json(addr_data)
         except:
-            addr_json = [{}]
+            addr_json = []
         try:
             part_data = adb_call(device.shell, "content query --uri content://mms/part")
             part_json = content_to_json(part_data)
         except:
-            part_json = [{}]
+            part_json = []
 
         mmssms_schema = os.path.join(os.path.dirname(__file__), "ressources" , "mmssms.json")
         with open(mmssms_schema, "r", encoding="utf-8") as f:
@@ -5017,7 +5019,7 @@ def recreate_dbs(change, text, zip_path=None):
             call_data = adb_call(device.shell, "content query --uri content://call_log/calls")
             call_json = content_to_json(call_data)
         except:
-            call_json = [{}]
+            call_json = []
         call_schema = os.path.join(os.path.dirname(__file__), "ressources" , "calllog.json")
         with open(call_schema, "r", encoding="utf-8") as f:
             schema = json.load(f)
@@ -5050,7 +5052,7 @@ def recreate_dbs(change, text, zip_path=None):
             contact_contacts = adb_call(device.shell, "content query --uri content://com.android.contacts/contacts")
             contact_contacts_json = content_to_json(contact_contacts)
         except:
-            contact_contacs_json = [{}]
+            contact_contacts_json = []
         try:
             contact_data = adb_call(device.shell, "content query --uri content://com.android.contacts/data")
             contact_data_json = content_to_json(contact_data)
@@ -5066,18 +5068,18 @@ def recreate_dbs(change, text, zip_path=None):
                 entry["mimetype_id"] = unique_mimetypes[mime]
             mimetype_json = [{"_id": id_, "mimetype": mime} for mime, id_ in unique_mimetypes.items()]
         except:
-            contact_data_json = [{}]
-            mimetype_json = [{}]
+            contact_data_json = []
+            mimetype_json = []
         try:
             contact_raw_contacts_data = adb_call(device.shell, "content query --uri content://com.android.contacts/raw_contacts")
             contact_raw_contacts_json = content_to_json(contact_raw_contacts_data)
         except:
-            contact_raw_contacts_json = [{}]
+            contact_raw_contacts_json = []
         try:
             contact_settings_data = adb_call(device.shell, "content query --uri content://com.android.contacts/settings")
             contact_settings_json = content_to_json(contact_settings_data)
         except:
-            contact_settings_json = [{}]
+            contact_settings_json = []
         contact_schema = os.path.join(os.path.dirname(__file__), "ressources" , "contacts2.json")
         with open(contact_schema, "r", encoding="utf-8") as f:
             schema = json.load(f)
@@ -5115,32 +5117,32 @@ def recreate_dbs(change, text, zip_path=None):
             colors_data = adb_call(device.shell, "content query --uri content://com.android.calendar/colors")
             colors_json = content_to_json(colors_data)
         except:
-            colors_json = [{}]
+            colors_json = []
         try:
             calendars_data = adb_call(device.shell, "content query --uri content://com.android.calendar/calendars")
             calendars_json = content_to_json(calendars_data)
         except:
-            calendars_json = [{}]
+            calendars_json = []
         try:
             event_data = adb_call(device.shell, "content query --uri content://com.android.calendar/event_entities")
             event_json = content_to_json(event_data)
         except:
-            event_json = [{}]
+            event_json = []
         try:
             extended_data = adb_call(device.shell, "content query --uri content://com.android.calendar/extendedproperties")
             extended_json = content_to_json(extended_data)
         except:
-            extended_json = [{}]
+            extended_json = []
         try:
             reminders_data = adb_call(device.shell, "content query --uri content://com.android.calendar/reminders")
             reminders_json = content_to_json(reminders_data)
         except:
-            reminders_json = [{}]
+            reminders_json = []
         try:
             syncstate_data = adb_call(device.shell, "content query --uri content://com.android.calendar/syncstate")
             syncstate_json = content_to_json(syncstate_data)
         except:
-            syncstate_json = [{}]
+            syncstate_json = []
 
         calendar_schema = os.path.join(os.path.dirname(__file__), "ressources" , "calendar.json")
         with open(calendar_schema, "r", encoding="utf-8") as f:
