@@ -4323,38 +4323,64 @@ def query_content(change, text, progress, prog_text, json_out=False, zip_path=No
 def content_to_json(text: str, uri=""):
     # Android prints one line ending per row, in addition to any in the values.
     text = re.sub(r"\r?\n\Z", "", text)
-    rows = re.split(r"(?:\A|\r?\n)Row: [0-9]+ (?=\w+=)", text)[1:]
-    field = re.compile(r"(?:\A|, )(\w+)=")
-    common_columns = None
-    known_columns = None
+    row_marker = re.compile(r"(?:\A|\r?\n)Row: ([0-9]+) (?=(\w+)=)")
+    row_start = row_marker.search(text)
+    if row_start is None or row_start[1] != "0":
+        return []
 
+    rows = []
+    first_column = row_start[2]
+    for marker in row_marker.finditer(text, row_start.end()):
+        if marker[1] == str(len(rows) + 1) and marker[2] == first_column:
+            rows.append(text[row_start.end():marker.start()])
+            row_start = marker
+    rows.append(text[row_start.end():])
+
+    field = re.compile(r"(?:\A|, )(\w+)=")
+    fields = [list(field.finditer(row)) for row in rows]
     if len(rows) > 1:
-        # Cursor columns are present in every row, even when their values are NULL.
-        common_columns = {match[1] for match in field.finditer(rows[0])}
-        for row in rows[1:]:
-            common_columns.intersection_update(match[1] for match in field.finditer(row))
-    elif rows and uri.split("/", 1)[0] in ("sms", "mms"):
+        common_columns = {match[1] for match in fields[0]}
+        for matches in fields[1:]:
+            common_columns.intersection_update(match[1] for match in matches)
+        # Prefer the row with the fewest apparent delimiters as the column order.
+        reference = min(fields, key=len)
+        columns = list(dict.fromkeys(match[1] for match in reference if match[1] in common_columns))
+    else:
+        columns = list(dict.fromkeys(match[1] for match in fields[0]))
+
+    if len(rows) == 1 and uri.split("/", 1)[0] in ("sms", "mms"):
         # For a single messaging row, use the bundled schema after free-text fields.
         provider = uri.split("/", 1)[0]
         table = {"mms/part": "part", "mms/addr": "addr"}.get(uri, "sms" if provider == "sms" else "pdu")
         schema_path = Path(__file__).with_name("ressources") / "mmssms.json"
         with schema_path.open(encoding="utf-8") as f:
             known_columns = json.load(f)[table]
+        columns = []
+        for match in fields[0]:
+            column = match[1]
+            if columns and columns[-1] in {"body", "subject", "text", "sub", "retr_txt"} and column not in known_columns:
+                continue
+            if column not in columns:
+                columns.append(column)
 
     result = []
-    for row in rows:
+    for row, matches in zip(rows, fields):
+        # Match from the right so a repeated next-column marker can stay in the value.
+        remaining = reversed(matches[1:])
+        boundaries = []
+        for column in reversed(columns[1:]):
+            match = next((candidate for candidate in remaining if candidate[1] == column), None)
+            if match is None:
+                # A marker inferred from free text may appear in a different order.
+                boundaries = [candidate for candidate in reversed(matches[1:]) if candidate[1] in columns[1:]]
+                break
+            boundaries.append(match)
+
         entry = {}
-        previous = None
-        for match in field.finditer(row):
-            column = match[1]
-            if previous is not None:
-                if common_columns is not None and column not in common_columns:
-                    continue
-                if (known_columns is not None and previous[1] in {"body", "subject", "text", "sub", "retr_txt"}
-                        and column not in known_columns):
-                    continue
-                value = row[previous.end():match.start()]
-                entry[previous[1]] = None if value == "NULL" else value
+        previous = matches[0]
+        for match in reversed(boundaries):
+            value = row[previous.end():match.start()]
+            entry[previous[1]] = None if value == "NULL" else value
             previous = match
         value = row[previous.end():]
         entry[previous[1]] = None if value == "NULL" else value
